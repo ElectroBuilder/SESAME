@@ -1,0 +1,122 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sesame.Deck.Views.ShellWindow"
+        Title="SESAME"
+        Width="1280" Height="800"
+        MinWidth="960" MinHeight="540"
+        Background="#05090C"
+        WindowStartupLocation="CenterScreen"
+        KeyDown="OnKeyDown">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Desktop -->
+    <Grid x:Name="DesktopRoot">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <Border Background="#0A1C24" Padding="16,10" BorderBrush="#2A5A68" BorderThickness="0,0,0,1">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Image Source="avares://SESAME/Assets/sesame-logo.png" Height="36" Stretch="Uniform"/>
+            <TextBlock x:Name="VersionLabel" VerticalAlignment="Bottom" Margin="0,0,0,4"
+                       FontSize="12" Foreground="#3DE8F2"/>
+          </StackPanel>
+          <TextBlock x:Name="StatusLabel" Grid.Column="1" VerticalAlignment="Center" Margin="20,0,0,0"
+                     Foreground="#8AA8B3"/>
+          <StackPanel Grid.Column="2" Orientation="Horizontal">
+            <Button x:Name="LocalBtn" Content="Deze Deck" Click="Local_Click"/>
+            <Button x:Name="RemoteBtn" Content="SSH…" Click="Remote_Click"/>
+            <Button Content="Verbreken" Click="Disconnect_Click"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="220"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Border Background="#0A1C24" BorderBrush="#2A5A68" BorderThickness="0,0,1,0" Padding="10">
+          <StackPanel Spacing="8">
+            <Button x:Name="NavOpt" Content="Optimaliseren" HorizontalAlignment="Stretch" Click="NavOpt_Click"/>
+            <Button x:Name="NavFiles" Content="Bestanden" HorizontalAlignment="Stretch" Click="NavFiles_Click"/>
+            <Button x:Name="NavSettings" Content="Instellingen" HorizontalAlignment="Stretch" Click="NavSettings_Click"/>
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#8AA8B3" Margin="4,16,4,0"
+                       Text="Lokaal op de Deck of via SSH. Optimaliseren vanuit Game Mode kan niet: Steam moet even dicht."/>
+          </StackPanel>
+        </Border>
+        <ContentControl x:Name="DesktopHost" Grid.Column="1"/>
+      </Grid>
+    </Grid>
+
+    <!-- Game Mode -->
+    <Grid x:Name="GameRoot" IsVisible="False">
+      <Grid x:Name="GameHome">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Margin="48,28,48,0" Spacing="6">
+          <Image Source="avares://SESAME/Assets/sesame-logo.png" Height="72" Stretch="Uniform" HorizontalAlignment="Left"/>
+          <TextBlock x:Name="GameStatus" FontSize="18" Foreground="#8AA8B3"/>
+        </StackPanel>
+        <UniformGrid Grid.Row="1" Rows="2" Columns="2" Margin="48,16,48,24">
+          <Button x:Name="Tile0" Classes="tile" Margin="10" Click="Tile0_Click">
+            <StackPanel>
+              <TextBlock Text="Optimaliseren" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="Shortcuts, covers en tabs" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+            </StackPanel>
+          </Button>
+          <Button x:Name="Tile1" Classes="tile" Margin="10" Click="Tile1_Click">
+            <StackPanel>
+              <TextBlock Text="Bibliotheek" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="Gescande ROMs en apps" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+            </StackPanel>
+          </Button>
+          <Button x:Name="Tile2" Classes="tile" Margin="10" Click="Tile2_Click">
+            <StackPanel>
+              <TextBlock Text="Bestanden" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="Mappen op deze Deck" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+            </StackPanel>
+          </Button>
+          <Button x:Name="Tile3" Classes="tile" Margin="10" Click="Tile3_Click">
+            <StackPanel>
+              <TextBlock Text="Instellingen" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="SteamGridDB, lokaal of SSH" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+            </StackPanel>
+          </Button>
+        </UniformGrid>
+      </Grid>
+      <Grid x:Name="GamePage" IsVisible="False">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Border Background="#0A1C24" Padding="20,12">
+          <DockPanel>
+            <Button Content="Terug" Click="GameBack_Click" DockPanel.Dock="Left"/>
+            <TextBlock x:Name="GamePageTitle" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" Margin="16,0,0,0"/>
+          </DockPanel>
+        </Border>
+        <ContentControl x:Name="GameHost" Grid.Row="1"/>
+      </Grid>
+    </Grid>
+
+    <Border Grid.Row="1" Background="#0A1C24" Padding="16,8" BorderBrush="#2A5A68" BorderThickness="0,1,0,0">
+      <DockPanel>
+        <TextBlock x:Name="HintBar" Foreground="#8AA8B3" FontSize="14"
+                   Text="A bevestigen   B terug   D-pad navigeren   L/R tabs"/>
+        <TextBlock x:Name="FooterStatus" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="#3DE8F2"/>
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

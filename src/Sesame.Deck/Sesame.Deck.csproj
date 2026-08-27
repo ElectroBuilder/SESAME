@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Sesame.Deck</RootNamespace>
+    <AssemblyName>SESAME</AssemblyName>
+    <Product>SESAME</Product>
+    <Description>Steam Easy Shortcut Artwork Manager Engine</Description>
+    <Version>0.4.1</Version>
+    <ApplicationIcon>Assets\sesame.ico</ApplicationIcon>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+    <Content Include="Assets\sesame.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sesame.Core\Sesame.Core.csproj" />
+  </ItemGroup>
+</Project>

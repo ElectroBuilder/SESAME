@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Sesame.Deck.Views.FilesPage">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    <DockPanel Margin="12">
+      <Button Content="Omhoog" Click="Up_Click" DockPanel.Dock="Left"/>
+      <Button Content="Vernieuwen" Click="Refresh_Click" DockPanel.Dock="Left"/>
+      <TextBox x:Name="PathBox" Margin="8,0,0,0" KeyDown="Path_KeyDown"/>
+    </DockPanel>
+    <ListBox x:Name="FileList" Grid.Row="1" Margin="12,0,12,12" DoubleTapped="Open_Double"/>
+  </Grid>
+</UserControl>

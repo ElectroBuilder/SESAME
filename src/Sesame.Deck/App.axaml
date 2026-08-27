@@ -1,0 +1,58 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Sesame.Deck.App"
+             RequestedThemeVariant="Dark">
+  <Application.Styles>
+    <FluentTheme />
+    <Style Selector="Window">
+      <Setter Property="Background" Value="#05090C"/>
+      <Setter Property="Foreground" Value="#E8F4F2"/>
+      <Setter Property="FontFamily" Value="Inter, Segoe UI, sans-serif"/>
+      <Setter Property="FontSize" Value="16"/>
+    </Style>
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="#E8F4F2"/>
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="#102A34"/>
+      <Setter Property="Foreground" Value="#E8F4F2"/>
+      <Setter Property="Padding" Value="18,12"/>
+      <Setter Property="Margin" Value="0,0,10,0"/>
+      <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#163C48"/>
+    </Style>
+    <Style Selector="Button.accent">
+      <Setter Property="Background" Value="#3DE8F2"/>
+      <Setter Property="Foreground" Value="#041016"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#102A34"/>
+      <Setter Property="Foreground" Value="#E8F4F2"/>
+      <Setter Property="Padding" Value="12,10"/>
+    </Style>
+    <Style Selector="ListBox">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="#163C48"/>
+    </Style>
+    <Style Selector="Button.tile">
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="VerticalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Background" Value="#102A34"/>
+      <Setter Property="CornerRadius" Value="18"/>
+      <Setter Property="Padding" Value="28"/>
+      <Setter Property="FontSize" Value="22"/>
+    </Style>
+    <Style Selector="Button.tile:focus">
+      <Setter Property="Background" Value="#1A4D56"/>
+      <Setter Property="BorderBrush" Value="#3DE8F2"/>
+      <Setter Property="BorderThickness" Value="3"/>
+    </Style>
+  </Application.Styles>
+</Application>

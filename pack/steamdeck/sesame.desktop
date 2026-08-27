@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SESAME
+Comment=Steam Deck Shortcut & Artwork Manager
+Exec=SESAME --desktop
+Icon=sesame
+Terminal=false
+Categories=Utility;Game;
+StartupWMClass=SESAME

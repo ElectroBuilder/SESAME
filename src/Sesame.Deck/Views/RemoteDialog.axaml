@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sesame.Deck.Views.RemoteDialog"
+        Title="SSH-verbinding"
+        Width="520" Height="420"
+        WindowStartupLocation="CenterOwner"
+        Background="#0A1C24">
+  <StackPanel Margin="20" Spacing="10">
+    <TextBlock Text="Verbind via SSH" FontSize="20" FontWeight="Bold"/>
+    <TextBlock Text="Host"/>
+    <TextBox x:Name="HostBox"/>
+    <TextBlock Text="Poort"/>
+    <TextBox x:Name="PortBox" Text="22"/>
+    <TextBlock Text="Gebruiker"/>
+    <TextBox x:Name="UserBox" Text="deck"/>
+    <TextBlock Text="Private key"/>
+    <DockPanel>
+      <Button Content="Kiezen…" Click="Browse_Click" DockPanel.Dock="Right"/>
+      <TextBox x:Name="KeyBox" Margin="0,0,8,0"/>
+    </DockPanel>
+    <TextBlock x:Name="ErrorText" Foreground="#FF6B7A" TextWrapping="Wrap"/>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Annuleren" Click="Cancel_Click"/>
+      <Button Classes="accent" Content="Verbinden" Click="Connect_Click"/>
+    </StackPanel>
+  </StackPanel>
+</Window>

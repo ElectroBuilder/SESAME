@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Sesame.Deck.Views.OptimizerPage">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <StackPanel Orientation="Horizontal" Margin="16" Spacing="8">
+      <Button Classes="accent" Content="Scannen" Click="Scan_Click"/>
+      <Button Classes="accent" Content="Optimaliseren" Click="Apply_Click"/>
+      <Button Content="Alles aan" Click="AllOn_Click"/>
+      <Button Content="Alles uit" Click="AllOff_Click"/>
+    </StackPanel>
+    <ListBox x:Name="GameList" Grid.Row="1" Margin="12,0" SelectionMode="Single">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <Grid ColumnDefinitions="Auto,Auto,*" Margin="4">
+            <CheckBox IsChecked="{Binding Selected}" VerticalAlignment="Center"/>
+            <Border Grid.Column="1" Width="40" Height="60" Margin="10,0" Background="#102A34" ClipToBounds="True">
+              <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+            </Border>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+              <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding SystemName}" Foreground="#8AA8B3" FontSize="13"/>
+              <TextBlock Text="{Binding SteamText}" Foreground="#8AA8B3" FontSize="12"/>
+            </StackPanel>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <TextBlock x:Name="Hint" Grid.Row="2" Margin="16" TextWrapping="Wrap" Foreground="#8AA8B3"
+               Text="Scan ROMs op deze machine of via SSH. Toepassen schrijft Steam-shortcuts; doe dat in Desktop Mode."/>
+  </Grid>
+</UserControl>

@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Sesame.Deck.Views.SettingsPage">
+  <ScrollViewer>
+    <StackPanel Margin="24" Spacing="14" MaxWidth="720" HorizontalAlignment="Left">
+      <TextBlock Text="Instellingen" FontSize="26" FontWeight="Bold"/>
+      <TextBlock TextWrapping="Wrap" Foreground="#8AA8B3"
+                 Text="SESAME kan deze Steam Deck lokaal beheren (geen SSH) of via SSH vanaf een andere machine."/>
+      <TextBlock Text="SteamGridDB API-sleutel" FontWeight="SemiBold"/>
+      <TextBox x:Name="KeyBox" PasswordChar="•" Watermark="Plak je sleutel"/>
+      <Button Classes="accent" Content="Opslaan" Click="SaveKey_Click" HorizontalAlignment="Left"/>
+      <TextBlock x:Name="KeyStatus" Foreground="#3DE8F2"/>
+      <TextBlock Text="Sessie" FontWeight="SemiBold" Margin="0,12,0,0"/>
+      <TextBlock x:Name="HostInfo" TextWrapping="Wrap"/>
+      <Button Content="Naar Desktop Mode (SteamOS)" Click="Desktop_Click" HorizontalAlignment="Left"/>
+      <TextBlock FontSize="13" Foreground="#8AA8B3" TextWrapping="Wrap"
+                 Text="Optimaliseren sluit Steam kort. Doe dat in Desktop Mode als SESAME vanuit Game Mode draait."/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
