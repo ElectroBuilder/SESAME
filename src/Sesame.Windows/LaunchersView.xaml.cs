@@ -119,7 +119,7 @@ public partial class LaunchersView : UserControl
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(
-                "Alle startregels terugzetten naar {flatpak} {emulator} {core} \"{rom}\" voor RetroArch?",
+                "Reset all launch rules to {flatpak} {emulator} {core} \"{rom}\" for RetroArch?",
                 "Emulators", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         LaunchConfigStore.Reset();

@@ -10,7 +10,7 @@ namespace Sesame.Services;
 public static class TranslationSheet
 {
     private static readonly string[] Headers =
-        ["ID", "Soort", "Spreker", "Engels", "Nederlands", "Tekens", "Asset", "Sectie", "Index"];
+        ["ID", "Kind", "Speaker", "English", "Dutch", "Chars", "Asset", "Section", "Index"];
 
     public static void Export(string path, IReadOnlyList<BkTextLine> lines)
     {
@@ -87,9 +87,9 @@ public static class TranslationSheet
         if (header is null) return rows;
         var cols = SplitCsv(header, sep);
         var iId = IndexOf(cols, "ID", "Asset");
-        var iEn = IndexOf(cols, "Engels", "English");
-        var iNl = IndexOf(cols, "Nederlands", "Dutch");
-        var iSec = IndexOf(cols, "Sectie", "Section");
+        var iEn = IndexOf(cols, "English", "Engels");
+        var iNl = IndexOf(cols, "Dutch", "Nederlands");
+        var iSec = IndexOf(cols, "Section", "Sectie");
         var iIdx = IndexOf(cols, "Index");
         var iAsset = IndexOf(cols, "Asset");
         string? line;
@@ -262,7 +262,7 @@ public static class TranslationSheet
     {
         using var zip = ZipFile.OpenRead(path);
         var sheet = zip.GetEntry("xl/worksheets/sheet1.xml")
-            ?? throw new InvalidDataException("Geen werkblad gevonden in dit Excel-bestand.");
+            ?? throw new InvalidDataException("No worksheet found in this Excel file.");
         using var stream = sheet.Open();
         var doc = XDocument.Load(stream);
         var rows = new List<(string, string, string)>();
@@ -286,7 +286,7 @@ public static class TranslationSheet
                 var labels = Enumerable.Range(0, 12).Select(CellAt).ToArray();
                 iId = IndexOf(labels, "ID", "Asset");
                 iEn = IndexOf(labels, "Engels", "English");
-                iNl = IndexOf(labels, "Nederlands", "Dutch");
+                iNl = IndexOf(labels, "Dutch", "Nederlands");
                 iSec = IndexOf(labels, "Sectie", "Section");
                 iIdx = IndexOf(labels, "Index");
                 iAsset = IndexOf(labels, "Asset");

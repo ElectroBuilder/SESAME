@@ -17,8 +17,8 @@ public partial class OptimizeOptionsWindow : Window
         string steamNote, string? gyroNote = null)
     {
         CountText.Text = count == 1
-            ? "1 geselecteerde game optimaliseren."
-            : count + " geselecteerde games optimaliseren.";
+            ? "Optimize 1 selected game."
+            : "Optimize " + count + " selected games.";
         OverwriteBox.IsChecked = overwriteShortcuts;
         ArtworkBox.IsChecked = overwriteArtwork;
         MaskBox.IsChecked = useMasks;

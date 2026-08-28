@@ -65,7 +65,7 @@ public static class Sm64Text
 
         var changed = lines.Where(l => l.Codec == "sm64" && l.Changed && !string.IsNullOrWhiteSpace(l.Translation)).ToList();
         if (changed.Count == 0)
-            throw new InvalidDataException("Geen gewijzigde Mario 64-teksten om in de ROM te zetten.");
+            throw new InvalidDataException("No changed Mario 64 texts to write into the ROM.");
 
         var sample = changed[0];
         if (!Mio0.TryDecode(rom, sample.RomOffset, out var raw, out var consumed))

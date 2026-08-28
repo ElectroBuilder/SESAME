@@ -36,10 +36,10 @@ public partial class ShellWindow : Window
             WindowState = WindowState.FullScreen;
             Width = 1280;
             Height = 800;
-            HintBar.Text = "A bevestigen    B terug    D-pad / stick navigeren    L/R tabs    Start menu";
+            HintBar.Text = "A confirm    B back    D-pad / stick navigate    L/R tabs    Start menu";
         }
         else
-            HintBar.Text = "Muis, toetsenbord of Steam Deck-controls. Lokaal of SSH.";
+            HintBar.Text = "Mouse, keyboard or Steam Deck controls. Local or SSH.";
 
         _pad = new GamepadPump(OnPad);
         _session.Changed += RefreshStatus;
@@ -49,7 +49,7 @@ public partial class ShellWindow : Window
             _session.Client.Dispose();
         };
         if (!_gameMode)
-            ShowPage(_optimizer, "Optimaliseren");
+            ShowPage(_optimizer, "Optimize");
         Opened += async (_, _) =>
         {
             try
@@ -98,14 +98,14 @@ public partial class ShellWindow : Window
         FocusTile(_tile);
     }
 
-    private void NavOpt_Click(object? sender, RoutedEventArgs e) => ShowPage(_optimizer, "Optimaliseren");
-    private void NavFiles_Click(object? sender, RoutedEventArgs e) => ShowPage(_files, "Bestanden");
-    private void NavSettings_Click(object? sender, RoutedEventArgs e) => ShowPage(_settings, "Instellingen");
+    private void NavOpt_Click(object? sender, RoutedEventArgs e) => ShowPage(_optimizer, "Optimize");
+    private void NavFiles_Click(object? sender, RoutedEventArgs e) => ShowPage(_files, "Files");
+    private void NavSettings_Click(object? sender, RoutedEventArgs e) => ShowPage(_settings, "Settings");
 
-    private void Tile0_Click(object? sender, RoutedEventArgs e) { _tile = 0; ShowPage(_optimizer, "Optimaliseren"); }
+    private void Tile0_Click(object? sender, RoutedEventArgs e) { _tile = 0; ShowPage(_optimizer, "Optimize"); }
     private void Tile1_Click(object? sender, RoutedEventArgs e) { _tile = 1; ShowPage(_optimizer, "Bibliotheek"); }
-    private void Tile2_Click(object? sender, RoutedEventArgs e) { _tile = 2; ShowPage(_files, "Bestanden"); }
-    private void Tile3_Click(object? sender, RoutedEventArgs e) { _tile = 3; ShowPage(_settings, "Instellingen"); }
+    private void Tile2_Click(object? sender, RoutedEventArgs e) { _tile = 2; ShowPage(_files, "Files"); }
+    private void Tile3_Click(object? sender, RoutedEventArgs e) { _tile = 3; ShowPage(_settings, "Settings"); }
     private void GameBack_Click(object? sender, RoutedEventArgs e) => ShowHome();
 
     private async void Local_Click(object? sender, RoutedEventArgs e)
@@ -179,9 +179,9 @@ public partial class ShellWindow : Window
 
         if (action is PadAction.PrevTab or PadAction.NextTab)
         {
-            if (_current == _optimizer) ShowPage(_files, "Bestanden");
-            else if (_current == _files) ShowPage(_settings, "Instellingen");
-            else ShowPage(_optimizer, "Optimaliseren");
+            if (_current == _optimizer) ShowPage(_files, "Files");
+            else if (_current == _files) ShowPage(_settings, "Settings");
+            else ShowPage(_optimizer, "Optimize");
         }
     }
 

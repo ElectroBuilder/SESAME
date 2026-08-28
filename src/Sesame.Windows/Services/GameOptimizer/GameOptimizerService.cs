@@ -14,23 +14,23 @@ public static class GameOptimizerService
     {
         progress?.Report(new OptimizeProgress
         {
-            Title = "ROMs scannen",
-            Detail = "Emulators en Steam-index lezen…",
+            Title = "Scanning ROMs",
+            Detail = "Reading emulators and Steam index…",
             Indeterminate = true
         });
         var layout = EmulatorProbe.Probe(client);
         var steam = LoadSteamIndex(client);
         progress?.Report(new OptimizeProgress
         {
-            Title = "ROMs scannen",
-            Detail = "ROM-bestanden zoeken…",
+            Title = "Scanning ROMs",
+            Detail = "Looking for ROM files…",
             Indeterminate = true
         });
         var files = ListRoms(client, catalog);
         progress?.Report(new OptimizeProgress
         {
-            Title = "ROMs scannen",
-            Detail = files.Count + " bestanden groeperen…",
+            Title = "Scanning ROMs",
+            Detail = "Grouping " + files.Count + " files…",
             Indeterminate = true
         });
         var games = new List<OptimizerGame>();
@@ -75,16 +75,16 @@ public static class GameOptimizerService
                         : "In Steam";
             }
             else
-                game.Status = string.IsNullOrEmpty(game.Target) ? "Geen emulator" : "Nieuw";
+                game.Status = string.IsNullOrEmpty(game.Target) ? "No emulator" : "New";
             if (string.IsNullOrEmpty(game.Target))
-                game.Note = "Geen launcher gevonden voor " + profile.Name;
+                game.Note = "No launcher found for " + profile.Name;
             games.Add(game);
         }
 
         progress?.Report(new OptimizeProgress
         {
             Title = "Hydra en apps",
-            Detail = "Hydra-games en native apps zoeken…",
+            Detail = "Looking for Hydra games and native apps…",
             Indeterminate = true
         });
         foreach (var extra in ExtraShortcuts.Scan(client, steam))
@@ -100,7 +100,7 @@ public static class GameOptimizerService
                 extra.Status = extra.InSteam ? "In Steam" : "In Steam (extern)";
             }
             else
-                extra.Status = "Nieuw";
+                extra.Status = "New";
             games.Add(extra);
         }
 
@@ -117,7 +117,7 @@ public static class GameOptimizerService
         var selected = games.Where(g => g.Selected).ToList();
         if (selected.Count == 0)
         {
-            report.Summary = "Geen games geselecteerd.";
+            report.Summary = "No games selected.";
             return report;
         }
 
@@ -125,7 +125,7 @@ public static class GameOptimizerService
 
         try
         {
-        Report(progress, "Emulators bepalen", "Per systeem de juiste launcher kiezen…", 10);
+        Report(progress, "Resolve emulators", "Pick the right launcher per system…", 10);
 
         var layout = EmulatorProbe.Probe(client);
         var wrapped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -140,27 +140,27 @@ public static class GameOptimizerService
             var cfg = LaunchConfigStore.ForSystem(profile.Id);
             if (LaunchComposer.NeedsWrapper(cfg) && wrapped.Add(game.SystemId))
             {
-                Report(progress, "Wrappers schrijven",
+                Report(progress, "Write wrappers",
                     "Wrapper voor " + profile.Name + " installeren…", 12);
                 EmulatorProbe.InstallWrapper(client, game.SystemId, game.CorePath);
             }
         }
         if (selected.Any(DolphinInput.IsBound))
         {
-            Report(progress, "Dolphin-besturing",
+            Report(progress, "Dolphin controls",
                 "Controllerkoppeling voor GameCube/Wii instellen…", 13);
             DolphinInput.Ensure(client);
         }
         selected = selected.Where(g => !string.IsNullOrEmpty(g.Target)).ToList();
         if (selected.Count == 0)
         {
-            report.Summary = "Geen games met een emulator geselecteerd.";
+            report.Summary = "No games with an emulator selected.";
             return report;
         }
 
         var configs = SteamShortcuts.FindUserConfigs(client);
         if (configs.Count == 0)
-            throw new InvalidOperationException("Geen Steam-gebruikersmap gevonden op de Deck.");
+            throw new InvalidOperationException("No Steam user folder found on the Deck.");
 
         var primary = configs[0];
         var shortcuts = SteamShortcuts.LoadAll(client, configs);
@@ -174,7 +174,7 @@ public static class GameOptimizerService
             ct.ThrowIfCancellationRequested();
             var game = selected[i];
             var pct = 12 + 75.0 * i / n;
-            Report(progress, "Shortcut schrijven", game.DisplayName, pct, i + 1, n);
+            Report(progress, "Write shortcut", game.DisplayName, pct, i + 1, n);
             try
             {
                 EnsureExecutable(client, LaunchComposer.ExePath(game.Target));
@@ -188,7 +188,7 @@ public static class GameOptimizerService
                     ?? SystemCatalog.Unknown(game.FolderName);
                 var query = string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery;
                 ArtworkSet? art;
-                Report(progress, "Cover ophalen", game.DisplayName,
+                Report(progress, "Fetch cover", game.DisplayName,
                     12 + 75.0 * (i + 0.4) / n, i + 1, n);
                 if (!string.IsNullOrEmpty(game.SelectedGridUrl) || game.GridBytes is { Length: > 0 })
                 {
@@ -224,7 +224,7 @@ public static class GameOptimizerService
                         game.SelectedIconUrl ??= art.IconUrl;
                     }
                 }
-                Report(progress, "Artwork zetten", game.DisplayName,
+                Report(progress, "Apply artwork", game.DisplayName,
                     12 + 75.0 * (i + 0.75) / n, i + 1, n);
                 if (art?.GameId is int gid) game.SteamGridDbId = gid;
                 var artWrite = WriteArtwork(client, gridDir, game, profile, art);
@@ -259,7 +259,7 @@ public static class GameOptimizerService
         }
 
         var stripped = SteamShortcuts.RemoveLegacyFor(shortcuts, written);
-        Report(progress, "Shortcuts opslaan", "Steam-shortcuts naar de Deck schrijven…", 90);
+        Report(progress, "Save shortcuts", "Writing Steam shortcuts to the Deck…", 90);
         foreach (var config in configs)
             SteamShortcuts.Save(client, config, shortcuts);
 
@@ -276,11 +276,11 @@ public static class GameOptimizerService
             .ToList();
         if (dolphinIds.Count > 0)
         {
-            Report(progress, "Steam Input", "Gyro voor Wii/GameCube inschakelen…", 92);
+            Report(progress, "Steam Input", "Enable gyro for Wii/GameCube…", 92);
             SteamInputConfig.ForceOn(client, configs, dolphinIds);
         }
 
-        Report(progress, "Collecties bijwerken", "Steam-tabladen zetten…", 94);
+        Report(progress, "Update collections", "Set Steam tabs…", 94);
         var inSteam = games.Where(g => g.SteamAppId != 0).ToList();
         var collectionError = SteamCollections.Apply(client, configs, inSteam);
         if (!string.IsNullOrEmpty(collectionError))
@@ -303,13 +303,13 @@ public static class GameOptimizerService
         }
 
         report.Skipped = games.Count - selected.Count;
-        report.Summary = $"{report.Applied} geoptimaliseerd" +
-                         (report.Failed > 0 ? $", {report.Failed} mislukt" : "") +
+        report.Summary = $"{report.Applied} optimized" +
+                         (report.Failed > 0 ? $", {report.Failed} failed" : "") +
                          (report.ArtworkKept > 0 ? $", {report.ArtworkKept} covers ongewijzigd overgeslagen" : "") +
                          (stripped > 0 ? $", {stripped} oude scripts vervangen" : "") +
-                         (string.IsNullOrEmpty(collectionError) ? "" : ", collecties deels mislukt") +
+                         (string.IsNullOrEmpty(collectionError) ? "" : ", collections partly failed") +
                          (dolphinIds.Count > 0
-                             ? ". Wii-gyro: start in Game Mode. Joy-Con/8BitDo: zie de hint bij Optimaliseren."
+                             ? ". Wii gyro: start in Game Mode. Joy-Con/8BitDo: see the hint when optimizing."
                              : "") +
                          (restoreGameMode
                              ? " Game Mode wordt weer gestart."
@@ -321,10 +321,10 @@ public static class GameOptimizerService
         {
             if (restoreGameMode)
             {
-                Report(progress, "Game Mode terugzetten", "Steam Game Mode weer starten…", 98);
+                Report(progress, "Restore Game Mode", "Starting Steam Game Mode again…", 98);
                 SteamSession.RestoreGameMode(client, true, SteamProgress(progress, 98));
             }
-            Report(progress, "Klaar", report.Summary, 100);
+            Report(progress, "Done", report.Summary, 100);
         }
     }
 
@@ -531,7 +531,7 @@ public static class GameOptimizerService
             _inner.Report(new OptimizeProgress
             {
                 Title = value,
-                Detail = "Steam even pauzeren zodat shortcuts veilig geschreven kunnen worden.",
+                Detail = "Pause Steam briefly so shortcuts can be written safely.",
                 Percent = _percent,
                 Indeterminate = true
             });

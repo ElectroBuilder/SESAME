@@ -25,7 +25,7 @@ public partial class OptimizerPage : UserControl
         var cached = OptimizerLibraryCache.Load(id, host);
         if (cached.Count == 0) return;
         Replace(cached);
-        Hint.Text = cached.Count + " games uit cache. Scannen voor een verse lijst.";
+        Hint.Text = cached.Count + " games from cache. Scan for a fresh list.";
     }
 
     private async void Scan_Click(object? sender, RoutedEventArgs e)
@@ -34,16 +34,16 @@ public partial class OptimizerPage : UserControl
         var session = DeckSession.Current;
         if (!session.Connected)
         {
-            Hint.Text = "Verbind eerst (Deze Deck of SSH).";
+            Hint.Text = "Connect first (This Deck or SSH).";
             return;
         }
         _busy = true;
-        Hint.Text = "Scannen…";
+        Hint.Text = "Scanning…";
         try
         {
             var games = await Task.Run(() => GameOptimizerService.Scan(session.Client, session.Catalog));
             Replace(games);
-            Hint.Text = games.Count + " games gevonden.";
+            Hint.Text = games.Count + " games found.";
         }
         catch (Exception ex)
         {
@@ -61,17 +61,17 @@ public partial class OptimizerPage : UserControl
         var session = DeckSession.Current;
         if (!session.Connected)
         {
-            Hint.Text = "Verbind eerst.";
+            Hint.Text = "Connect first.";
             return;
         }
         var selected = _games.Where(g => g.Selected).ToList();
         if (selected.Count == 0)
         {
-            Hint.Text = "Selecteer minstens één game.";
+            Hint.Text = "Select at least one game.";
             return;
         }
         _busy = true;
-        Hint.Text = "Optimaliseren…";
+        Hint.Text = "Optimizing…";
         try
         {
             var report = await GameOptimizerService.ApplyAsync(

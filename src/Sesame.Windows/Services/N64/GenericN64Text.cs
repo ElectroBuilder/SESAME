@@ -37,7 +37,7 @@ public static class GenericN64Text
 
         var changed = lines.Where(l => l.Changed && !string.IsNullOrWhiteSpace(l.Translation)).ToList();
         if (changed.Count == 0)
-            throw new InvalidDataException("Geen gewijzigde teksten om in de ROM te zetten.");
+            throw new InvalidDataException("No changed texts to write into the ROM.");
 
         var output = (byte[])rom.Clone();
         var errors = 0;
@@ -137,7 +137,7 @@ public static class GenericN64Text
 
         if (written == 0)
             throw new InvalidDataException(
-                "Geen enkele tekst paste in de ROM. Kort een paar zinnen in of laat ze Engels." +
+                "No text fitted in the ROM. Shorten a few lines or leave them English." +
                 (lastError is null ? "" : " " + lastError));
 
         if (crcTouched && N64Rom.LooksLikeN64(output))

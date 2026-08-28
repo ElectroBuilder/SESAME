@@ -35,7 +35,7 @@ public static class RomPatcher
         foreach (var candidate in HeaderVariants(source, PeekSourceSize(patchPath)))
         {
             index++;
-            var label = index == 1 ? "origineel" : "variant " + index;
+            var label = index == 1 ? "original" : "variant " + index;
             var n64 = N64Layout(candidate);
             if (n64.Length > 0) label += " (" + n64 + ")";
             try { return Apply(candidate, patchPath); }
@@ -111,7 +111,7 @@ public static class RomPatcher
         }
 
         lines.Add("");
-        lines.Add("Het origineel is niet overschreven.");
+        lines.Add("The original was not overwritten.");
         return string.Join(Environment.NewLine, lines);
     }
 
@@ -353,7 +353,7 @@ public static class RomPatcher
         var offset = smd.Length % 16384 == 512 ? 512 : 0;
         var len = smd.Length - offset;
         if (len <= 0 || len % 16384 != 0)
-            throw new InvalidDataException("Geen geldige Genesis SMD-dump.");
+            throw new InvalidDataException("Not a valid Genesis SMD dump.");
         var bin = new byte[len];
         for (var block = 0; block < len; block += 16384)
         {
@@ -429,7 +429,7 @@ public static class RomPatcher
     private static byte[] ApplyBps(byte[] source, byte[] patch)
     {
         if (patch.Length < 19 || Encoding.ASCII.GetString(patch, 0, 4) != "BPS1")
-            throw new InvalidDataException("Geen geldige BPS-patch.");
+            throw new InvalidDataException("Not a valid BPS patch.");
 
         var crcPatch = Crc32(patch.AsSpan(0, patch.Length - 4));
         var stored = BinaryPrimitives.ReadUInt32LittleEndian(patch.AsSpan(patch.Length - 4));
@@ -493,7 +493,7 @@ public static class RomPatcher
     private static byte[] ApplyIps(byte[] source, byte[] patch)
     {
         if (patch.Length < 8 || Encoding.ASCII.GetString(patch, 0, 5) != "PATCH")
-            throw new InvalidDataException("Geen geldige IPS-patch.");
+            throw new InvalidDataException("Not a valid IPS patch.");
 
         var output = source.ToArray();
         var pos = 5;
@@ -541,7 +541,7 @@ public static class RomPatcher
     private static byte[] ApplyUps(byte[] source, byte[] patch)
     {
         if (patch.Length < 16 || Encoding.ASCII.GetString(patch, 0, 4) != "UPS1")
-            throw new InvalidDataException("Geen geldige UPS-patch.");
+            throw new InvalidDataException("Not a valid UPS patch.");
 
         var pos = 4;
         var inputSize = (int)ReadVlq(patch, ref pos);

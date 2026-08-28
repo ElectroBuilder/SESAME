@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using Microsoft.Win32;
 using Sesame.Models;
@@ -45,7 +46,7 @@ public partial class SessionsWindow : Window
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (SessionList.SelectedItem is not ConnectionProfile profile) return;
-        if (MessageBox.Show(this, $"Sessie '{profile.Name}' verwijderen?", AppBrand.ShortName,
+        if (MessageBox.Show(this, $"Delete session '{profile.Name}'?", AppBrand.ShortName,
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         _store.Delete(profile);
@@ -64,21 +65,27 @@ public partial class SessionsWindow : Window
         _store.Upsert(edited);
         SessionList.SelectedItem = _store.Profiles.First(p => p.Id == edited.Id);
         ShowSecretStatus(edited.Id);
-        MessageBox.Show(this, "Sessie opgeslagen.", AppBrand.ShortName, MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(this, "Session saved.", AppBrand.ShortName, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void BrowseKey_Click(object sender, RoutedEventArgs e)
     {
         if (SessionList.SelectedItem is not ConnectionProfile profile)
         {
-            MessageBox.Show(this, "Kies of maak eerst een sessie.");
+            MessageBox.Show(this, "Select or create a session first.");
             return;
         }
 
+        var sshDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
         var dlg = new OpenFileDialog
         {
-            Title = "Private key importeren",
-            Filter = "SSH keys (*.*;steam_deck;id_rsa;*.ppk)|*.*|Alle bestanden (*.*)|*.*"
+            Title = "Import SSH private key",
+            Filter = "All files (*.*)|*.*|OpenSSH / PuTTY (*.ppk;*.pem;*.key)|*.ppk;*.pem;*.key",
+            FilterIndex = 1,
+            CheckFileExists = true,
+            ValidateNames = false,
+            DereferenceLinks = true,
+            InitialDirectory = Directory.Exists(sshDir) ? sshDir : ""
         };
         if (dlg.ShowDialog(this) != true) return;
 
@@ -93,7 +100,7 @@ public partial class SessionsWindow : Window
             ShowSecretStatus(profile.Id);
             if (needsPass)
             {
-                KeyStatus.Text = "Versleutelde sleutel opgeslagen — vul de wachtwoordzin in";
+                KeyStatus.Text = "Encrypted key saved — enter the passphrase";
                 PassphraseBox.Focus();
             }
         }
@@ -107,7 +114,7 @@ public partial class SessionsWindow : Window
     {
         if (SessionList.SelectedItem is not ConnectionProfile profile) return;
         if (!SshSecrets.HasKey(profile.Id)) return;
-        if (MessageBox.Show(this, "Opgeslagen SSH-sleutel (en wachtwoordzin) verwijderen?", AppBrand.ShortName,
+        if (MessageBox.Show(this, "Remove the saved SSH key (and passphrase)?", AppBrand.ShortName,
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         SshSecrets.DeleteKey(profile.Id);
@@ -139,7 +146,7 @@ public partial class SessionsWindow : Window
         _store.Upsert(edited);
         if (!SshSecrets.HasKey(edited.Id) && !SshSecrets.HasPassword(edited.Id))
         {
-            MessageBox.Show(this, "Importeer eerst een private key of sla een wachtwoord op.");
+            MessageBox.Show(this, "Import a private key first, or save a login password.");
             return;
         }
         ProfileToOpen = _store.Profiles.First(p => p.Id == edited.Id).Clone();
@@ -163,13 +170,13 @@ public partial class SessionsWindow : Window
 
     private void ShowSecretStatus(string profileId)
     {
-        KeyStatus.Text = SshSecrets.HasKey(profileId) ? "Sleutel opgeslagen" : "Geen sleutel";
+        KeyStatus.Text = SshSecrets.HasKey(profileId) ? "Key saved" : "No key";
         PassphraseStatus.Text = SshSecrets.HasPassphrase(profileId)
-            ? "Wachtwoordzin opgeslagen. Typ alleen iets om die te vervangen."
-            : "Alleen nodig bij een versleutelde sleutel.";
+            ? "Passphrase saved. Type a new one only if you want to replace it."
+            : "Only needed if this private key is encrypted. Leave empty for a normal Steam Deck key.";
         PasswordStatus.Text = SshSecrets.HasPassword(profileId)
-            ? "Wachtwoord opgeslagen. Typ alleen iets om dat te vervangen."
-            : "Optioneel. Laat leeg bij login met alleen een sleutel.";
+            ? "Password saved. Type a new one only if you want to replace it."
+            : "Optional. Leave empty if you log in with a key.";
     }
 
     private void SaveSecrets(string profileId)
@@ -192,22 +199,22 @@ public partial class SessionsWindow : Window
         var user = UserBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            MessageBox.Show(this, "Vul een sessienaam in.");
+            MessageBox.Show(this, "Enter a session name.");
             return false;
         }
         if (string.IsNullOrWhiteSpace(host))
         {
-            MessageBox.Show(this, "Vul een host of IP-adres in.");
+            MessageBox.Show(this, "Enter a host or IP address.");
             return false;
         }
         if (!int.TryParse(PortBox.Text.Trim(), out var port) || port is < 1 or > 65535)
         {
-            MessageBox.Show(this, "Poort moet tussen 1 en 65535 liggen.");
+            MessageBox.Show(this, "Port must be between 1 and 65535.");
             return false;
         }
         if (string.IsNullOrWhiteSpace(user))
         {
-            MessageBox.Show(this, "Vul een gebruikersnaam in.");
+            MessageBox.Show(this, "Enter a user name.");
             return false;
         }
 

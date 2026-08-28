@@ -82,13 +82,13 @@ public partial class SettingsWindow : Window
     private void ClearCaches_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(this,
-                "Gedownloade covers, winkelminiaturen en de bibliotheekcache wissen?\n\nSSH- en API-sleutels en jouw coverkeuzes blijven bewaard.",
-                "Caches wissen", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                "Clear downloaded covers, store thumbnails and the library cache?\n\nSSH and API keys and your cover picks stay.",
+                "Clear caches", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         var n = AppDataPaths.ClearCaches();
         CacheStatus.Text = n == 0
-            ? "Geen cachebestanden gevonden."
-            : n + " cachebestanden verwijderd. Bij de volgende verbinding scant SESAME de Deck opnieuw.";
+            ? "No cache files found."
+            : n + " cache files removed. On the next connection SESAME scans the Deck again.";
     }
 
     private async void SaveKey_Click(object sender, RoutedEventArgs e)
@@ -97,15 +97,15 @@ public partial class SettingsWindow : Window
         if (string.IsNullOrWhiteSpace(typed))
         {
             KeyStatus.Text = OptimizerSettings.HasSteamGridDb
-                ? "Typ een nieuwe sleutel om de opgeslagen secret te vervangen."
-                : "Plak eerst een SteamGridDB-sleutel.";
+                ? "Type a new key to replace the stored secret."
+                : "Paste a SteamGridDB key first.";
             return;
         }
 
         OptimizerSettings.SaveKey(typed);
         KeyBox.Clear();
         KeyChanged = true;
-        KeyStatus.Text = "SteamGridDB-sleutel controleren…";
+        KeyStatus.Text = "Checking SteamGridDB key…";
         try
         {
             var (ok, message) = await ArtworkClient.ValidateKeyAsync(OptimizerSettings.SteamGridDbKey, CancellationToken.None);
@@ -123,7 +123,7 @@ public partial class SettingsWindow : Window
     {
         if (!OptimizerSettings.HasSteamGridDb && string.IsNullOrEmpty(KeyBox.Password))
             return;
-        if (MessageBox.Show(this, "Opgeslagen SteamGridDB-sleutel verwijderen?", "Instellingen",
+        if (MessageBox.Show(this, "Remove the saved SteamGridDB key?", "Settings",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         OptimizerSettings.ClearKey();
@@ -135,8 +135,8 @@ public partial class SettingsWindow : Window
     private void RefreshKeyStatus()
     {
         KeyStatus.Text = OptimizerSettings.HasSteamGridDb
-            ? "Er is een sleutel veilig opgeslagen. Typ alleen iets om die te vervangen."
-            : "Nog geen sleutel. Maak er een op steamgriddb.com en plak die hier.";
+            ? "A key is stored securely. Type something only to replace it."
+            : "No key yet. Create one on steamgriddb.com and paste it here.";
     }
 
     private void OpenLink(object sender, RequestNavigateEventArgs e)

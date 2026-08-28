@@ -55,9 +55,14 @@
     </Style>
 
     <Style x:Key="ChromeButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="#121C26"/>
-        <Setter Property="Foreground" Value="{DynamicResource BrandText}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BrandAccent}"/>
+        <Setter Property="Background" Value="#1A3A48"/>
+        <Setter Property="Foreground" Value="#F4FBFC"/>
+        <Setter Property="BorderBrush" Value="#00D9F5"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="Padding" Value="12,7"/>
+        <Setter Property="MinHeight" Value="34"/>
+        <Setter Property="MaxHeight" Value="34"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -65,18 +70,22 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="6" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="#163C48"/>
-                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentHover}"/>
+                            <Setter TargetName="bd" Property="Background" Value="#245566"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="#7AF3FA"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="bd" Property="Background" Value="#123844"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.45"/>
+                            <Setter TargetName="bd" Property="Background" Value="#152830"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="#3A6A78"/>
+                            <Setter Property="Foreground" Value="#8EB8C4"/>
+                            <Setter Property="Opacity" Value="1"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

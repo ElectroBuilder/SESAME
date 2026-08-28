@@ -21,18 +21,18 @@ public static class LanguagePatcher
             {
                 var z64 = N64Rom.ToZ64(data);
                 if (!N64Rom.LooksLikeN64(z64))
-                    throw new InvalidDataException("Dit is geen N64-ROM (.z64 / .v64 / .n64).");
+                    throw new InvalidDataException("This is not an N64 ROM (.z64 / .v64 / .n64).");
                 return z64;
             }
             if (CartRom.LooksLikeNes(data) || CartRom.LooksLikeSnes(data))
                 return data;
-            throw new InvalidDataException("Geen herkenbare N64-, NES- of SNES-ROM.");
+            throw new InvalidDataException("No recognizable N64, NES or SNES ROM.");
         }
         catch (InvalidDataException ex)
         {
             throw new InvalidDataException(
-                ex.Message + " Bestand: " + Path.GetFileName(path) +
-                ", eerste bytes: " + RomContainer.FirstBytes(data) + ".");
+                ex.Message + " File: " + Path.GetFileName(path) +
+                ", first bytes: " + RomContainer.FirstBytes(data) + ".");
         }
     }
 
@@ -45,7 +45,7 @@ public static class LanguagePatcher
         {
             if (N64Rom.LooksLikeBanjoKazooie(rom) && BkAssetTable.LooksValid(rom))
             {
-                progress?.Invoke("Banjo-Kazooie dialoogtabel gevonden…");
+                progress?.Invoke("Banjo-Kazooie dialogue table found…");
                 return BkAssetTable.ExtractText(rom, progress);
             }
 
@@ -53,7 +53,7 @@ public static class LanguagePatcher
             {
                 var dk = Dk64Text.Extract(rom, progress);
                 if (dk.Count == 0)
-                    progress?.Invoke("Donkey Kong 64 herkend, maar geen bruikbare teksttabel gevonden.");
+                    progress?.Invoke("Donkey Kong 64 recognized, but no usable text table found.");
                 return dk;
             }
 
@@ -61,13 +61,13 @@ public static class LanguagePatcher
             {
                 var sm = Sm64Text.Extract(rom, progress);
                 if (sm.Count == 0)
-                    progress?.Invoke("Mario 64 herkend, maar het dialoogblok is niet gevonden.");
+                    progress?.Invoke("Mario 64 recognized, but the dialogue block was not found.");
                 return sm;
             }
 
             if (!N64Rom.LooksLikeBanjoKazooie(rom) && BkAssetTable.LooksValid(rom))
             {
-                progress?.Invoke("Banjo-Kazooie dialoogtabel gevonden…");
+                progress?.Invoke("Banjo-Kazooie dialogue table found…");
                 var banjo = BkAssetTable.ExtractText(rom, progress);
                 if (banjo.Count > 0) return banjo;
             }

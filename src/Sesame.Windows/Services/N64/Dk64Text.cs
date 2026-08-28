@@ -26,7 +26,7 @@ public static class Dk64Text
         if (!TryPointerBase(rom, out var tableBase)) return lines;
         if (!TryTable(rom, tableBase, TextTable, out var files, out _, out _)) return lines;
 
-        progress?.Invoke("Donkey Kong 64-teksttabel gevonden…");
+        progress?.Invoke("Donkey Kong 64 text table found…");
         for (var i = 0; i < files.Count; i++)
         {
             var file = files[i];
@@ -77,7 +77,7 @@ public static class Dk64Text
 
         var changed = lines.Where(l => l.Codec == "dk64" && l.Changed && !string.IsNullOrWhiteSpace(l.Translation)).ToList();
         if (changed.Count == 0)
-            throw new InvalidDataException("Geen gewijzigde DK64-teksten om in de ROM te zetten.");
+            throw new InvalidDataException("No changed DK64 texts to write into the ROM.");
         if (!TryPointerBase(rom, out var tableBase) ||
             !TryTable(rom, tableBase, TextTable, out var files, out _, out _))
             throw new InvalidDataException("DK64-teksttabel is niet meer te openen.");
@@ -88,7 +88,7 @@ public static class Dk64Text
         var errors = 0;
         string? lastError = null;
         var output = (byte[])rom.Clone();
-        Report(15, "DK64-tekst in de originele gaten zetten…");
+        Report(15, "Writing DK64 text into the original slots…");
         for (var i = 0; i < files.Count; i++)
         {
             var file = files[i];
@@ -118,7 +118,7 @@ public static class Dk64Text
 
         if (written == 0)
             throw new InvalidDataException(
-                "Geen enkele DK64-tekst paste in de ROM." + (lastError is null ? "" : " " + lastError));
+                "No DK64 text fitted in the ROM." + (lastError is null ? "" : " " + lastError));
 
         if (N64Rom.LooksLikeN64(output))
         {

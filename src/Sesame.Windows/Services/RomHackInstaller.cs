@@ -15,13 +15,13 @@ public sealed class RomHackInstaller
 
         var patch = PackStore.FindPatchFile(patchOrZip)
                     ?? throw new InvalidOperationException(
-                        "Geen .bps/.ips/.ups-patch gevonden. SESAME downloadt alleen de patch, nooit een volledige ROM.");
+                        "No .bps/.ips/.ups patch found. SESAME downloads the patch only, never a full ROM.");
 
         var system = PackStore.FoldRomFolderKey(PackStore.ResolveSystem(hit, catalog));
         var romFolder = catalog.RomFolderFor(system);
         if (string.IsNullOrEmpty(system) || string.IsNullOrEmpty(romFolder))
             throw new InvalidOperationException(
-                "Geen ROM-map bekend voor dit systeem. Kies in de Store de N64-, NES- of SNES-game.");
+                "No ROM folder known for this system. In the Store pick the N64, NES or SNES game.");
 
         progress?.Invoke("Basis-ROM zoeken op de Deck…");
         var match = FindBaseRom(client, romFolder, hit);
@@ -31,7 +31,7 @@ public sealed class RomHackInstaller
         var temp = Path.Combine(Path.GetTempPath(), "SESAME", "romhack", Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(temp);
         var localBase = Path.Combine(temp, match.Name);
-        progress?.Invoke("Eigen dump kopiëren (origineel blijft onaangeroerd)…");
+        progress?.Invoke("Copying your dump (original stays untouched)…");
         client.DownloadFile(match.FullPath, localBase);
 
         progress?.Invoke("ROM uit archief lezen…");
@@ -43,7 +43,7 @@ public sealed class RomHackInstaller
             var sha = Sha1(patched);
             if (!sha.Equals(hit.OutputSha1, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
-                    $"De gepatchte ROM heeft SHA-1 {sha}, verwacht werd {hit.OutputSha1}. Het origineel is niet overschreven.");
+                    $"The patched ROM has SHA-1 {sha}, expected {hit.OutputSha1}. The original was not overwritten.");
         }
 
         var (localOut, newName) = WritePatchedRom(temp, patched, match.Name, hit.Title,
@@ -73,11 +73,11 @@ public sealed class RomHackInstaller
             throw new InvalidOperationException("Eerst verbinden met de Steam Deck.");
         if (string.IsNullOrWhiteSpace(game.RomPath))
             throw new InvalidOperationException(
-                "Deze game heeft geen ROM-bestand. Alleen een eigen legale dump kan worden gepatched.");
+                "This game has no ROM file. Only your own legal dump can be patched.");
 
         var patch = PackStore.FindPatchFile(patchOrZip)
                     ?? throw new InvalidOperationException(
-                        "Geen .bps/.ips/.ups-patch gevonden in dat bestand.");
+                        "No .bps/.ips/.ups patch found in that file.");
 
         var originalName = string.IsNullOrWhiteSpace(game.FileName)
             ? Path.GetFileName(game.RomPath)
@@ -86,7 +86,7 @@ public sealed class RomHackInstaller
         var temp = Path.Combine(Path.GetTempPath(), "SESAME", "romhack", Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(temp);
         var localBase = Path.Combine(temp, originalName);
-        progress?.Invoke("Eigen dump kopiëren (origineel blijft onaangeroerd)…");
+        progress?.Invoke("Copying your dump (original stays untouched)…");
         client.DownloadFile(game.RomPath, localBase);
 
         progress?.Invoke("ROM uit archief lezen…");
@@ -118,7 +118,7 @@ public sealed class RomHackInstaller
             remote = DeckClient.Combine(romFolder, newName);
         }
         if (string.Equals(remote, game.RomPath, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("De nieuwe ROM zou het origineel overschrijven. Afgebroken.");
+            throw new InvalidOperationException("The new ROM would overwrite the original. Aborted.");
 
         client.UploadFile(localOut, romFolder, progress);
         RomHackLog.Remember(remote, hackTitle, originalName);
@@ -134,8 +134,8 @@ public sealed class RomHackInstaller
         if (!string.IsNullOrWhiteSpace(hit.FileCrc32)) hashes.Add("CRC32 " + hit.FileCrc32);
         var hashText = hashes.Count == 0 ? "" : Environment.NewLine + string.Join(Environment.NewLine, hashes);
         return
-            "Geen passende originele dump gevonden in " + romFolder + "." + Environment.NewLine + Environment.NewLine +
-            "U moet zelf een legale dump van een originele cartridge maken en die ROM in die map zetten." +
+            "No matching original dump found in " + romFolder + "." + Environment.NewLine + Environment.NewLine +
+            "You must make a legal dump of an original cartridge yourself and put that ROM in that folder." +
             Environment.NewLine + "SESAME levert geen auteursrechtelijk beschermde ROMs." +
             Environment.NewLine + Environment.NewLine +
             "Verwachte basis: " + (string.IsNullOrWhiteSpace(name) ? "(zie de hack-pagina)" : name) +

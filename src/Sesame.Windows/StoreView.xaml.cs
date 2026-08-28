@@ -176,7 +176,7 @@ public partial class StoreView : UserControl
         var game = GameBox.SelectedItem as StoreGame ?? StoreGame.All;
         if (query.Length < 2 && game.IsAll)
         {
-            if (StatusFilter() != "Alle status")
+            if (StatusFilter() != "Any status")
             {
                 _hits.Clear();
                 MergeLibraryHits(game);
@@ -185,16 +185,16 @@ public partial class StoreView : UserControl
                 if (_hits.Count > 0) ResultList.SelectedIndex = 0;
                 return;
             }
-            HintText.Text = "Kies een game of typ minstens 2 tekens.";
+            HintText.Text = "Pick a game or type at least 2 characters.";
             return;
         }
 
         _searchCts?.Cancel();
         _searchCts = new CancellationTokenSource();
         var ct = _searchCts.Token;
-        var source = (SourceBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Alle bronnen";
-        var kind = (KindBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Alles";
-        HintText.Text = "Zoeken… " + game.IdentityText;
+        var source = (SourceBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All sources";
+        var kind = (KindBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";
+        HintText.Text = "Searching… " + game.IdentityText;
         _hits.Clear();
         ClearDetail();
         _ = LoadGameInfoAsync(game);
@@ -234,11 +234,11 @@ public partial class StoreView : UserControl
         catch (Exception ex)
         {
             if (_hits.Count > 0)
-                HintText.Text = $"{_hits.Count} resultaten uit cache (vernieuwen mislukt)";
+                HintText.Text = $"{_hits.Count} results from cache (refresh failed)";
             else
             {
                 ClearDetail();
-                HintText.Text = "Zoeken mislukt: " + ex.Message;
+                HintText.Text = "Search failed: " + ex.Message;
             }
         }
     }
@@ -342,7 +342,7 @@ public partial class StoreView : UserControl
         IReadOnlyList<PackHit> next, bool hadCache, string sortLabel)
     {
         if (count == 0)
-            return $"Geen resultaten voor {identity}.";
+            return $"No results for {identity}.";
         if (!hadCache || previous.Count == 0)
             return $"{count} resultaten · {identity} · {sortLabel}";
         var (added, updated, removed) = StoreResultCache.Diff(previous, next);
@@ -350,7 +350,7 @@ public partial class StoreView : UserControl
         if (changes == 0)
             return $"{count} resultaten · bijgewerkt · {identity} · {sortLabel}";
         if (updated > 0 && added == 0 && removed == 0)
-            return $"{count} resultaten · {updated} update{(updated == 1 ? "" : "s")} gevonden · {sortLabel}";
+            return $"{count} results · {updated} update{(updated == 1 ? "" : "s")} found · {sortLabel}";
         return $"{count} resultaten · bijgewerkt (+{added} / ~{updated} / -{removed}) · {sortLabel}";
     }
 
@@ -502,20 +502,20 @@ public partial class StoreView : UserControl
     {
         if (!IsLoaded) return;
         ApplyViewFilter();
-        if (_hits.Count == 0 && StatusFilter() != "Alle status")
+        if (_hits.Count == 0 && StatusFilter() != "Any status")
             _ = SearchAsync();
     }
 
     private string StatusFilter() =>
-        (StatusFilterBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Alle status";
+        (StatusFilterBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Any status";
 
     private bool HitPassesFilter(object obj)
     {
         if (obj is not PackHit hit) return false;
         var statusOk = StatusFilter() switch
         {
-            "Gedownload" => hit.IsDownloaded || hit.IsInstalled,
-            "Geïnstalleerd" => hit.IsInstalled,
+            "Downloaded" => hit.IsDownloaded || hit.IsInstalled,
+            "Installed" => hit.IsInstalled,
             _ => true
         };
         if (!statusOk) return false;
@@ -572,8 +572,8 @@ public partial class StoreView : UserControl
 
         var prop = header switch
         {
-            "Soort" => nameof(PackHit.Kind),
-            "Bron" => nameof(PackHit.Source),
+            "Kind" => nameof(PackHit.Kind),
+            "Source" => nameof(PackHit.Source),
             _ => nameof(PackHit.Title)
         };
         if (prop == _sortProperty)
@@ -864,21 +864,21 @@ public partial class StoreView : UserControl
     {
         if (ResultList.SelectedItem is not PackHit hit)
         {
-            MessageBox.Show("Selecteer eerst een resultaat om te downloaden.", "Store");
+            MessageBox.Show("Select a result first to download.", "Store");
             return;
         }
         if (hit.IsRomHack)
         {
             var ok = MessageBox.Show(
                 PackStore.LegalHackNl + Environment.NewLine + Environment.NewLine +
-                "Doorgaan en alleen de patch downloaden? Het origineel wordt nooit overschreven; er wordt een aparte ROM gemaakt.",
+                "Continue and download the patch only? The original is never overwritten; a separate ROM is made.",
                 "ROM-hack", MessageBoxButton.YesNo, MessageBoxImage.Information);
             if (ok != MessageBoxResult.Yes) return;
         }
         if (!hit.CanDownload && !hit.IsRomHack)
         {
             MessageBox.Show(
-                "Geen automatische download voor dit item. De pagina wordt geopend zodat je het bestand zelf kunt opslaan.",
+                "No automatic download for this item. The page will open so you can save the file yourself.",
                 "Store");
             OpenPage(hit);
             return;

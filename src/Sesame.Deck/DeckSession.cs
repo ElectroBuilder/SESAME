@@ -17,8 +17,8 @@ public sealed class DeckSession
     public bool Connected => Client.IsConnected;
     public bool Local => Client.IsLocal;
     public string Status =>
-        !Client.IsConnected ? "Niet verbonden"
-        : Client.IsLocal ? "Lokaal op deze Steam Deck"
+        !Client.IsConnected ? "Not connected"
+        : Client.IsLocal ? "Local on this Steam Deck"
         : "SSH · " + (Client.ActiveProfile?.Name ?? Client.ActiveProfile?.Host ?? "");
 
     public DeckSession()

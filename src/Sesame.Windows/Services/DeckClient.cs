@@ -63,7 +63,7 @@ public sealed class DeckClient : IDisposable
         {
             if (!HostEnvironment.LocalAvailable)
                 throw new InvalidOperationException(
-                    "Lokale modus is alleen beschikbaar op de Steam Deck zelf. Verbind via SSH vanaf een andere pc, of start SESAME op de Deck.");
+                    "Local mode is only available on the Steam Deck itself. Connect over SSH from another PC, or start SESAME on the Deck.");
             DisconnectLocked();
             _kind = Kind.Local;
             ActiveProfile = ConnectionProfile.LocalDeck();
@@ -93,7 +93,7 @@ public sealed class DeckClient : IDisposable
                 last = ex;
             }
         }
-        throw last ?? new InvalidOperationException("Geen profiel om mee te verbinden.");
+        throw last ?? new InvalidOperationException("No profile to connect with.");
     }
 
     public IReadOnlyList<RemoteItem> List(string path)
@@ -266,7 +266,7 @@ public sealed class DeckClient : IDisposable
             {
                 Directory.CreateDirectory(remoteDir);
                 var name = string.IsNullOrWhiteSpace(remoteName) ? Path.GetFileName(localPath) : remoteName;
-                progress?.Invoke("Kopiëren " + name);
+                progress?.Invoke("Copying " + name);
                 File.Copy(localPath, Combine(remoteDir, name), overwrite: true);
                 return;
             }
@@ -316,7 +316,7 @@ public sealed class DeckClient : IDisposable
         {
             if (_kind == Kind.Local)
             {
-                progress?.Invoke("Kopiëren " + Path.GetFileName(remotePath));
+                progress?.Invoke("Copying " + Path.GetFileName(remotePath));
                 Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
                 File.Copy(remotePath, localPath, overwrite: true);
                 return;
@@ -369,19 +369,19 @@ public sealed class DeckClient : IDisposable
             {
                 if (_localIn is null)
                 {
-                    ShellOutput?.Invoke("Niet verbonden — klik eerst op Verbinden.\r\n");
+                    ShellOutput?.Invoke("Not connected — click Connect first.\r\n");
                     return;
                 }
                 try { _localIn.Write(text); _localIn.Flush(); }
                 catch (Exception ex)
                 {
-                    ShellOutput?.Invoke("\r\n[terminal] schrijven mislukt: " + ex.Message + "\r\n");
+                    ShellOutput?.Invoke("\r\n[terminal] write failed: " + ex.Message + "\r\n");
                 }
                 return;
             }
             if (_shell is null)
             {
-                ShellOutput?.Invoke("Niet verbonden — klik eerst op Verbinden.\r\n");
+                ShellOutput?.Invoke("Not connected — click Connect first.\r\n");
                 return;
             }
             try
@@ -390,7 +390,7 @@ public sealed class DeckClient : IDisposable
             }
             catch (Exception ex)
             {
-                ShellOutput?.Invoke("\r\n[terminal] schrijven mislukt: " + ex.Message + "\r\n");
+                ShellOutput?.Invoke("\r\n[terminal] write failed: " + ex.Message + "\r\n");
             }
         }
     }
@@ -421,7 +421,7 @@ public sealed class DeckClient : IDisposable
                 return ExecuteLocal(command, timeoutSeconds);
             EnsureAliveLocked();
             if (_ssh is null)
-                throw new InvalidOperationException("Niet verbonden met de Steam Deck.");
+                throw new InvalidOperationException("Not connected to the Steam Deck.");
             using var cmd = _ssh.CreateCommand(command);
             cmd.CommandTimeout = TimeSpan.FromSeconds(timeoutSeconds);
             return cmd.Execute() ?? "";
@@ -504,7 +504,7 @@ public sealed class DeckClient : IDisposable
     {
         var name = string.IsNullOrWhiteSpace(remoteName) ? Path.GetFileName(localPath) : remoteName;
         var remote = Combine(remoteDir, name);
-        progress?.Invoke("Uploaden " + name);
+        progress?.Invoke("Uploading " + name);
         using var fs = File.OpenRead(localPath);
         _sftp!.UploadFile(fs, remote, true);
     }
@@ -553,7 +553,7 @@ public sealed class DeckClient : IDisposable
 
     private void DownloadFileLocked(string remotePath, string localPath, Action<string>? progress)
     {
-        progress?.Invoke("Downloaden " + Path.GetFileName(remotePath));
+        progress?.Invoke("Downloading " + Path.GetFileName(remotePath));
         Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
         using var fs = File.Create(localPath);
         _sftp!.DownloadFile(remotePath, fs);
@@ -577,18 +577,18 @@ public sealed class DeckClient : IDisposable
         if (_kind == Kind.Local)
         {
             if (ActiveProfile is null)
-                throw new InvalidOperationException("Niet verbonden met de Steam Deck.");
+                throw new InvalidOperationException("Not connected to the Steam Deck.");
             return;
         }
         if (_sftp is { IsConnected: true }) return;
         if (ActiveProfile is null)
-            throw new InvalidOperationException("Niet verbonden met de Steam Deck.");
+            throw new InvalidOperationException("Not connected to the Steam Deck.");
         ReconnectLocked();
     }
 
     private void ReconnectLocked()
     {
-        var profile = ActiveProfile ?? throw new InvalidOperationException("Niet verbonden met de Steam Deck.");
+        var profile = ActiveProfile ?? throw new InvalidOperationException("Not connected to the Steam Deck.");
         OpenLocked(profile);
     }
 
@@ -628,7 +628,7 @@ public sealed class DeckClient : IDisposable
         catch
         {
             throw new InvalidOperationException(
-                "SSH-sleutel of wachtwoordzin ongeldig. Importeer de sleutel opnieuw bij Sessies.");
+                "SSH key or passphrase invalid. Import the key again under Sessions.");
         }
 
         var password = SecretStore.Load(SshSecrets.PasswordName(profile.Id));
@@ -637,7 +637,7 @@ public sealed class DeckClient : IDisposable
 
         if (methods.Count == 0)
             throw new InvalidOperationException(
-                "Geen SSH-sleutel of wachtwoord opgeslagen. Importeer een private key bij Sessies.");
+                "No SSH key or password stored. Import a private key under Sessions.");
 
         return new ConnectionInfo(profile.Host, profile.Port, profile.User, methods.ToArray())
         {
@@ -789,7 +789,7 @@ public sealed class DeckClient : IDisposable
         foreach (var file in Directory.GetFiles(source))
         {
             var name = Path.GetFileName(file);
-            progress?.Invoke("Kopiëren " + name);
+            progress?.Invoke("Copying " + name);
             File.Copy(file, Path.Combine(dest, name), overwrite: true);
         }
         foreach (var dir in Directory.GetDirectories(source))

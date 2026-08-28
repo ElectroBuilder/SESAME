@@ -41,13 +41,13 @@ public static class ArtworkClient
         }
         else
         {
-            LastError = "Geen SteamGridDB-sleutel. Zet die in Instellingen (rechtsboven).";
+            LastError = "No SteamGridDB key. Set it in Settings (top right).";
         }
 
         var libretro = await FromLibretroAsync(title, system, ct);
         if (libretro is not null) return libretro;
         if (string.IsNullOrEmpty(LastError))
-            LastError = "Geen cover gevonden voor " + title + ".";
+            LastError = "No cover found for " + title + ".";
         return null;
     }
 
@@ -126,16 +126,16 @@ public static class ArtworkClient
     {
         var cleaned = OptimizerSettings.CleanKey(key);
         if (cleaned.Length < 16)
-            return (false, "Plak de API-sleutel van steamgriddb.com/profile/preferences/api (niet SGDBoop).");
+            return (false, "Paste the API key from steamgriddb.com/profile/preferences/api (not SGDBoop).");
         using var req = new HttpRequestMessage(HttpMethod.Get, Api + "/search/autocomplete/Mario");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cleaned);
         req.Headers.Accept.ParseAdd("application/json");
         using var resp = await Http.SendAsync(req, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
         if (resp.IsSuccessStatusCode)
-            return (true, "SteamGridDB-sleutel werkt. Covers, heroes en logo's worden hiermee opgehaald.");
+            return (true, "SteamGridDB key works. Covers, heroes and logos will be fetched with it.");
         if ((int)resp.StatusCode is 401 or 403)
-            return (false, "Deze sleutel wordt geweigerd. Maak een nieuwe op steamgriddb.com/profile/preferences/api.");
+            return (false, "This key is rejected. Create a new one at steamgriddb.com/profile/preferences/api.");
         return (false, "SteamGridDB gaf HTTP " + (int)resp.StatusCode + ". " + Truncate(body));
     }
 
@@ -228,12 +228,12 @@ public static class ArtworkClient
         if ((int)resp.StatusCode is 401 or 403)
         {
             LastKeyInvalid = true;
-            LastError = "SteamGridDB-sleutel ongeldig. Maak een nieuwe op steamgriddb.com/profile/preferences/api.";
+            LastError = "SteamGridDB key invalid. Create a new one at steamgriddb.com/profile/preferences/api.";
             return null;
         }
         if (!resp.IsSuccessStatusCode)
         {
-            LastError = "SteamGridDB-zoeken mislukte (HTTP " + (int)resp.StatusCode + ").";
+            LastError = "SteamGridDB search failed (HTTP " + (int)resp.StatusCode + ").";
             return null;
         }
 
@@ -290,7 +290,7 @@ public static class ArtworkClient
         if ((int)resp.StatusCode is 401 or 403)
         {
             LastKeyInvalid = true;
-            LastError = "SteamGridDB-sleutel ongeldig.";
+            LastError = "SteamGridDB key invalid.";
             return null;
         }
         if (!resp.IsSuccessStatusCode) return null;

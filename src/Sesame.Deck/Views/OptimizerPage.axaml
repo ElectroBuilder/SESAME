@@ -8,10 +8,10 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <StackPanel Orientation="Horizontal" Margin="16" Spacing="8">
-      <Button Classes="accent" Content="Scannen" Click="Scan_Click"/>
-      <Button Classes="accent" Content="Optimaliseren" Click="Apply_Click"/>
-      <Button Content="Alles aan" Click="AllOn_Click"/>
-      <Button Content="Alles uit" Click="AllOff_Click"/>
+      <Button Classes="accent" Content="Scan" Click="Scan_Click"/>
+      <Button Classes="accent" Content="Optimize" Click="Apply_Click"/>
+      <Button Content="All on" Click="AllOn_Click"/>
+      <Button Content="All off" Click="AllOff_Click"/>
     </StackPanel>
     <ListBox x:Name="GameList" Grid.Row="1" Margin="12,0" SelectionMode="Single">
       <ListBox.ItemTemplate>
@@ -31,6 +31,6 @@
       </ListBox.ItemTemplate>
     </ListBox>
     <TextBlock x:Name="Hint" Grid.Row="2" Margin="16" TextWrapping="Wrap" Foreground="#8EB8C4"
-               Text="Scan ROMs op deze machine of via SSH. Toepassen schrijft Steam-shortcuts; doe dat in Desktop Mode."/>
+               Text="Scan ROMs on this machine or over SSH. Apply writes Steam shortcuts; do that in Desktop Mode."/>
   </Grid>
 </UserControl>

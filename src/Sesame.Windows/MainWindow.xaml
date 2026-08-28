@@ -32,13 +32,9 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <Image Width="88" Height="88" Margin="0,0,16,0"
+                    <Image Width="72" Height="72" Margin="0,0,16,0"
                            Source="pack://application:,,,/Assets/sesame-icon-lg.png" Stretch="Uniform"
-                           RenderOptions.BitmapScalingMode="HighQuality">
-                        <Image.Effect>
-                            <DropShadowEffect Color="#00D9F5" BlurRadius="18" ShadowDepth="0" Opacity="0.55"/>
-                        </Image.Effect>
-                    </Image>
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="SESAME" FontWeight="Bold" FontSize="32" FontFamily="Segoe UI"
@@ -51,25 +47,34 @@
                                    Margin="0,4,0,0" Opacity="0.9"/>
                     </StackPanel>
                 </StackPanel>
-                <ComboBox x:Name="ProfileBox" Grid.Column="1" DisplayMemberPath="Name" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <Button Grid.Column="2" Content="Sessies…" Style="{StaticResource ChromeButton}" Click="Sessions_Click" ToolTip="Sessies aanmaken, bewerken en opslaan"/>
-                <Button x:Name="ConnectBtn" Grid.Column="3" Content="Verbinden" Style="{StaticResource AccentButton}" Click="Connect_Click"/>
-                <Button x:Name="DisconnectBtn" Grid.Column="4" Content="Verbreken" Style="{StaticResource ChromeButton}" Click="Disconnect_Click" IsEnabled="False"/>
+                <ComboBox x:Name="ProfileBox" Grid.Column="1" DisplayMemberPath="Name"
+                          VerticalAlignment="Center" Height="34" Margin="0,0,8,0"/>
+                <Button Grid.Column="2" Content="Sessions…" Style="{StaticResource ChromeButton}" Click="Sessions_Click"
+                        VerticalAlignment="Center" Height="34" MinHeight="34" MaxHeight="34"
+                        ToolTip="Create, edit and save sessions"/>
+                <Button x:Name="ConnectBtn" Grid.Column="3" Content="Connect" Style="{StaticResource AccentButton}"
+                        VerticalAlignment="Center" Height="34" MinHeight="34" MaxHeight="34" Click="Connect_Click"/>
+                <Button x:Name="DisconnectBtn" Grid.Column="4" Content="Disconnect" Style="{StaticResource ChromeButton}"
+                        VerticalAlignment="Center" Height="34" MinHeight="34" MaxHeight="34"
+                        Click="Disconnect_Click" IsEnabled="False"/>
                 <TextBlock x:Name="StatusText" Grid.Column="5" VerticalAlignment="Center" Margin="12,0,0,0"
-                           Foreground="{DynamicResource BrandMuted}" Text="Niet verbonden"/>
-                <Button x:Name="TermToggleBtn" Grid.Column="6" Content="Terminal verbergen" Style="{StaticResource ChromeButton}" Click="TermToggle_Click"
-                        ToolTip="Terminal tonen of verbergen"/>
-                <Button Grid.Column="7" Content="Installeren…" Style="{StaticResource ChromeButton}" Click="Install_Click"
-                        ToolTip="Kies ROM, mod of texture pack om naar de juiste map te sturen"/>
-                <Button Grid.Column="8" Content="Instellingen" Style="{StaticResource ChromeButton}" Click="Settings_Click"
-                        ToolTip="Thema, SteamGridDB-sleutel en emulators"/>
+                           Foreground="{DynamicResource BrandMuted}" Text="Not connected"/>
+                <Button x:Name="TermToggleBtn" Grid.Column="6" Content="Hide terminal" Style="{StaticResource ChromeButton}"
+                        VerticalAlignment="Center" Height="34" MinHeight="34" MaxHeight="34" Click="TermToggle_Click"
+                        ToolTip="Show or hide the terminal"/>
+                <Button Grid.Column="7" Content="Install…" Style="{StaticResource ChromeButton}"
+                        VerticalAlignment="Center" Height="34" MinHeight="34" MaxHeight="34" Click="Install_Click"
+                        ToolTip="Send a ROM, mod or texture pack to the right folder"/>
+                <Button Grid.Column="8" Content="Settings" Style="{StaticResource ChromeButton}"
+                        VerticalAlignment="Center" Height="34" MinHeight="34" MaxHeight="34" Click="Settings_Click"
+                        ToolTip="Theme, SteamGridDB key and emulators"/>
             </Grid>
         </Border>
 
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
                 <TextBlock x:Name="FooterText" Foreground="{DynamicResource Muted}"
-                           Text="Sleep bestanden hierheen om te uploaden naar de huidige map of een game."/>
+                           Text="Drop files here to upload them to the current folder or a game."/>
             </StatusBarItem>
         </StatusBar>
 
@@ -88,18 +93,18 @@
                 </Grid.ColumnDefinitions>
 
                 <DockPanel Grid.Column="0" Background="{DynamicResource Panel}">
-                    <TextBlock DockPanel.Dock="Top" Text="Snelle toegang" FontWeight="SemiBold"
+                    <TextBlock DockPanel.Dock="Top" Text="Quick access" FontWeight="SemiBold"
                                Foreground="{DynamicResource Text}" Margin="12,10,12,6"/>
                     <StackPanel DockPanel.Dock="Bottom" Margin="8,8">
-                        <Button Content="Huidige map vastmaken" Click="PinCurrent_Click"
-                                ToolTip="Voeg de geopende map toe aan snelle toegang"/>
+                        <Button Content="Pin current folder" Click="PinCurrent_Click"
+                                ToolTip="Add the open folder to quick access"/>
                     </StackPanel>
                     <TreeView x:Name="QuickTree" SelectedItemChanged="QuickTree_Selected"
                               PreviewMouseRightButtonDown="QuickTree_RightDown">
                         <TreeView.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="Openen" Click="QuickOpen_Click"/>
-                                <MenuItem Header="Losmaken" Click="QuickUnpin_Click"/>
+                                <MenuItem Header="Open" Click="QuickOpen_Click"/>
+                                <MenuItem Header="Unpin" Click="QuickUnpin_Click"/>
                             </ContextMenu>
                         </TreeView.ContextMenu>
                     </TreeView>
@@ -107,20 +112,20 @@
                 <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="{DynamicResource Bg}"/>
 
                 <TabControl Grid.Column="2" x:Name="MainTabs">
-                    <TabItem Header="Bestanden">
+                    <TabItem Header="Files">
                         <DockPanel Background="{DynamicResource Bg}">
                             <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
                                     BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Terug" Click="Back_Click"/>
-                                    <Button Content="Omhoog" Click="Up_Click"/>
-                                    <Button Content="Vernieuwen" Click="Refresh_Click"/>
-                                    <Button Content="Nieuwe map" Click="NewFolder_Click"/>
-                                    <Button Content="Openen" Click="Open_Click"/>
-                                    <Button Content="Downloaden" Click="Download_Click"/>
-                                    <Button Content="Verwijderen" Click="Delete_Click"/>
+                                    <Button Content="Back" Click="Back_Click"/>
+                                    <Button Content="Up" Click="Up_Click"/>
+                                    <Button Content="Refresh" Click="Refresh_Click"/>
+                                    <Button Content="New folder" Click="NewFolder_Click"/>
+                                    <Button Content="Open" Click="Open_Click"/>
+                                    <Button Content="Download" Click="Download_Click"/>
+                                    <Button Content="Delete" Click="Delete_Click"/>
                                     <TextBox x:Name="PathBox" Width="380" Margin="4,0,8,0" KeyDown="PathBox_KeyDown"/>
-                                    <Button Content="Ga" Click="Go_Click"/>
+                                    <Button Content="Go" Click="Go_Click"/>
                                 </StackPanel>
                             </Border>
                             <ListView x:Name="FileList"
@@ -143,7 +148,7 @@
                                                 </DataTemplate>
                                             </GridViewColumn.CellTemplate>
                                         </GridViewColumn>
-                                        <GridViewColumn Header="Naam" Width="380">
+                                        <GridViewColumn Header="Name" Width="380">
                                             <GridViewColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <StackPanel>
@@ -156,23 +161,23 @@
                                             </GridViewColumn.CellTemplate>
                                         </GridViewColumn>
                                         <GridViewColumn Header="Type" Width="90" DisplayMemberBinding="{Binding Kind}"/>
-                                        <GridViewColumn Header="Grootte" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
-                                        <GridViewColumn Header="Gewijzigd" Width="160" DisplayMemberBinding="{Binding LastWrite}"/>
+                                        <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
+                                        <GridViewColumn Header="Modified" Width="160" DisplayMemberBinding="{Binding LastWrite}"/>
                                     </GridView>
                                 </ListView.View>
                                 <ListView.ContextMenu>
                                     <ContextMenu>
-                                        <MenuItem Header="Openen" InputGestureText="Enter" Click="Open_Click"/>
-                                        <MenuItem x:Name="RunOnDeckItem" Header="Uitvoeren in terminal" Click="RunOnDeck_Click"
-                                                  ToolTip="Draait het script op de Steam Deck en toont de uitvoer hieronder"/>
-                                        <MenuItem Header="Downloaden naar Downloads" InputGestureText="Ctrl+S" Click="Download_Click"/>
+                                        <MenuItem Header="Open" InputGestureText="Enter" Click="Open_Click"/>
+                                        <MenuItem x:Name="RunOnDeckItem" Header="Run in terminal" Click="RunOnDeck_Click"
+                                                  ToolTip="Runs the script on the Steam Deck and shows output below"/>
+                                        <MenuItem Header="Download to Downloads" InputGestureText="Ctrl+S" Click="Download_Click"/>
                                         <Separator/>
-                                        <MenuItem Header="Hernoemen" InputGestureText="F2" Click="Rename_Click"/>
-                                        <MenuItem Header="Verwijderen" InputGestureText="Del" Click="Delete_Click"/>
-                                        <MenuItem Header="Nieuwe map" InputGestureText="Ctrl+N" Click="NewFolder_Click"/>
+                                        <MenuItem Header="Rename" InputGestureText="F2" Click="Rename_Click"/>
+                                        <MenuItem Header="Delete" InputGestureText="Del" Click="Delete_Click"/>
+                                        <MenuItem Header="New folder" InputGestureText="Ctrl+N" Click="NewFolder_Click"/>
                                         <Separator/>
-                                        <MenuItem Header="Vastmaken aan snelle toegang" InputGestureText="Ctrl+D" Click="PinSelected_Click"/>
-                                        <MenuItem Header="Pad kopiëren" InputGestureText="Ctrl+C" Click="CopyPath_Click"/>
+                                        <MenuItem Header="Pin to quick access" InputGestureText="Ctrl+D" Click="PinSelected_Click"/>
+                                        <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopyPath_Click"/>
                                     </ContextMenu>
                                 </ListView.ContextMenu>
                             </ListView>
@@ -183,15 +188,15 @@
                             <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
                                     BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Bibliotheek scannen" Click="ScanGames_Click"/>
-                                    <Button Content="Open ROM-map" Click="OpenRom_Click"/>
+                                    <Button Content="Scan library" Click="ScanGames_Click"/>
+                                    <Button Content="Open ROM folder" Click="OpenRom_Click"/>
                                     <Button Content="Open mods" Click="OpenMods_Click"/>
                                     <Button Content="Open saves" Click="OpenSaves_Click"/>
                                     <Button Content="Open texture packs" Click="OpenTextures_Click"/>
-                                    <Button Content="Mod installeren…" Click="InstallMod_Click"/>
-                                    <Button Content="Naar Nederlands…" Click="TranslateDutch_Click"
-                                            ToolTip="Nederlandse tekstpatch van N64-, NES- of SNES-ROM. Het origineel blijft staan."/>
-                                    <Button Content="Packs zoeken…" Style="{StaticResource AccentButton}" Click="SearchPacks_Click"/>
+                                    <Button Content="Install mod…" Click="InstallMod_Click"/>
+                                    <Button Content="To Dutch…" Click="TranslateDutch_Click"
+                                            ToolTip="Dutch text patch for an N64, NES or SNES ROM. The original file stays."/>
+                                    <Button Content="Search packs…" Style="{StaticResource AccentButton}" Click="SearchPacks_Click"/>
                                 </StackPanel>
                             </Border>
                             <ListView x:Name="GameList"
@@ -201,14 +206,14 @@
                                 <ListView.View>
                                     <GridView>
                                         <GridViewColumn Header="Game" Width="240" DisplayMemberBinding="{Binding DisplayName}"/>
-                                        <GridViewColumn Header="Bestandsnaam" Width="260" DisplayMemberBinding="{Binding FileNameText}"/>
-                                        <GridViewColumn Header="Systeem" Width="80" DisplayMemberBinding="{Binding System}"/>
-                                        <GridViewColumn Header="Soort" Width="90" DisplayMemberBinding="{Binding KindText}"/>
+                                        <GridViewColumn Header="File name" Width="260" DisplayMemberBinding="{Binding FileNameText}"/>
+                                        <GridViewColumn Header="System" Width="80" DisplayMemberBinding="{Binding System}"/>
+                                        <GridViewColumn Header="Kind" Width="90" DisplayMemberBinding="{Binding KindText}"/>
                                         <GridViewColumn Header="Title ID" Width="150" DisplayMemberBinding="{Binding TitleIdText}"/>
                                         <GridViewColumn Header="Mods" Width="60" DisplayMemberBinding="{Binding ModsText}"/>
                                         <GridViewColumn Header="Saves" Width="60" DisplayMemberBinding="{Binding SavesText}"/>
                                         <GridViewColumn Header="Account" Width="110" DisplayMemberBinding="{Binding SaveAccountName}"/>
-                                        <GridViewColumn Header="Pad" Width="320" DisplayMemberBinding="{Binding RomPath}"/>
+                                        <GridViewColumn Header="Path" Width="320" DisplayMemberBinding="{Binding RomPath}"/>
                                     </GridView>
                                 </ListView.View>
                                 <ListView.ContextMenu>
@@ -232,15 +237,15 @@
                 <DockPanel DockPanel.Dock="Top" Margin="10,6,8,4">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button Content="Script…" Click="TermScript_Click"
-                                ToolTip="Lokaal script (.sh, .py, …) naar de Deck sturen en daar uitvoeren"/>
+                                ToolTip="Send a local script (.sh, .py, …) to the Deck and run it there"/>
                         <Button Content="Ctrl+C" Click="TermInterrupt_Click"
-                                ToolTip="Huidig commando onderbreken"/>
-                        <Button Content="Wissen" Click="TermClear_Click" Margin="0"
-                                ToolTip="Terminalvenster leegmaken"/>
+                                ToolTip="Interrupt the current command"/>
+                        <Button Content="Clear" Click="TermClear_Click" Margin="0"
+                                ToolTip="Clear the terminal"/>
                     </StackPanel>
                     <TextBlock FontWeight="SemiBold" VerticalAlignment="Center">
                         <Run Text="Terminal"/>
-                        <Run x:Name="TermHint" Text="  ·  klik hier en typ een commando" FontWeight="Normal"
+                        <Run x:Name="TermHint" Text="  ·  click here and type a command" FontWeight="Normal"
                              Foreground="{DynamicResource Muted}"/>
                     </TextBlock>
                 </DockPanel>

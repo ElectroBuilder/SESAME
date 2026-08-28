@@ -41,9 +41,9 @@
           <TextBlock x:Name="StatusLabel" Grid.Column="1" VerticalAlignment="Center" Margin="24,0,0,0"
                      Foreground="#8EB8C4"/>
           <StackPanel Grid.Column="2" Orientation="Horizontal">
-            <Button x:Name="LocalBtn" Classes="accent" Content="Deze Deck" Click="Local_Click"/>
+            <Button x:Name="LocalBtn" Classes="accent" Content="This Deck" Click="Local_Click"/>
             <Button x:Name="RemoteBtn" Content="SSH…" Click="Remote_Click"/>
-            <Button Content="Verbreken" Click="Disconnect_Click"/>
+            <Button Content="Disconnect" Click="Disconnect_Click"/>
           </StackPanel>
         </Grid>
       </Border>
@@ -54,11 +54,11 @@
         </Grid.ColumnDefinitions>
         <Border Background="#0B1218" BorderBrush="#1E4A58" BorderThickness="0,0,1,0" Padding="10">
           <StackPanel Spacing="8">
-            <Button x:Name="NavOpt" Content="Optimaliseren" HorizontalAlignment="Stretch" Click="NavOpt_Click"/>
-            <Button x:Name="NavFiles" Content="Bestanden" HorizontalAlignment="Stretch" Click="NavFiles_Click"/>
-            <Button x:Name="NavSettings" Content="Instellingen" HorizontalAlignment="Stretch" Click="NavSettings_Click"/>
+            <Button x:Name="NavOpt" Content="Optimize" HorizontalAlignment="Stretch" Click="NavOpt_Click"/>
+            <Button x:Name="NavFiles" Content="Files" HorizontalAlignment="Stretch" Click="NavFiles_Click"/>
+            <Button x:Name="NavSettings" Content="Settings" HorizontalAlignment="Stretch" Click="NavSettings_Click"/>
             <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#8EB8C4" Margin="4,16,4,0"
-                       Text="Lokaal op de Deck of via SSH. Optimaliseren vanuit Game Mode kan niet: Steam moet even dicht."/>
+                       Text="Local on the Deck or over SSH. Optimize from Game Mode is not possible: Steam has to close briefly."/>
           </StackPanel>
         </Border>
         <ContentControl x:Name="DesktopHost" Grid.Column="1"/>
@@ -86,26 +86,26 @@
         <UniformGrid Grid.Row="1" Rows="2" Columns="2" Margin="48,16,48,24">
           <Button x:Name="Tile0" Classes="tile" Margin="10" Click="Tile0_Click">
             <StackPanel>
-              <TextBlock Text="Optimaliseren" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Shortcuts, covers en tabs" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="Optimize" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="Shortcuts, covers and tabs" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile1" Classes="tile" Margin="10" Click="Tile1_Click">
             <StackPanel>
               <TextBlock Text="Bibliotheek" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Gescande ROMs en apps" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="Scanned ROMs and apps" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile2" Classes="tile" Margin="10" Click="Tile2_Click">
             <StackPanel>
-              <TextBlock Text="Bestanden" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Mappen op deze Deck" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="Files" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="Folders on this Deck" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile3" Classes="tile" Margin="10" Click="Tile3_Click">
             <StackPanel>
-              <TextBlock Text="Instellingen" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="SteamGridDB, lokaal of SSH" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="Settings" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="SteamGridDB, local or SSH" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
         </UniformGrid>
@@ -117,7 +117,7 @@
         </Grid.RowDefinitions>
         <Border Background="#070B10" Padding="20,12" BorderBrush="#00D9F5" BorderThickness="0,0,0,2">
           <DockPanel>
-            <Button Content="Terug" Click="GameBack_Click" DockPanel.Dock="Left"/>
+            <Button Content="Back" Click="GameBack_Click" DockPanel.Dock="Left"/>
             <TextBlock x:Name="GamePageTitle" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" Margin="16,0,0,0"/>
           </DockPanel>
         </Border>
@@ -128,7 +128,7 @@
     <Border Grid.Row="1" Background="#070B10" Padding="16,8" BorderBrush="#1E4A58" BorderThickness="0,1,0,0">
       <DockPanel>
         <TextBlock x:Name="HintBar" Foreground="#8EB8C4" FontSize="14"
-                   Text="A bevestigen   B terug   D-pad navigeren   L/R tabs"/>
+                   Text="A confirm   B back   D-pad navigate   L/R tabs"/>
         <TextBlock x:Name="FooterStatus" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="#00D9F5"/>
       </DockPanel>
     </Border>

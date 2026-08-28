@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -30,8 +33,17 @@ jobs:
           dotnet-version: "8.0.x"
       - run: sudo apt-get update && sudo apt-get install -y libx11-dev libice-dev libsm-dev libfontconfig1
       - run: dotnet publish src/Sesame.Deck/Sesame.Deck.csproj -c Release -r linux-x64 --self-contained true -o artifacts/linux-x64
-      - run: cp pack/steamdeck/install.sh artifacts/linux-x64/ && chmod +x artifacts/linux-x64/install.sh artifacts/linux-x64/SESAME
+      - run: chmod +x artifacts/linux-x64/SESAME
+      - run: tar -czf sesame-linux-x64.tar.gz -C artifacts/linux-x64 .
       - uses: actions/upload-artifact@v4
         with:
           name: sesame-linux-x64
           path: artifacts/linux-x64
+      - name: Publish Linux release tarball
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: linux
+          name: SESAME Linux
+          make_latest: true
+          files: sesame-linux-x64.tar.gz

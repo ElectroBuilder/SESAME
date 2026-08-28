@@ -2,13 +2,13 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="Emulators en startregels"
+        <TextBlock DockPanel.Dock="Top" Text="Emulators and launch rules"
                    FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4"/>
         <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
-                   Text="{}Target is het belangrijkste. Standaard: {flatpak} {emulator} {core} &quot;{rom}&quot;. Bij RetroArch is {emulator} = run org.libretro.RetroArch -L en {core} het volledige core-pad. {roms} is de ROM-map, {rom} het ROM-bestand."/>
+                   Text="{}Target is the important field. Default: {flatpak} {emulator} {core} &quot;{rom}&quot;. For RetroArch, {emulator} = run org.libretro.RetroArch -L and {core} is the full core path. {roms} is the ROM folder, {rom} the ROM file."/>
 
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,12,0,0">
-            <Button Content="Standaard herstellen" Click="Reset_Click"/>
+            <Button Content="Restore defaults" Click="Reset_Click"/>
         </StackPanel>
 
         <Grid>
@@ -34,14 +34,14 @@
                     </Grid.RowDefinitions>
                     <TextBlock Text="{}roms  ({roms})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
                     <TextBox x:Name="RomsBox" Grid.Row="1" LostFocus="Layout_Changed"
-                             ToolTip="{}ROM-root, bijvoorbeeld /home/deck/Emulation/roms. Placeholder {roms}"/>
+                             ToolTip="{}ROM root, for example /home/deck/Emulation/roms. Placeholder {roms}"/>
                     <TextBlock Grid.Column="2" Text="{}flatpak  ({flatpak})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
                     <TextBox x:Name="FlatpakBox" Grid.Row="1" Grid.Column="2" LostFocus="Layout_Changed"
-                             ToolTip="Meestal /usr/bin/flatpak"/>
-                    <TextBlock Grid.Row="2" Text="{}Launchers-map  ({launchers})"
+                             ToolTip="Usually /usr/bin/flatpak"/>
+                    <TextBlock Grid.Row="2" Text="{}Launchers folder  ({launchers})"
                                Foreground="{DynamicResource Muted}" Margin="0,10,0,4"/>
                     <TextBox x:Name="LaunchersBox" Grid.Row="3" LostFocus="Layout_Changed"/>
-                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{}Tools-map  ({tools})"
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{}Tools folder  ({tools})"
                                Foreground="{DynamicResource Muted}" Margin="0,10,0,4"/>
                     <TextBox x:Name="ToolsBox" Grid.Row="3" Grid.Column="2" LostFocus="Layout_Changed"/>
                 </Grid>
@@ -69,7 +69,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="{}ROM-submap  ({folder})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{}ROM subfolder  ({folder})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
                                     <TextBox x:Name="FolderBox" LostFocus="Field_Changed"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
@@ -81,22 +81,22 @@
                                               ToolTip="{}RetroArch: {emulator} = run org.libretro.RetroArch -L"/>
                                 </StackPanel>
                             </Grid>
-                            <TextBlock Text="{}Core  ({core} = volledig pad)" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+                            <TextBlock Text="{}Core  ({core} = full path)" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
                             <ComboBox x:Name="CoreBox" IsEditable="True"
                                       LostFocus="Field_Changed"
                                       SelectionChanged="Core_Changed"
                                       DropDownClosed="Core_DropDownClosed"
-                                      ToolTip="{}Bestandsnaam, bijvoorbeeld snes9x_libretro.so. In Target wordt {core} het volledige pad."/>
-                            <TextBlock Text="Target-sjabloon" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+                                      ToolTip="{}File name, for example snes9x_libretro.so. In Target, {core} becomes the full path."/>
+                            <TextBlock Text="Target template" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
                             <TextBox x:Name="TargetBox" LostFocus="Field_Changed"
                                      ToolTip="{}{flatpak} {emulator} {core} &quot;{rom}&quot;"/>
-                            <TextBlock Text="Start in-sjabloon" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+                            <TextBlock Text="Start in template" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
                             <TextBox x:Name="StartDirBox" LostFocus="Field_Changed"/>
-                            <TextBlock Text="Startopties-sjabloon" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+                            <TextBlock Text="Launch options template" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
                             <TextBox x:Name="OptionsBox" Height="48" TextWrapping="Wrap" AcceptsReturn="True"
                                      VerticalScrollBarVisibility="Auto" LostFocus="Field_Changed"
-                                     ToolTip="Blijft leeg. Argumenten horen in Target."/>
-                            <TextBlock Text="Voorbeeld voor Steam" Foreground="{DynamicResource Muted}" Margin="0,16,0,4"/>
+                                     ToolTip="Stays empty. Arguments belong in Target."/>
+                            <TextBlock Text="Preview for Steam" Foreground="{DynamicResource Muted}" Margin="0,16,0,4"/>
                             <TextBox x:Name="PreviewBox" Height="88" IsReadOnly="True" TextWrapping="Wrap"
                                      FontFamily="Consolas" FontSize="12"
                                      Background="{DynamicResource PanelAlt}"/>

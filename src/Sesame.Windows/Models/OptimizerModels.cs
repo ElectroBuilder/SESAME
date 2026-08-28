@@ -7,7 +7,7 @@ public sealed class OptimizerGame : INotifyPropertyChanged
 {
     private bool _selected = true;
     private string _displayName = "";
-    private string _status = "Nieuw";
+    private string _status = "New";
     private string _artworkSource = "—";
     private string _emulatorName = "—";
     private string _target = "";
@@ -73,11 +73,11 @@ public sealed class OptimizerGame : INotifyPropertyChanged
     {
         ShortcutKind.Hydra => "Hydra",
         ShortcutKind.App => "App",
-        _ => IsTranslation ? "Vertaling" : IsRomHack ? "ROM-hack" : "—"
+        _ => IsTranslation ? "Translation" : IsRomHack ? "ROM-hack" : "—"
     };
 
-    public string SteamText => InSteam ? "ja" : "nee";
-    public string ArtworkText => HasArtwork ? ArtworkSource : "ontbreekt";
+    public string SteamText => InSteam ? "yes" : "no";
+    public string ArtworkText => HasArtwork ? ArtworkSource : "missing";
     public string FpsText => Fps > 0 ? Fps + " fps" : "—";
 
     public event PropertyChangedEventHandler? PropertyChanged;

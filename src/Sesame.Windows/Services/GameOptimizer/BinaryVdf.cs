@@ -58,7 +58,7 @@ public static class BinaryVdf
         var root = new VdfNode();
         if (ms.Length == 0) return root;
         var type = br.ReadByte();
-        if (type != 0x00) throw new InvalidDataException("shortcuts.vdf begint niet met een map.");
+        if (type != 0x00) throw new InvalidDataException("shortcuts.vdf does not start with a map.");
         var name = ReadCString(br);
         var node = ReadMap(br);
         root.Set(name, node);

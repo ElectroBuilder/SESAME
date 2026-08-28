@@ -50,8 +50,8 @@ public static class SteamSession
         if (client.IsLocal && HostEnvironment.RunningInGamescope)
         {
             throw new InvalidOperationException(
-                "SESAME draait in Game Mode. Steam moet even dicht om shortcuts te schrijven, en dat sluit deze app. " +
-                "Open SESAME in Desktop Mode (of via SSH vanaf een andere pc) om te optimaliseren.");
+                "SESAME is running in Game Mode. Steam has to close briefly to write shortcuts, and that closes this app. " +
+                "Open SESAME in Desktop Mode (or over SSH from another PC) to optimize.");
         }
 
         var kind = Detect(client);
@@ -59,20 +59,20 @@ public static class SteamSession
         if (gameMode)
         {
             progress?.Report(kind == DeckSessionKind.Unknown
-                ? "Sessie onduidelijk — uitgaan van Game Mode, naar Desktop Mode…"
-                : "Game Mode gedetecteerd — naar Desktop Mode…");
+                ? "Session unclear — assuming Game Mode, switching to Desktop Mode…"
+                : "Game Mode detected — switching to Desktop Mode…");
             Try(client, "steamos-session-select plasma");
             WaitUntil(() => Detect(client) == DeckSessionKind.Desktop, 25_000, 400,
-                progress, "Wachten tot Desktop Mode klaar is");
+                progress, "Waiting until Desktop Mode is ready");
             if (Detect(client) == DeckSessionKind.Desktop)
-                progress?.Report("Desktop Mode gedetecteerd.");
+                progress?.Report("Desktop Mode detected.");
             else
-                progress?.Report("Desktop Mode niet bevestigd — Steam toch afsluiten…");
+                progress?.Report("Desktop Mode not confirmed — closing Steam anyway…");
         }
         else
-            progress?.Report("Desktop Mode gedetecteerd — Steam afsluiten…");
+            progress?.Report("Desktop Mode detected — closing Steam…");
 
-        progress?.Report("Steam afsluiten…");
+        progress?.Report("Closing Steam…");
         CloseSteam(client);
         return gameMode;
     }
@@ -80,7 +80,7 @@ public static class SteamSession
     public static void RestoreGameMode(DeckClient client, bool wasGameMode, IProgress<string>? progress)
     {
         if (!wasGameMode) return;
-        progress?.Report("Game Mode weer starten…");
+        progress?.Report("Starting Game Mode again…");
         Try(client, "steamos-session-select gamescope");
     }
 

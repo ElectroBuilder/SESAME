@@ -46,7 +46,7 @@ public partial class MainWindow : Window
         RebuildTargets();
         BuildQuickAccess();
         LoadTerminalPref();
-        ResetTerminal("Verbind met de Steam Deck om commando's en scripts uit te voeren.");
+        ResetTerminal("Connect to the Steam Deck to run commands and scripts.");
         StorePanel.SetGames(_catalog.StoreGames, []);
         OptimizerPanel.Attach(_client, _catalog);
         OptimizerPanel.StatusChanged += text => FooterText.Text = text;
@@ -101,7 +101,7 @@ public partial class MainWindow : Window
         TermSplitRow.Height = show ? new GridLength(6) : new GridLength(0);
         TermSplitter.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         TermPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-        TermToggleBtn.Content = show ? "Terminal verbergen" : "Terminal tonen";
+        TermToggleBtn.Content = show ? "Hide terminal" : "Show terminal";
         if (show)
             Dispatcher.BeginInvoke(() => TermBox.Focus());
         try
@@ -194,7 +194,7 @@ public partial class MainWindow : Window
     {
         if (ProfileBox.SelectedItem is not ConnectionProfile selected)
         {
-            MessageBox.Show(this, "Maak of kies eerst een sessie via Sessies…");
+            MessageBox.Show(this, "Create or pick a session first via Sessions…");
             return;
         }
         await ConnectToAsync(selected);
@@ -208,10 +208,10 @@ public partial class MainWindow : Window
             .Where(p => p.Id != chosen.Id)
             .Select(p => p.Clone())
             .ToList();
-        TermHint.Text = "  ·  verbinden…";
+        TermHint.Text = "  ·  connecting…";
         ResetTerminal("");
         _busy = true;
-        FooterText.Text = chosen.IsLocal ? "Lokaal verbinden…" : "Verbinden…";
+        FooterText.Text = chosen.IsLocal ? "Connecting locally…" : "Connecting…";
         try
         {
             if (chosen.IsLocal)
@@ -230,7 +230,7 @@ public partial class MainWindow : Window
 
         if (!_client.IsConnected)
         {
-            TermHint.Text = "  ·  klik hier en typ een commando";
+            TermHint.Text = "  ·  click here and type a command";
             return;
         }
 
@@ -239,11 +239,11 @@ public partial class MainWindow : Window
         ConnectBtn.IsEnabled = false;
         var p = _client.ActiveProfile!;
         StatusText.Text = _client.IsLocal
-            ? "Lokaal op deze Steam Deck"
+            ? "Local on this Steam Deck"
             : $"Verbonden met {p.Name} ({p.Host})";
         StatusText.Foreground = (Brush)FindResource("Ok");
         _client.ResizeShell(_termCols, _termRows);
-        TermHint.Text = "  ·  klik in het venster en typ  ·  Enter voert uit  ·  Ctrl+C stopt";
+        TermHint.Text = "  ·  click in the window and type  ·  Enter runs  ·  Ctrl+C stops";
         Navigate(_client.Home, push: false);
         await ScanSilent();
         OptimizerPanel.OnConnected();
@@ -262,13 +262,13 @@ public partial class MainWindow : Window
                 throw last;
         }
         throw last ?? new InvalidOperationException(
-            "Geen SSH-verbinding met de Steam Deck. Controleer host, poort en sleutel. Als de Deck echt slaapt, vul het MAC-adres in bij Sessies…");
+            "No SSH connection to the Steam Deck. Check host, port and key. If the Deck is asleep, fill in the MAC address under Sessions…");
     }
 
     private bool TryConnectOrWake(ConnectionProfile profile, out Exception? error)
     {
         error = null;
-        Dispatcher.Invoke(() => FooterText.Text = "Verbinden met " + profile.Host + "…");
+        Dispatcher.Invoke(() => FooterText.Text = "Connecting to " + profile.Host + "…");
         try
         {
             _client.Connect(profile);
@@ -287,7 +287,7 @@ public partial class MainWindow : Window
         var mac = WakeOnLan.ResolveMac(profile);
         if (mac is null) return false;
 
-        Dispatcher.Invoke(() => FooterText.Text = "Geen SSH-antwoord — Deck wekken…");
+        Dispatcher.Invoke(() => FooterText.Text = "No SSH reply — waking the Deck…");
         try { WakeOnLan.Send(mac, profile.Host); }
         catch { return false; }
 
@@ -295,7 +295,7 @@ public partial class MainWindow : Window
         {
             if (i > 0) Thread.Sleep(1000);
             var n = i + 1;
-            Dispatcher.Invoke(() => FooterText.Text = "Opnieuw verbinden… (" + n + ")");
+            Dispatcher.Invoke(() => FooterText.Text = "Reconnecting… (" + n + ")");
             try
             {
                 _client.Connect(profile);
@@ -369,10 +369,10 @@ public partial class MainWindow : Window
         BuildQuickAccess();
         DisconnectBtn.IsEnabled = false;
         ConnectBtn.IsEnabled = true;
-        StatusText.Text = "Niet verbonden";
+        StatusText.Text = "Not connected";
         StatusText.Foreground = (Brush)FindResource("Muted");
-        TermHint.Text = "  ·  klik hier en typ een commando";
-        ResetTerminal("Verbinding verbroken.");
+        TermHint.Text = "  ·  click here and type a command";
+        ResetTerminal("Disconnected.");
     }
 
     private void QuickTree_Selected(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -398,7 +398,7 @@ public partial class MainWindow : Window
         if (QuickTree.SelectedItem is not TreeViewItem { Tag: QuickPath path }) return;
         if (!_pins.Contains(path.Path))
         {
-            MessageBox.Show(this, "Alleen zelf toegevoegde mappen kunnen losgemaakt worden.");
+            MessageBox.Show(this, "Only folders you added yourself can be unpinned.");
             return;
         }
         _pins.Remove(path.Path);
@@ -419,11 +419,11 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(path)) return;
         var label = name ?? path.TrimEnd('/').Split('/').LastOrDefault() ?? path;
-        var custom = Prompt("Snelle toegang", "Naam in de zijbalk:", label);
+        var custom = Prompt("Quick access", "Name in the sidebar:", label);
         if (string.IsNullOrWhiteSpace(custom)) return;
         _pins.Add(custom.Trim(), path);
         BuildQuickAccess();
-        FooterText.Text = $"Vastgemaakt: {custom}";
+        FooterText.Text = $"Pinned: {custom}";
     }
 
     private void Back_Click(object sender, RoutedEventArgs e)
@@ -534,8 +534,8 @@ public partial class MainWindow : Window
         var scripts = FileList.SelectedItems.Cast<RemoteItem>().Where(IsDeckScript).ToList();
         RunOnDeckItem.IsEnabled = scripts.Count > 0;
         RunOnDeckItem.Header = scripts.Count > 1
-            ? $"Uitvoeren in terminal ({scripts.Count})"
-            : "Uitvoeren in terminal";
+            ? $"Run in terminal ({scripts.Count})"
+            : "Run in terminal";
     }
 
     private void FileList_DoubleClick(object sender, RoutedEventArgs e) => Open_Click(sender, e);
@@ -557,10 +557,10 @@ public partial class MainWindow : Window
         {
             var names = string.Join(", ", large.Select(i => i.Name));
             if (MessageBox.Show(this,
-                    $"{names} is groter dan 80 MB. Downloaden naar Downloads in plaats van lokaal openen?",
+                    $"{names} is larger than 80 MB. Download to Downloads instead of opening locally?",
                     AppBrand.ShortName, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                await RunBusy("Downloaden…", () =>
+                await RunBusy("Downloading…", () =>
                 {
                     var dest = DownloadsFolder();
                     foreach (var item in large)
@@ -570,30 +570,30 @@ public partial class MainWindow : Window
         }
 
         if (openable.Count == 0) return;
-        await RunBusy("Openen op deze pc…", () =>
+        await RunBusy("Opening on this PC…", () =>
         {
             foreach (var item in openable)
                 LocalOpen.DownloadAndOpen(_client, item);
         });
         FooterText.Text = openable.Count == 1
-            ? $"Geopend: {openable[0].Name}"
-            : $"{openable.Count} bestanden lokaal geopend";
+            ? $"Opened: {openable[0].Name}"
+            : $"{openable.Count} files opened locally";
     }
 
     private async void NewFolder_Click(object sender, RoutedEventArgs e)
     {
-        var name = Prompt("Nieuwe map", "Naam van de map:");
+        var name = Prompt("New folder", "Folder name:");
         if (string.IsNullOrWhiteSpace(name)) return;
-        await RunBusy("Map maken…", () => _client.CreateDirectory(DeckClient.Combine(_cwd, name.Trim())));
+        await RunBusy("Creating folder…", () => _client.CreateDirectory(DeckClient.Combine(_cwd, name.Trim())));
         Navigate(_cwd, push: false);
     }
 
     private async void Rename_Click(object sender, RoutedEventArgs e)
     {
         if (FileList.SelectedItem is not RemoteItem item) return;
-        var name = Prompt("Hernoemen", "Nieuwe naam:", item.Name);
+        var name = Prompt("Rename", "New name:", item.Name);
         if (string.IsNullOrWhiteSpace(name) || name == item.Name) return;
-        await RunBusy("Hernoemen…", () => _client.Rename(item.FullPath, DeckClient.Combine(_cwd, name.Trim())));
+        await RunBusy("Renaming…", () => _client.Rename(item.FullPath, DeckClient.Combine(_cwd, name.Trim())));
         Navigate(_cwd, push: false);
     }
 
@@ -602,10 +602,10 @@ public partial class MainWindow : Window
         var items = FileList.SelectedItems.Cast<RemoteItem>().ToList();
         if (items.Count == 0) return;
         var label = items.Count == 1 ? items[0].Name : $"{items.Count} items";
-        if (MessageBox.Show($"Verwijderen: {label}?", AppBrand.ShortName, MessageBoxButton.YesNo, MessageBoxImage.Warning)
+        if (MessageBox.Show($"Delete: {label}?", AppBrand.ShortName, MessageBoxButton.YesNo, MessageBoxImage.Warning)
             != MessageBoxResult.Yes)
             return;
-        await RunBusy("Verwijderen…", () =>
+        await RunBusy("Deleting…", () =>
         {
             foreach (var item in items)
                 _client.Delete(item);
@@ -627,12 +627,12 @@ public partial class MainWindow : Window
         var items = FileList.SelectedItems.Cast<RemoteItem>().ToList();
         if (items.Count == 0) return;
         var dest = DownloadsFolder();
-        await RunBusy("Downloaden…", () =>
+        await RunBusy("Downloading…", () =>
         {
             foreach (var item in items)
                 _client.DownloadItem(item, dest, msg => Dispatcher.Invoke(() => FooterText.Text = msg));
         });
-        FooterText.Text = $"Gedownload naar {dest}";
+        FooterText.Text = $"Downloaded to {dest}";
     }
 
     private async void ScanGames_Click(object sender, RoutedEventArgs e) => await ScanSilent();
@@ -677,7 +677,7 @@ public partial class MainWindow : Window
         }
 
         GameMenu.Items.Clear();
-        AddMenu(GameMenu, "Open ROM-map", (_, _) =>
+        AddMenu(GameMenu, "Open ROM folder", (_, _) =>
         {
             if (!string.IsNullOrEmpty(game.RomPath))
                 Navigate(DeckClient.Parent(game.RomPath));
@@ -695,7 +695,7 @@ public partial class MainWindow : Window
             foreach (var user in _library.Eden.Users)
             {
                 var path = game.TitleId is null ? user.Folder : DeckClient.Combine(user.Folder, game.TitleId);
-                var header = user == _library.Eden.Primary ? $"{user.Name} (standaard)" : user.Name;
+                var header = user == _library.Eden.Primary ? $"{user.Name} (default)" : user.Name;
                 AddMenu(saves, header, (_, _) => OpenGameFolder(path, create: true));
             }
         }
@@ -709,18 +709,18 @@ public partial class MainWindow : Window
         AddMenu(GameMenu, "Texture packs", (_, _) => OpenGameFolder(game.TexturePath, create: true),
             enabled: !string.IsNullOrEmpty(game.TexturePath));
         GameMenu.Items.Add(new Separator());
-        AddMenu(GameMenu, "Mod installeren…", InstallMod_Click);
-        AddMenu(GameMenu, "ROM-hack toepassen…", ApplyRomHack_Click,
+        AddMenu(GameMenu, "Install mod…", InstallMod_Click);
+        AddMenu(GameMenu, "Apply ROM hack…", ApplyRomHack_Click,
             enabled: !string.IsNullOrEmpty(game.RomPath));
-        AddMenu(GameMenu, "Naar Nederlands vertalen…", TranslateDutch_Click,
+        AddMenu(GameMenu, "To Dutch…", TranslateDutch_Click,
             enabled: !string.IsNullOrEmpty(game.RomPath) && CartRom.IsSupportedSystem(game.System));
-        AddMenu(GameMenu, "Packs zoeken…", (_, _) =>
+        AddMenu(GameMenu, "Search packs…", (_, _) =>
         {
             MainTabs.SelectedIndex = 2;
             StorePanel.Prefill(game.Identity);
         });
         GameMenu.Items.Add(new Separator());
-        AddMenu(GameMenu, "ROM-map vastmaken", (_, _) =>
+        AddMenu(GameMenu, "Pin ROM folder", (_, _) =>
         {
             if (!string.IsNullOrEmpty(game.RomPath))
                 PinPath(DeckClient.Parent(game.RomPath), game.DisplayName);
@@ -738,7 +738,7 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(path))
         {
-            MessageBox.Show(this, "Geen map bekend voor dit item.");
+            MessageBox.Show(this, "No folder known for this item.");
             return;
         }
         try
@@ -749,7 +749,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Map openen mislukt");
+            MessageBox.Show(this, ex.Message, "Could not open folder");
         }
     }
 
@@ -757,14 +757,14 @@ public partial class MainWindow : Window
     {
         if (GameList.SelectedItem is not GameEntry game || string.IsNullOrEmpty(game.TitleId))
         {
-            MessageBox.Show("Selecteer een Switch-game met Title ID.");
+            MessageBox.Show("Select a Switch game with a Title ID.");
             return;
         }
-        var dlg = new OpenFileDialog { Multiselect = true, Title = "Mod-bestanden of map-zip kiezen" };
+        var dlg = new OpenFileDialog { Multiselect = true, Title = "Choose mod files or a folder zip" };
         if (dlg.ShowDialog() != true) return;
         var dest = game.ModPath ?? DeckClient.Combine(_catalog.EdenMods, game.TitleId);
         var remotes = new List<string>();
-        await RunBusy("Mod installeren…", () =>
+        await RunBusy("Installing mod…", () =>
         {
             _client.EnsureDirectory(dest);
             foreach (var file in dlg.FileNames)
@@ -781,7 +781,7 @@ public partial class MainWindow : Window
             }
         });
         FooterText.Text = remotes.Count == 1
-            ? "Mod geplaatst in " + remotes[0]
+            ? "Mod placed in " + remotes[0]
             : $"{remotes.Count} mods geplaatst in {dest}";
         await ScanSilent();
     }
@@ -791,31 +791,31 @@ public partial class MainWindow : Window
         if (GameList.SelectedItem is not GameEntry game || string.IsNullOrWhiteSpace(game.RomPath))
         {
             MessageBox.Show(this,
-                "Selecteer een N64-, NES- of SNES-game in de Games-tab. SESAME patched alleen een kopie van uw eigen legale dump.",
-                "Taalpatch");
+                "Select an N64, NES or SNES game in the Games tab. SESAME only patches a copy of your own legal dump.",
+                "Language patch");
             return;
         }
 
         if (!LanguagePatcher.Supports(game))
         {
             MessageBox.Show(this,
-                "De Nederlandse tekstpatch werkt voor N64-, NES- en SNES-ROMs. Selecteer een game met een ROM-bestand.",
-                "Taalpatch");
+                "The Dutch text patch works for N64, NES and SNES ROMs. Select a game with a ROM file.",
+                "Language patch");
             return;
         }
 
         var ok = MessageBox.Show(this,
-            "Er wordt een kopie van " + game.FileName + " gehaald. Het origineel blijft staan." +
+            "A copy of " + game.FileName + " is fetched. The original file stays." +
             Environment.NewLine + Environment.NewLine +
-            "Daarna worden de in-game teksten uitgepakt en automatisch naar het Nederlands vertaald. " +
-            "U kunt de vertaling nog controleren voordat de nieuwe ROM op de Deck wordt gezet." +
+            "In-game texts are then extracted and automatically translated to Dutch. " +
+            "You can still review the translation before the new ROM is put on the Deck." +
             Environment.NewLine + Environment.NewLine +
-            "Banjo-Kazooie gebruikt de Rare-dialoogtabel. Donkey Kong 64 de eigen tekstbestanden. " +
-            "Mario 64 het dialoogblok met eigen lettertype. " +
-            "Andere dumps alleen via echte Engelse zinnen. NES/SNES hetzelfde, als de tekst als ASCII in de ROM staat." +
+            "Banjo-Kazooie uses the Rare dialogue table. Donkey Kong 64 uses its own text files. " +
+            "Mario 64 uses the dialogue block with its own font. " +
+            "Other dumps only via real English sentences. NES/SNES the same, if the text is ASCII in the ROM." +
             Environment.NewLine + Environment.NewLine +
-            "SESAME levert geen ROMs; u gebruikt uw eigen dump.",
-            "Naar Nederlands vertalen", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            "SESAME does not ship ROMs; you use your own dump.",
+            "To Dutch", MessageBoxButton.YesNo, MessageBoxImage.Information);
         if (ok != MessageBoxResult.Yes) return;
 
         var temp = Path.Combine(Path.GetTempPath(), AppBrand.ShortName, "lang", Guid.NewGuid().ToString("N")[..8]);
@@ -823,14 +823,14 @@ public partial class MainWindow : Window
         var local = Path.Combine(temp, Path.GetFileName(game.RomPath));
         try
         {
-            await RunBusy("ROM ophalen…", () =>
+            await RunBusy("Fetching ROM…", () =>
                 _client.DownloadFile(game.RomPath, local, msg => Dispatcher.Invoke(() => FooterText.Text = msg)));
 
             byte[] rom;
             try { rom = LanguagePatcher.LoadRom(local, game.InnerFileName ?? game.DisplayName); }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Taalpatch");
+                MessageBox.Show(this, ex.Message, "Language patch");
                 return;
             }
 
@@ -838,7 +838,7 @@ public partial class MainWindow : Window
             if (win.ShowDialog() != true || string.IsNullOrWhiteSpace(win.OutputPath))
                 return;
 
-            await RunBusy("Nederlandse ROM plaatsen op de Deck…", () =>
+            await RunBusy("Placing Dutch ROM on the Deck…", () =>
             {
                 var folder = DeckClient.Parent(game.RomPath);
                 var name = Path.GetFileName(win.OutputPath);
@@ -852,13 +852,13 @@ public partial class MainWindow : Window
                 _client.EnsureDirectory(folder);
                 _client.UploadFile(win.OutputPath, folder, msg => Dispatcher.Invoke(() => FooterText.Text = msg), name);
                 RomHackLog.Remember(remote, game.DisplayName + " (NL)", game.FileName, "translation");
-                Dispatcher.Invoke(() => FooterText.Text = "Nederlandse ROM klaar: " + name);
+                Dispatcher.Invoke(() => FooterText.Text = "Dutch ROM ready: " + name);
             });
             await ScanSilent();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Taalpatch");
+            MessageBox.Show(this, ex.Message, "Language patch");
         }
     }
 
@@ -867,33 +867,33 @@ public partial class MainWindow : Window
         if (GameList.SelectedItem is not GameEntry game || string.IsNullOrWhiteSpace(game.RomPath))
         {
             MessageBox.Show(this,
-                "Selecteer een game met een ROM-bestand. SESAME patched alleen een kopie van uw eigen legale dump.",
+                "Select a game with a ROM file. SESAME only patches a copy of your own legal dump.",
                 "ROM-hack");
             return;
         }
 
         var ok = MessageBox.Show(this,
             PackStore.LegalHackNl + Environment.NewLine + Environment.NewLine +
-            "Kies daarna de patch (.bps / .ips / .ups of een zip). Er wordt een kopie van " +
-            game.FileName + " gemaakt; het origineel blijft staan.",
-            "ROM-hack toepassen", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            "Then pick the patch (.bps / .ips / .ups or a zip). A copy of " +
+            game.FileName + " is made; the original file stays.",
+            "Apply ROM hack", MessageBoxButton.YesNo, MessageBoxImage.Information);
         if (ok != MessageBoxResult.Yes) return;
 
         var dlg = new OpenFileDialog
         {
-            Title = "ROM-hack patch kiezen (geen ROM)",
-            Filter = "Patches|*.bps;*.ips;*.ups;*.zip|Alle bestanden|*.*"
+            Title = "Choose ROM-hack patch (no ROM)",
+            Filter = "Patches|*.bps;*.ips;*.ups;*.zip|All files|*.*"
         };
         if (dlg.ShowDialog() != true) return;
 
         try
         {
-            await RunBusy("ROM-hack toepassen…", () =>
+            await RunBusy("Applying ROM hack…", () =>
             {
                 var installer = new RomHackInstaller();
                 var remote = installer.InstallFromGame(game, dlg.FileName, _client,
                     msg => Dispatcher.Invoke(() => FooterText.Text = msg));
-                Dispatcher.Invoke(() => FooterText.Text = "ROM-hack geplaatst als " + Path.GetFileName(remote));
+                Dispatcher.Invoke(() => FooterText.Text = "ROM hack placed as " + Path.GetFileName(remote));
             });
             await ScanSilent();
         }
@@ -908,15 +908,15 @@ public partial class MainWindow : Window
         if (hit.IsBusy || hit.IsQueued) return;
         if (!_client.IsConnected)
         {
-            MessageBox.Show(this, "Verbind eerst met de Steam Deck.", "Store");
+            MessageBox.Show(this, "Connect to the Steam Deck first.", "Store");
             return;
         }
 
         _storeQueue.Add(hit);
         RefreshStoreQueue();
         FooterText.Text = _storeQueue.Count == 1
-            ? "In wachtrij: " + hit.Title
-            : "In wachtrij: " + _storeQueue.Count + " mods";
+            ? "Queued: " + hit.Title
+            : "Queued: " + _storeQueue.Count + " mods";
         _ = DrainStoreQueueAsync();
     }
 
@@ -952,7 +952,7 @@ public partial class MainWindow : Window
     {
         if (!_client.IsConnected)
         {
-            MessageBox.Show(this, "Verbind eerst met de Steam Deck.", "Store");
+            MessageBox.Show(this, "Connect to the Steam Deck first.", "Store");
             return;
         }
 
@@ -993,7 +993,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await RunBusy("Pack downloaden…", () =>
+            await RunBusy("Downloading pack…", () =>
             {
                 void Report(double pct, string msg, bool unknown = false) =>
                     Dispatcher.Invoke(() =>
@@ -1009,7 +1009,7 @@ public partial class MainWindow : Window
                         new FileInfo(existing).Length > 0)
                     {
                         file = existing;
-                        Report(12, "Lokaal bestand gebruiken…");
+                        Report(12, "Using local file…");
                     }
                     else
                     {
@@ -1022,10 +1022,10 @@ public partial class MainWindow : Window
                         });
                     }
 
-                    Report(72, "Voorbereiden…", true);
+                    Report(72, "Preparing…", true);
                     var jobs = PlanInstall(hit, file, dest, system, titleId);
                     if (jobs.Count == 0)
-                        throw new InvalidOperationException("Geen bestanden om te installeren.");
+                        throw new InvalidOperationException("No files to install.");
 
                     var remotes = new List<string>();
                     foreach (var job in jobs)
@@ -1054,7 +1054,7 @@ public partial class MainWindow : Window
                     throw;
                 }
             });
-            FooterText.Text = $"{hit.Kind} geïnstalleerd in {hit.RemotePath ?? dest}";
+            FooterText.Text = $"{hit.Kind} installed in {hit.RemotePath ?? dest}";
             if (scanAfter)
                 await ScanSilent();
         }
@@ -1071,7 +1071,7 @@ public partial class MainWindow : Window
         try
         {
             var file = "";
-            await RunBusy("Pack downloaden…", () =>
+            await RunBusy("Downloading pack…", () =>
             {
                 void Report(double pct, string msg, bool unknown = false) =>
                     Dispatcher.Invoke(() =>
@@ -1084,7 +1084,7 @@ public partial class MainWindow : Window
                     new FileInfo(existing).Length > 0)
                 {
                     file = existing;
-                    Report(20, "Lokaal bestand gebruiken…");
+                    Report(20, "Using local file…");
                     return;
                 }
 
@@ -1097,7 +1097,7 @@ public partial class MainWindow : Window
                 });
             });
             if (string.IsNullOrEmpty(file) || !File.Exists(file))
-                throw new InvalidOperationException("Download mislukt.");
+                throw new InvalidOperationException("Download failed.");
 
             if (PackStore.FindPatchFile(file) is not null)
             {
@@ -1105,7 +1105,7 @@ public partial class MainWindow : Window
                 {
                     var ok = MessageBox.Show(this,
                         PackStore.LegalHackNl + Environment.NewLine + Environment.NewLine +
-                        "Dit is een ROM-patch (.bps/.ips/.ups). Het origineel blijft staan; er wordt een kopie gemaakt met de patch erin.",
+                        "This is a ROM patch (.bps/.ips/.ups). The original stays; a copy is made with the patch applied.",
                         "ROM-hack", MessageBoxButton.YesNo, MessageBoxImage.Information);
                     if (ok != MessageBoxResult.Yes)
                     {
@@ -1139,10 +1139,10 @@ public partial class MainWindow : Window
                         FooterText.Text = msg;
                     });
 
-                Report(72, "Voorbereiden…", true);
+                Report(72, "Preparing…", true);
                 var jobs = PlanInstall(hit, file, dest, system, null);
                 if (jobs.Count == 0)
-                    throw new InvalidOperationException("Geen bestanden om te installeren.");
+                    throw new InvalidOperationException("No files to install.");
                 var remotes = new List<string>();
                 foreach (var job in jobs)
                 {
@@ -1162,7 +1162,7 @@ public partial class MainWindow : Window
                     hit.TargetPath = remote;
                 });
             });
-            FooterText.Text = $"{hit.Kind} geïnstalleerd in {hit.RemotePath ?? dest}";
+            FooterText.Text = $"{hit.Kind} installed in {hit.RemotePath ?? dest}";
             if (scanAfter)
                 await ScanSilent();
         }
@@ -1177,12 +1177,12 @@ public partial class MainWindow : Window
     {
         if (!_client.IsConnected)
         {
-            MessageBox.Show(this, "Verbind eerst met de Steam Deck.", "Store");
+            MessageBox.Show(this, "Connect to the Steam Deck first.", "Store");
             return;
         }
         if (hit.IsBusy || hit.IsQueued)
         {
-            MessageBox.Show(this, "Deze mod staat in de wachtrij of wordt geïnstalleerd.", "Store");
+            MessageBox.Show(this, "This mod is queued or currently installing.", "Store");
             return;
         }
 
@@ -1192,7 +1192,7 @@ public partial class MainWindow : Window
             await RunBusy(enabled ? "Mod inschakelen…" : "Mod uitschakelen…", () =>
             {
                 var current = ResolveInstalledModPath(hit)
-                              ?? throw new InvalidOperationException("Geen geïnstalleerde map gevonden.");
+                              ?? throw new InvalidOperationException("No installed folder found.");
                 var leaf = Path.GetFileName(current.TrimEnd('/'));
                 var newName = enabled
                     ? SwitchModFolders.EnabledName(leaf)
@@ -1201,7 +1201,7 @@ public partial class MainWindow : Window
                 if (!string.Equals(current, next, StringComparison.OrdinalIgnoreCase))
                 {
                     if (_client.Exists(next))
-                        throw new InvalidOperationException("Doelmap bestaat al: " + newName);
+                        throw new InvalidOperationException("Target folder already exists: " + newName);
                     _client.Rename(current, next);
                 }
             });
@@ -1223,7 +1223,7 @@ public partial class MainWindow : Window
     {
         if (hit.IsBusy)
         {
-            MessageBox.Show(this, "Wacht tot de installatie klaar is voordat je deze mod verwijdert.", "Store");
+            MessageBox.Show(this, "Wait until the install finishes before deleting this mod.", "Store");
             return;
         }
 
@@ -1236,9 +1236,9 @@ public partial class MainWindow : Window
 
         var remote = hit.IsInstalled;
         var question = remote
-            ? $"'{hit.Title}' van de Deck en uit de bibliotheek verwijderen?"
-            : $"Lokale download van '{hit.Title}' verwijderen?";
-        if (MessageBox.Show(this, question, "Mod verwijderen",
+            ? $"Delete '{hit.Title}' from the Deck and from the library?"
+            : $"Delete the local download of '{hit.Title}'?";
+        if (MessageBox.Show(this, question, "Delete mod",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
@@ -1248,12 +1248,12 @@ public partial class MainWindow : Window
             {
                 if (!_client.IsConnected)
                 {
-                    MessageBox.Show(this, "Verbind eerst met de Steam Deck om de geïnstalleerde map te verwijderen.",
+                    MessageBox.Show(this, "Connect to the Steam Deck first to delete the installed folder.",
                         "Store");
                     return;
                 }
 
-                await RunBusy("Mod verwijderen…", () =>
+                await RunBusy("Deleting mod…", () =>
                 {
                     var path = ResolveInstalledModPath(hit);
                     if (!string.IsNullOrWhiteSpace(path))
@@ -1304,7 +1304,7 @@ public partial class MainWindow : Window
         {
             if (string.IsNullOrWhiteSpace(titleId))
                 throw new InvalidOperationException(
-                    "Switch-mods moeten in load/<Title ID>/<modnaam> staan. Kies een Switch-game met Title ID.");
+                    "Switch mods must live in load/<Title ID>/<modname>. Pick a Switch game with a Title ID.");
             return SwitchModLayout.Prepare(file, titleId, hit.Title)
                 .Select(job => new PackInstallJob(
                     job.LocalFolder,
@@ -1379,13 +1379,13 @@ public partial class MainWindow : Window
             {
                 var pick = MessageBox.Show(this,
                     ex.Message + Environment.NewLine + Environment.NewLine +
-                    "Wilt u zelf een gedownloade patch (.bps/.ips/.ups of zip) kiezen?",
+                    "Do you want to pick a downloaded patch yourself (.bps/.ips/.ups or zip)?",
                     "ROM-hack", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (pick != MessageBoxResult.Yes) return;
                 var dlg = new OpenFileDialog
                 {
-                    Title = "Patch kiezen (geen ROM)",
-                    Filter = "Patches|*.bps;*.ips;*.ups;*.zip|Alle bestanden|*.*"
+                    Title = "Choose patch (no ROM)",
+                    Filter = "Patches|*.bps;*.ips;*.ups;*.zip|All files|*.*"
                 };
                 if (dlg.ShowDialog() != true) return;
                 patch = dlg.FileName;
@@ -1394,7 +1394,7 @@ public partial class MainWindow : Window
             if (string.IsNullOrEmpty(patch)) return;
             var storeGame = StorePanel.SelectedStoreGame;
             var lib = MatchLibraryGame(storeGame, hit);
-            await RunBusy("ROM-hack installeren…", () =>
+            await RunBusy("Installing ROM hack…", () =>
             {
                 var installer = new RomHackInstaller();
                 var remote = lib is not null && !string.IsNullOrWhiteSpace(lib.RomPath)
@@ -1415,7 +1415,7 @@ public partial class MainWindow : Window
                     StorePanel.Mods.RecordInstall(hit, remote, storeGame, null, patch, null);
                     hit.SetInstalled(remote, patch);
                     hit.TargetPath = remote;
-                    FooterText.Text = "ROM-hack geplaatst als " + Path.GetFileName(remote);
+                    FooterText.Text = "ROM hack placed as " + Path.GetFileName(remote);
                 });
             });
             await ScanSilent();
@@ -1447,7 +1447,7 @@ public partial class MainWindow : Window
         {
             var path = game?.SavePath ?? GameLibrary.SavePathFor(system, titleId, _library.Eden.Primary, _catalog);
             return path ?? throw new InvalidOperationException(
-                "Geen save-map bekend. Verbind met de Deck en kies een game met Title ID of RetroArch-pad.");
+                "No save folder known. Connect to the Deck and pick a game with a Title ID or RetroArch path.");
         }
 
         if (hit.Section == "Texture packs" || PackStore.IsCartRomSystem(system))
@@ -1460,9 +1460,9 @@ public partial class MainWindow : Window
                 return root;
             if (PackStore.IsCartRomSystem(system))
                 throw new InvalidOperationException(
-                    "Geen mod-map bekend voor " + system +
-                    ". ROM-patches (.bps/.ips/.ups) worden als nieuwe ROM in de ROM-map gezet.");
-            throw new InvalidOperationException("Geen texture-map bekend voor deze game.");
+                    "No mod folder known for " + system +
+                    ". ROM patches (.bps/.ips/.ups) are written as a new ROM in the ROM folder.");
+            throw new InvalidOperationException("No texture folder known for this game.");
         }
 
         if (SwitchModLayout.IsSwitch(system) && !string.IsNullOrEmpty(titleId))
@@ -1475,8 +1475,8 @@ public partial class MainWindow : Window
             return DeckClient.Combine(_catalog.EdenMods, titleId);
         throw new InvalidOperationException(
             SwitchModLayout.IsSwitch(system)
-                ? "Geen mod-map bekend. Kies in de Store een Switch-game met Program ID."
-                : "Geen mod-map bekend voor " + (string.IsNullOrWhiteSpace(system) ? "deze game" : system) + ".");
+                ? "No mod folder known. In the Store pick a Switch game with a Program ID."
+                : "No mod folder known for " + (string.IsNullOrWhiteSpace(system) ? "this game" : system) + ".");
     }
 
     private string? ResolveTitleId(StoreGame storeGame, PackHit hit)
@@ -1564,7 +1564,7 @@ public partial class MainWindow : Window
 
     private async void Install_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFileDialog { Multiselect = true, Title = "ROM, texture pack of mod kiezen" };
+        var dlg = new OpenFileDialog { Multiselect = true, Title = "Choose ROM, texture pack or mod" };
         if (dlg.ShowDialog() != true) return;
         await InstallLocalFiles(dlg.FileNames, _cwd);
     }
@@ -1620,7 +1620,7 @@ public partial class MainWindow : Window
     {
         var list = jobs.ToList();
         if (list.Count == 0) return;
-        await RunBusy("Uploaden…", () =>
+        await RunBusy("Uploading…", () =>
         {
             foreach (var (path, dest) in list)
             {
@@ -1634,7 +1634,7 @@ public partial class MainWindow : Window
                     _client.UploadFile(path, dest, msg => Dispatcher.Invoke(() => FooterText.Text = msg));
             }
         });
-        FooterText.Text = "Upload klaar";
+        FooterText.Text = "Upload done";
         Navigate(_cwd, push: false);
         await ScanSilent();
     }
@@ -1712,13 +1712,13 @@ public partial class MainWindow : Window
     {
         if (!_client.IsConnected)
         {
-            MessageBox.Show(this, "Verbind eerst met de Steam Deck.");
+            MessageBox.Show(this, "Connect to the Steam Deck first.");
             return;
         }
         var dlg = new OpenFileDialog
         {
             Title = "Script uitvoeren op de Steam Deck",
-            Filter = "Scripts (*.sh;*.bash;*.py;*.ps1;*.zsh)|*.sh;*.bash;*.py;*.ps1;*.zsh;*.fish|Alle bestanden (*.*)|*.*"
+            Filter = "Scripts (*.sh;*.bash;*.py;*.ps1;*.zsh)|*.sh;*.bash;*.py;*.ps1;*.zsh;*.fish|All files (*.*)|*.*"
         };
         if (dlg.ShowDialog(this) != true) return;
 
@@ -1749,7 +1749,7 @@ public partial class MainWindow : Window
         if (scripts.Count == 0) return;
         if (!_client.IsConnected)
         {
-            MessageBox.Show(this, "Verbind eerst met de Steam Deck.");
+            MessageBox.Show(this, "Connect to the Steam Deck first.");
             return;
         }
 
@@ -1899,14 +1899,14 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Map openen mislukt");
+            MessageBox.Show(ex.Message, "Could not open folder");
         }
     }
 
     private async Task ScanSilent()
     {
         if (!_client.IsConnected) return;
-        await RunBusy("Games scannen…", () =>
+        await RunBusy("Scanning games…", () =>
         {
             var games = _library.Scan(_client, _catalog);
             var installed = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
@@ -1942,7 +1942,7 @@ public partial class MainWindow : Window
     {
         if (_busy)
         {
-            MessageBox.Show(this, "Even wachten, er loopt al een taak.", AppBrand.ShortName);
+            MessageBox.Show(this, "Wait a moment, a task is already running.", AppBrand.ShortName);
             return;
         }
         _busy = true;
@@ -1978,7 +1978,7 @@ public partial class MainWindow : Window
     {
         var box = new TextBox { Text = initial, Margin = new Thickness(12, 4, 12, 12) };
         var ok = new Button { Content = "OK", Width = 80, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
-        var cancel = new Button { Content = "Annuleren", Width = 90, IsCancel = true };
+        var cancel = new Button { Content = "Cancel", Width = 90, IsCancel = true };
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,

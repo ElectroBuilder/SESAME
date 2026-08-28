@@ -17,10 +17,10 @@ public static class N64Rom
     public static byte[] ToZ64(byte[] rom)
     {
         if (rom.Length < 0x40)
-            throw new InvalidDataException("Bestand is te klein voor een N64-ROM.");
+            throw new InvalidDataException("File is too small for an N64 ROM.");
         if (rom[0] == (byte)'P' && rom[1] == (byte)'K')
             throw new InvalidDataException(
-                "Geen herkenbare N64-ROM (.z64 / .v64 / .n64). Dit zijn nog zip-bytes, geen ROM.");
+                "No recognizable N64 ROM (.z64 / .v64 / .n64). These are still zip bytes, not a ROM.");
         if (rom[0] == 0x80 && rom[1] == 0x37) return rom;
         var copy = (byte[])rom.Clone();
         if (rom[0] == 0x37 && rom[1] == 0x80)
@@ -38,7 +38,7 @@ public static class N64Rom
             }
             return copy;
         }
-        throw new InvalidDataException("Geen herkenbare N64-ROM (.z64 / .v64 / .n64).");
+        throw new InvalidDataException("No recognizable N64 ROM (.z64 / .v64 / .n64).");
     }
 
     public static string InternalName(byte[] z64)

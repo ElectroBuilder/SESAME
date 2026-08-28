@@ -8,45 +8,28 @@ SESAME scans ROMs, Hydra games and apps on a Steam Deck, writes **its own** Stea
 
 It runs in two ways:
 
-1. **Native on the Steam Deck** (SteamOS) — no SSH required  
-2. **From Windows over SSH** — same engine, full desktop UI
+1. **Native on the Steam Deck**
+2. **From Windows over SSH**
 
-## Downloads
+SESAME is unofficial and is not affiliated with Valve, Nintendo, or any other game publisher. Use it at your own risk. The authors are not liable for any loss, damage, or other consequences, in any way, arising from use of this software.
 
-GitHub Actions builds:
+## Steam Deck
 
-- Windows: `SESAME.exe` (WPF)
-- Linux x64 / Steam Deck: self-contained `SESAME` + `install.sh`
-
-## Steam Deck (local)
-
-On the Deck, in **Desktop Mode**:
+In Desktop Mode, no sudo:
 
 ```bash
-chmod +x install.sh
-./install.sh
+git clone https://github.com/ElectroBuilder/SESAME.git
+cd SESAME
+bash install.sh
 ```
 
-That copies SESAME to `~/Applications/SESAME`, installs `.desktop` files, and tries `steamos-add-to-steam` when available.
-
-| Mode | How |
-| --- | --- |
-| Desktop Mode | Applications menu, or `SESAME --desktop` |
-| Game Mode | Add `SESAME` as a non-Steam game, launch options: `--gamemode` |
-
-Game Mode uses large tiles and controller navigation (D-pad / stick, A confirm, B back, L/R tabs). Steam Input can also map those to keyboard keys.
-
-**Applying shortcuts** closes Steam briefly so `shortcuts.vdf` can be written. If SESAME itself was started from Game Mode, do that step in Desktop Mode (or via SSH) — otherwise Steam would quit the app.
-
-Grid artwork for the SESAME shortcut itself lives in `pack/steamdeck/` and `Assets/SteamDeck_Grids/`.
-
-### Flags
+That installs SESAME to `~/Applications/SESAME` and adds a desktop entry. The script downloads a prebuilt Linux build when one is available, or builds from source.
 
 ```
 SESAME --desktop      # windowed desktop UI
 SESAME --gamemode     # fullscreen controller UI
-SESAME --local        # force local filesystem (this machine)
-SESAME --remote       # do not auto-connect locally; use SSH
+SESAME --local        # this machine
+SESAME --remote       # SSH instead of local
 ```
 
 ## Windows (SSH)
@@ -57,9 +40,9 @@ dotnet run --project src\Sesame.Windows\Sesame.Windows.csproj
 
 Or open `SESAME.sln`.
 
-1. **Sessies…** — Deck IP, import private key  
-2. **Verbinden** — selected profile, then fallbacks, optional Wake-on-LAN  
-3. On a Steam Deck running SESAME itself, pick **Deze Steam Deck** (no SSH)
+1. **Sessions…** — Deck IP, import a private key
+2. **Connect** — selected profile, then fallbacks, optional Wake-on-LAN
+3. On a Steam Deck running SESAME itself, pick **This Steam Deck** (no SSH)
 
 ## Features
 
@@ -68,7 +51,7 @@ Or open `SESAME.sln`.
 - Store tab for mods / texture packs / ROM hacks (you supply your own dumps)
 - Optional in-game text tools (experimental)
 
-SESAME does not ship ROMs, keys, or copyrighted game assets.
+SESAME does not ship ROMs or copyrighted game assets.
 
 ## Build from source
 
@@ -88,8 +71,8 @@ dotnet publish src\Sesame.Deck\Sesame.Deck.csproj -c Release -r linux-x64 --self
 | `src/Sesame.Windows` | Windows WPF app |
 | `src/Sesame.Deck` | Avalonia app for SteamOS |
 | `Assets/` | Brand pack (icons, Steam grids) |
-| `pack/steamdeck/` | Installer and Deck artwork |
+| `install.sh` | Steam Deck / Linux installer |
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Provided “as is”, without warranty. Use at your own risk; the authors are not liable for anything that happens if you use SESAME.

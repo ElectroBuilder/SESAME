@@ -134,7 +134,7 @@ public static class DutchTranslator
         }
 
         Report(progress, total, lines, fromCache, fromCache > 0
-            ? $"{fromCache} uit cache. Rest aanvullen…"
+            ? $"{fromCache} from cache. Filling the rest…"
             : "Vertalen…");
 
         if (tryOnline)
@@ -144,8 +144,8 @@ public static class DutchTranslator
             {
                 Report(progress, total, lines, fromCache,
                     fromCache > 0
-                        ? $"{fromCache} uit cache. Niets meer online te vertalen."
-                        : "Niets meer online te vertalen.");
+                        ? $"{fromCache} from cache. Nothing left to translate online."
+                        : "Nothing left to translate online.");
             }
             else
             {
@@ -185,12 +185,12 @@ public static class DutchTranslator
                 var n = Interlocked.Increment(ref doneGroups[0]);
                 SaveCacheThrottled(cache);
                 Report(progress, total, lines, fromCache,
-                    $"Online vertalen… groep {n}/{groups.Count}");
+                    $"Translating online… group {n}/{groups.Count}");
             });
             }
         }
 
-        Report(progress, total, lines, fromCache, "Lokale afronding, zonder woord-voor-woord…");
+        Report(progress, total, lines, fromCache, "Local finish, not word-for-word…");
         foreach (var line in lines)
         {
             ct.ThrowIfCancellationRequested();
@@ -212,8 +212,8 @@ public static class DutchTranslator
         var pendingLeft = lines.Count(NeedsWork);
         var done = lines.Count(IsSettled);
         Report(progress, total, lines, fromCache, pendingLeft == 0
-            ? $"{done} van {total} klaar. Je kunt de ROM maken."
-            : $"{done} klaar · {pendingLeft} nog Engels (vaak namen of kreten).");
+            ? $"{done} of {total} done. You can build the ROM."
+            : $"{done} done · {pendingLeft} still English (often names or shouts).");
     }
 
     public static void Remember(string original, string translation, bool userEdit = false, int max = 254)

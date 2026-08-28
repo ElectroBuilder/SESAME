@@ -21,20 +21,20 @@
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="QueryBox" Grid.Column="0" Margin="0,0,8,0"
                          KeyDown="Query_KeyDown"
-                         ToolTip="Extra zoekwoorden binnen de gekozen game"/>
+                         ToolTip="Extra search words within the chosen game"/>
                 <ComboBox x:Name="GameBox" Grid.Column="1" Margin="0,0,8,0"
                           DisplayMemberPath="Label"
                           SelectionChanged="Game_Changed"
-                          ToolTip="Game-identiteit: platform + titel"/>
+                          ToolTip="Game identity: platform + title"/>
                 <ComboBox x:Name="KindBox" Grid.Column="2" Margin="0,0,8,0" SelectedIndex="0">
-                    <ComboBoxItem Content="Alles"/>
+                    <ComboBoxItem Content="All"/>
                     <ComboBoxItem Content="Mods"/>
-                    <ComboBoxItem Content="ROM-hacks"/>
+                    <ComboBoxItem Content="ROM hacks"/>
                     <ComboBoxItem Content="Texture packs"/>
                     <ComboBoxItem Content="Saves"/>
                 </ComboBox>
                 <ComboBox x:Name="SourceBox" Grid.Column="3" Margin="0,0,8,0" SelectedIndex="0">
-                    <ComboBoxItem Content="Alle bronnen"/>
+                    <ComboBoxItem Content="All sources"/>
                     <ComboBoxItem Content="GameBanana"/>
                     <ComboBoxItem Content="Emulation King"/>
                     <ComboBoxItem Content="HD Packs List"/>
@@ -43,25 +43,25 @@
                 </ComboBox>
                 <ComboBox x:Name="StatusFilterBox" Grid.Column="4" Margin="0,0,8,0" SelectedIndex="0"
                           SelectionChanged="StatusFilter_Changed"
-                          ToolTip="Toon alle, alleen gedownloade of alleen geïnstalleerde mods">
-                    <ComboBoxItem Content="Alle status"/>
-                    <ComboBoxItem Content="Gedownload"/>
-                    <ComboBoxItem Content="Geïnstalleerd"/>
+                          ToolTip="Show all, downloaded only, or installed mods only">
+                    <ComboBoxItem Content="Any status"/>
+                    <ComboBoxItem Content="Downloaded"/>
+                    <ComboBoxItem Content="Installed"/>
                 </ComboBox>
                 <ComboBox x:Name="SortBox" Grid.Column="5" Margin="0,0,8,0"
                           DisplayMemberPath="Label"
                           SelectionChanged="Sort_Changed"
-                          ToolTip="GameBanana-sortering (likes, downloads, nieuw, uitgelicht)"/>
-                <Button Grid.Column="6" Content="Zoeken" Style="{StaticResource AccentButton}" Click="Search_Click"/>
-                <Button Grid.Column="7" Content="Downloaden &amp; installeren" Click="Install_Click"
-                        ToolTip="Zet de geselecteerde mod in de wachtrij"/>
-                <Button Grid.Column="8" Content="Open pagina" Click="OpenPage_Click"/>
+                          ToolTip="GameBanana sort (likes, downloads, new, featured)"/>
+                <Button Grid.Column="6" Content="Search" Style="{StaticResource AccentButton}" Click="Search_Click"/>
+                <Button Grid.Column="7" Content="Download &amp; install" Click="Install_Click"
+                        ToolTip="Queue the selected mod"/>
+                <Button Grid.Column="8" Content="Open page" Click="OpenPage_Click"/>
             </Grid>
         </Border>
 
         <TextBlock x:Name="HintText" DockPanel.Dock="Bottom" Margin="10,2,10,6"
                    Foreground="{DynamicResource Muted}"
-                   Text="Kies een game (platform + titel). Extra woorden filteren binnen die identiteit."/>
+                   Text="Pick a game (platform + title). Extra words filter within that identity."/>
         <Border x:Name="GameHeader" DockPanel.Dock="Top" Padding="12,10"
                 Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Border}"
                 BorderThickness="0,0,0,1" Visibility="Collapsed">
@@ -108,12 +108,12 @@
                       ContextMenuOpening="ResultMenu_Opening">
                 <ListView.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Downloaden &amp; installeren" Click="Install_Click"/>
-                        <MenuItem x:Name="EnableMenu" Header="Inschakelen" Click="Enable_Click"/>
-                        <MenuItem x:Name="DisableMenu" Header="Uitschakelen" Click="Disable_Click"/>
-                        <MenuItem x:Name="DeleteMenu" Header="Verwijderen" Click="Delete_Click"/>
+                        <MenuItem Header="Download &amp; install" Click="Install_Click"/>
+                        <MenuItem x:Name="EnableMenu" Header="Enable" Click="Enable_Click"/>
+                        <MenuItem x:Name="DisableMenu" Header="Disable" Click="Disable_Click"/>
+                        <MenuItem x:Name="DeleteMenu" Header="Delete" Click="Delete_Click"/>
                         <Separator/>
-                        <MenuItem Header="Open pagina" Click="OpenPage_Click"/>
+                        <MenuItem Header="Open page" Click="OpenPage_Click"/>
                     </ContextMenu>
                 </ListView.ContextMenu>
                 <ListView.GroupStyle>
@@ -142,13 +142,13 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Titel" Width="240" DisplayMemberBinding="{Binding Title}"/>
-                        <GridViewColumn Header="Soort" Width="100" DisplayMemberBinding="{Binding Kind}"/>
-                        <GridViewColumn Header="Auteur" Width="120" DisplayMemberBinding="{Binding Author}"/>
-                        <GridViewColumn Header="Toegevoegd" Width="100" DisplayMemberBinding="{Binding AddedText}"/>
-                        <GridViewColumn Header="Bijgewerkt" Width="100" DisplayMemberBinding="{Binding UpdatedText}"/>
-                        <GridViewColumn Header="Bron" Width="110" DisplayMemberBinding="{Binding Source}"/>
-                        <GridViewColumn Header="Grootte" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
+                        <GridViewColumn Header="Title" Width="240" DisplayMemberBinding="{Binding Title}"/>
+                        <GridViewColumn Header="Kind" Width="100" DisplayMemberBinding="{Binding Kind}"/>
+                        <GridViewColumn Header="Author" Width="120" DisplayMemberBinding="{Binding Author}"/>
+                        <GridViewColumn Header="Added" Width="100" DisplayMemberBinding="{Binding AddedText}"/>
+                        <GridViewColumn Header="Updated" Width="100" DisplayMemberBinding="{Binding UpdatedText}"/>
+                        <GridViewColumn Header="Source" Width="110" DisplayMemberBinding="{Binding Source}"/>
+                        <GridViewColumn Header="Size" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
                         <GridViewColumn Header="Status" Width="170">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
@@ -203,7 +203,7 @@
                 <Border DockPanel.Dock="Top" Height="200" Background="{DynamicResource PanelAlt}"
                         BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
                     <Grid>
-                        <TextBlock x:Name="PreviewPlaceholder" Text="Geen screenshot"
+                        <TextBlock x:Name="PreviewPlaceholder" Text="No screenshot"
                                    Foreground="{DynamicResource Muted}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Image x:Name="PreviewImage" Stretch="Uniform" Margin="4"/>
@@ -236,12 +236,12 @@
                                TextWrapping="Wrap"/>
                     <TextBlock x:Name="DetailStatus" Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
                     <WrapPanel x:Name="DetailActions" Margin="0,12,0,0" Visibility="Collapsed">
-                        <Button x:Name="EnableBtn" Content="Inschakelen" Click="Enable_Click"
-                                ToolTip="Zet de Eden-mod aan (haalt het voorvoegsel disabled weg)"/>
-                        <Button x:Name="DisableBtn" Content="Uitschakelen" Click="Disable_Click"
-                                ToolTip="Zet de Eden-mod uit (mapnaam begint met disabled)"/>
-                        <Button x:Name="DeleteBtn" Content="Verwijderen" Click="Delete_Click"
-                                ToolTip="Verwijder de mod van de Deck en uit de lokale bibliotheek"/>
+                        <Button x:Name="EnableBtn" Content="Enable" Click="Enable_Click"
+                                ToolTip="Enable the Eden mod (removes the disabled prefix)"/>
+                        <Button x:Name="DisableBtn" Content="Disable" Click="Disable_Click"
+                                ToolTip="Disable the Eden mod (folder name starts with disabled)"/>
+                        <Button x:Name="DeleteBtn" Content="Delete" Click="Delete_Click"
+                                ToolTip="Remove the mod from the Deck and from the local library"/>
                     </WrapPanel>
                     <TextBlock x:Name="DetailRom" Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
                 </StackPanel>

@@ -82,7 +82,7 @@ public static class BkAssetTable
             .ToDictionary(g => g.Key, g => g.ToList());
 
         if (byAsset.Count == 0)
-            throw new InvalidDataException("Geen gewijzigde teksten om in de ROM te zetten.");
+            throw new InvalidDataException("No changed texts to write into the ROM.");
 
         Report(8, "Asset-tabel lezen…");
         var entries = Read(rom);
@@ -108,7 +108,7 @@ public static class BkAssetTable
                     shortenedAssets++;
                     fitted.AddRange(assetFitted);
                 }
-                Report(pct, $"Tekst klaar {i + 1}/{targets.Count} (asset {entry.Id:X4})", errors);
+                Report(pct, $"Text done {i + 1}/{targets.Count} (asset {entry.Id:X4})", errors);
             }
             catch (Exception ex)
             {
@@ -120,23 +120,23 @@ public static class BkAssetTable
 
         if (prepared.Count == 0)
             throw new InvalidDataException(
-                "Geen enkel tekstbestand kon worden opgebouwd." +
+                "No text file could be built." +
                 (lastError is null ? "" : " " + lastError));
 
-        Report(85, "In-place in de originele ROM-gaten zetten…", errors, lastError);
+        Report(85, "Writing in-place into the original ROM slots…", errors, lastError);
         var output = PatchInPlace(rom, entries, prepared, dataStart, out var crcTouched);
         if (crcTouched)
         {
-            Report(96, "Boot-checksum (CIC-6103) bijwerken…", errors, lastError);
+            Report(96, "Updating boot checksum (CIC-6103)…", errors, lastError);
             N64Rom.RecalcCrc(output);
         }
         else
-            Report(96, "Checksum ongewijzigd (dialoog buiten boot-gebied).", errors, lastError);
+            Report(96, "Checksum unchanged (dialogue outside boot area).", errors, lastError);
 
         var summary = shortenedAssets == 0
-            ? $"{prepared.Count} teksten gezet in de originele gaten."
-            : $"{prepared.Count} teksten gezet. {shortenedAssets} bestanden waren te lang voor het gat; " +
-              "die zinnen zijn ingekort zodat de ROM wél start (geen tabel-herbouw).";
+            ? $"{prepared.Count} texts written into the original slots."
+            : $"{prepared.Count} texts written. {shortenedAssets} files were too long for the slot; " +
+              "those lines were shortened so the ROM still starts (no table rebuild).";
         Report(99, summary, errors, lastError);
         return new RomBuildResult
         {

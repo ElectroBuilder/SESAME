@@ -244,7 +244,7 @@ public static class ArchiveSearch
 
     private static bool KindWanted(string kind, string classified)
     {
-        if (kind.Equals("Alles", StringComparison.OrdinalIgnoreCase)) return true;
+        if (kind.Equals("All", StringComparison.OrdinalIgnoreCase)) return true;
         if (kind.Equals("Texture packs", StringComparison.OrdinalIgnoreCase)) return classified == "Texture pack";
         if (kind.Equals("ROM-hacks", StringComparison.OrdinalIgnoreCase)) return classified == "ROM-hack";
         if (kind.Equals("Mods", StringComparison.OrdinalIgnoreCase)) return classified is "Mod" or "ROM-hack" or "Texture pack";

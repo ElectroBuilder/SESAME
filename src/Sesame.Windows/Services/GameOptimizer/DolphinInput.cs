@@ -11,11 +11,11 @@ public static class DolphinInput
     public const string ProfileName = "SESAME-gyro";
 
     public const string DutchGyroHint =
-        "Wii-gyro: SESAME zet een emulated Wiimote met Steam Deck-IMU (hidraw) en IR via muis als fallback. " +
-        "Optimaliseer Wii-games opnieuw en start ze in Game Mode. " +
-        "Joy-Con of 8BitDo (Bluetooth/Switch): zet Steam Input voor díe controller op Uit als de gyro van de controller zelf moet werken. " +
-        "8BitDo Ultimate 2,4 GHz (XInput) heeft geen gyro — gebruik Switch-modus of de Deck-gyro. " +
-        "Optioneel in Steam: gyro als muis voor de IR-aanwijzer.";
+        "Wii gyro: SESAME sets an emulated Wiimote with Steam Deck IMU (hidraw) and IR via mouse as fallback. " +
+        "Optimize Wii games again and start them in Game Mode. " +
+        "Joy-Con or 8BitDo (Bluetooth/Switch): set Steam Input for that controller to Off if the controller's own gyro should work. " +
+        "8BitDo Ultimate 2.4 GHz (XInput) has no gyro — use Switch mode or the Deck gyro. " +
+        "Optional in Steam: gyro as mouse for the IR pointer.";
 
     public static string WrapperPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, WrapperName);

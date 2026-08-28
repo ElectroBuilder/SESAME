@@ -17,20 +17,36 @@ public static class SshSecrets
     public static bool HasPassphrase(string profileId) => SecretStore.Exists(PassphraseName(profileId));
     public static bool HasPassword(string profileId) => SecretStore.Exists(PasswordName(profileId));
 
-    /// <returns>True als de sleutel een wachtwoordzin nodig heeft.</returns>
+    /// <returns>True if the key needs a passphrase.</returns>
     public static bool ImportFromFile(string profileId, string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-            throw new FileNotFoundException("Sleutelbestand niet gevonden.");
+            throw new FileNotFoundException("Key file not found.");
+        if (path.EndsWith(".pub", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                "That is a public key (.pub). Import the private key next to it — the file without .pub, for example steam_deck (not steam_deck.pub).");
+
         var info = new FileInfo(path);
         if (info.Length is 0 or > MaxKeyBytes)
-            throw new InvalidOperationException("Dit bestand ziet er niet uit als een SSH-sleutel.");
+            throw new InvalidOperationException("This file does not look like an SSH private key.");
 
-        var text = File.ReadAllText(path).Trim();
+        string text;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            text = reader.ReadToEnd().Trim();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw new InvalidOperationException(
+                "Windows blocked reading that file. Copy the private key to your Desktop and import it from there.");
+        }
         if (text.Length == 0)
-            throw new InvalidOperationException("Het sleutelbestand is leeg.");
+            throw new InvalidOperationException("The key file is empty.");
         if (!LooksLikePrivateKey(text))
-            throw new InvalidOperationException("Geen herkenbare SSH-private-key in dit bestand.");
+            throw new InvalidOperationException(
+                "No SSH private key found in this file. Choose the private key (often named steam_deck, id_rsa or id_ed25519), not the .pub file.");
 
         var needsPass = LooksEncrypted(text);
         if (!needsPass)
@@ -46,11 +62,19 @@ public static class SshSecrets
             catch
             {
                 throw new InvalidOperationException(
-                    "Sleutel kon niet worden gelezen. Is het een OpenSSH- of PuTTY-private-key?");
+                    "The key could not be read. Use an OpenSSH or PuTTY private key (not a .pub file).");
             }
         }
 
-        SecretStore.Save(KeyName(profileId), text);
+        try
+        {
+            SecretStore.Save(KeyName(profileId), text);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw new InvalidOperationException(
+                "Windows blocked saving the key in %APPDATA%\\SESAME\\secrets. Close other SESAME windows and try Import again.");
+        }
         return needsPass;
     }
 

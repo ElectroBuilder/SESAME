@@ -47,7 +47,7 @@ public static class RomOutput
         Task.Run(() =>
         {
             ct.ThrowIfCancellationRequested();
-            progress?.Invoke(97, "Bestand schrijven…");
+            progress?.Invoke(97, "Writing file…");
 
             var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             var destName = Path.GetFileNameWithoutExtension(fileName) + " " + stamp + Path.GetExtension(fileName);
@@ -58,7 +58,7 @@ public static class RomOutput
             {
                 File.WriteAllBytes(tmp, rom);
                 ct.ThrowIfCancellationRequested();
-                progress?.Invoke(99, "Bestand afronden…");
+                progress?.Invoke(99, "Finishing file…");
                 File.Move(tmp, dest);
             }
             finally
@@ -73,12 +73,12 @@ public static class RomOutput
             if (!File.Exists(dest) || new FileInfo(dest).Length != rom.Length)
                 throw new IOException("Het ROM-bestand is niet volledig weggeschreven.");
 
-            progress?.Invoke(100, "ROM klaar.");
+            progress?.Invoke(100, "ROM ready.");
             return new RomSaveResult
             {
                 Path = dest,
                 UsedLocalFallback = false,
-                Message = "Bestand: " + dest
+                Message = "File: " + dest
             };
         }, ct);
 }

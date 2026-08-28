@@ -110,7 +110,7 @@ public sealed class HdPacksIndex
 
     private static bool KindMatches(string kind, string rowKind)
     {
-        if (kind.Equals("Alles", StringComparison.OrdinalIgnoreCase)) return true;
+        if (kind.Equals("All", StringComparison.OrdinalIgnoreCase)) return true;
         if (kind.Equals("Saves", StringComparison.OrdinalIgnoreCase)) return rowKind == "Save";
         if (kind.Equals("Mods", StringComparison.OrdinalIgnoreCase)) return false;
         return rowKind != "Save";

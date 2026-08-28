@@ -25,14 +25,14 @@ public sealed class PackStore
     public bool HasMore => _bananaHasMore;
 
     public const string LegalHackNl =
-        "ROM-hacks zijn community-patches, geen vervangende ROMs. U moet zelf een legale dump van een originele cartridge verzorgen. SESAME levert geen auteursrechtelijk beschermde ROMs. De patch is fanwerk en bevat geen Nintendo-code.";
+        "ROM hacks are community patches, not replacement ROMs. You must supply a legal dump of an original cartridge. SESAME does not ship copyrighted ROMs. The patch is fan work and contains no Nintendo code.";
 
     public async Task<IReadOnlyList<PackHit>> SearchAsync(string query, string source, string kind,
         StoreGame? game, StoreSort? sort = null, CancellationToken ct = default)
     {
         query = query.Trim();
         game ??= StoreGame.All;
-        kind = string.IsNullOrWhiteSpace(kind) ? "Alles" : kind;
+        kind = string.IsNullOrWhiteSpace(kind) ? "All" : kind;
         _lastQuery = query;
         _lastSource = source;
         _lastKind = kind;
@@ -58,11 +58,11 @@ public sealed class PackStore
         if (!game.IsAll)
             await EnsureBananaIds(game, ct);
 
-        var allSources = source.Equals("Alle bronnen", StringComparison.OrdinalIgnoreCase)
+        var allSources = source.Equals("All sources", StringComparison.OrdinalIgnoreCase)
                          || source.Equals("Beide", StringComparison.OrdinalIgnoreCase);
-        var wantMods = KindIs(kind, "Alles", "Mods", "ROM-hacks");
-        var wantTex = KindIs(kind, "Alles", "Texture packs");
-        var wantSaves = KindIs(kind, "Alles", "Saves");
+        var wantMods = KindIs(kind, "All", "Mods", "ROM-hacks");
+        var wantTex = KindIs(kind, "All", "Texture packs");
+        var wantSaves = KindIs(kind, "All", "Saves");
         var wantBanana = allSources || source.Equals("GameBanana", StringComparison.OrdinalIgnoreCase);
         var wantArchive = source.Equals("Internet Archive", StringComparison.OrdinalIgnoreCase)
                           || (allSources && !game.IsAll);
@@ -120,12 +120,12 @@ public sealed class PackStore
     {
         var info = new StoreGameInfo
         {
-            Name = game.IsAll ? "Alle games" : game.Name,
+            Name = game.IsAll ? "All games" : game.Name,
             System = game.System,
             IdentityText = game.IdentityText,
-            Meta = game.IsAll ? "Kies een game in de lijst" : BuildLocalMeta(game),
+            Meta = game.IsAll ? "Pick a game in the list" : BuildLocalMeta(game),
             Description = game.IsAll
-                ? "Kies een game om mods, texture packs en saves te zoeken op platform + titel + IDs."
+                ? "Pick a game to search mods, texture packs and saves by platform + title + IDs."
                 : BuildLocalDescription(game),
             PageUrl = game.GameBananaIds.Count > 0
                 ? "https://gamebanana.com/games/" + game.GameBananaIds[0]
@@ -167,9 +167,9 @@ public sealed class PackStore
 
     private static string BuildLocalDescription(StoreGame game)
     {
-        var bits = new List<string> { $"{game.Name} voor {game.System}." };
+        var bits = new List<string> { $"{game.Name} for {game.System}." };
         if (game.GameBananaIds.Count > 0)
-            bits.Add("Mods en bestanden worden gezocht via GameBanana-game-ID " +
+            bits.Add("Mods and files are searched via GameBanana game ID " +
                      string.Join(", ", game.GameBananaIds.Select(id => "#" + id)) + ".");
         if (!string.IsNullOrEmpty(game.TitleId))
             bits.Add("Switch Title ID " + game.TitleId + ".");
@@ -360,7 +360,7 @@ public sealed class PackStore
         var url = hit.DownloadUrl;
         if (string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(hit.ItemId))
         {
-            progress?.Invoke(0, "Downloadlink ophalen…", true);
+            progress?.Invoke(0, "Fetching download link…", true);
             var file = await ResolveGameBananaFile(hit.ItemId, ct);
             url = file.Url;
             hit.FileName ??= file.Name;
@@ -369,7 +369,7 @@ public sealed class PackStore
         if (string.IsNullOrEmpty(url) && PackUrl.CanResolve(hit.PageUrl))
             url = await ResolvePageDownload(hit.PageUrl, ct) ?? hit.PageUrl;
         if (string.IsNullOrEmpty(url))
-            throw new InvalidOperationException("Geen downloadlink. Open de pagina in de browser.");
+            throw new InvalidOperationException("No download link. Open the page in the browser.");
 
         var name = string.IsNullOrWhiteSpace(hit.FileName) ? GuessFileName(url) : hit.FileName;
         name = Sanitize(name);
@@ -400,15 +400,15 @@ public sealed class PackStore
             if (total > 0)
             {
                 var pct = read * 100.0 / total;
-                progress?.Invoke(pct, $"Downloaden {RemoteItem.FormatSize(read)} / {RemoteItem.FormatSize(total)}", false);
+                progress?.Invoke(pct, $"Downloading {RemoteItem.FormatSize(read)} / {RemoteItem.FormatSize(total)}", false);
             }
             else
-                progress?.Invoke(0, "Downloaden " + RemoteItem.FormatSize(read), true);
+                progress?.Invoke(0, "Downloading " + RemoteItem.FormatSize(read), true);
         }
         if (hit.Size <= 0) hit.Size = read;
         if (LooksLikeRomHack(hit.Title, hit.Summary, hit.Kind, hit.FileName ?? name, hit.Platform))
             hit.Kind = "ROM-hack";
-        progress?.Invoke(100, "Gedownload", false);
+        progress?.Invoke(100, "Downloaded", false);
         return dest;
     }
 
@@ -998,8 +998,8 @@ public sealed class PackStore
                     ImageUrl = images.FirstOrDefault(),
                     ScreenshotUrls = images,
                     Summary = string.IsNullOrEmpty(download)
-                        ? "Open de pagina voor de download"
-                        : "Directe download gevonden"
+                        ? "Open the page for the download"
+                        : "Direct download found"
                 });
             }
             catch

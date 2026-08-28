@@ -43,9 +43,9 @@ public static class RomContainer
     private static byte[] ReadRom(string path, string? preferName, int depth)
     {
         if (depth > MaxNesting)
-            throw new InvalidDataException("Te veel geneste archieven in " + Path.GetFileName(path));
+            throw new InvalidDataException("Too many nested archives in " + Path.GetFileName(path));
         if (!File.Exists(path))
-            throw new FileNotFoundException("ROM niet gevonden: " + path);
+            throw new FileNotFoundException("ROM not found: " + path);
 
         var raw = File.ReadAllBytes(path);
         if (!IsArchivePath(path) && !IsArchiveBytes(raw))
@@ -151,7 +151,7 @@ public static class RomContainer
     private static byte[] PickRom(List<(string Name, byte[] Data)> items, string? preferName, int depth)
     {
         if (items.Count == 0)
-            throw new InvalidDataException("Het archief heeft geen uitpakbare bestanden.");
+            throw new InvalidDataException("The archive has no extractable files.");
 
         var resolved = new List<(string Name, byte[] Data)>(items.Count);
         foreach (var (name, data) in items)
@@ -178,7 +178,7 @@ public static class RomContainer
         var usable = resolved.Where(x => !IsArchiveBytes(x.Data)).ToList();
         if (usable.Count == 0)
             throw new InvalidDataException(
-                "Geen herkenbare ROM in archief. Bestanden: " +
+                "No recognizable ROM in archive. Files: " +
                 string.Join(", ", items.Select(x => NormalizeEntry(x.Name))));
 
         return usable.OrderByDescending(x => Score(x.Name, preferName, x.Data.Length, n64: false)).First().Data;

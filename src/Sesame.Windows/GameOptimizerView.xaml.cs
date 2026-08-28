@@ -36,7 +36,7 @@ public partial class GameOptimizerView : UserControl
         _view = (ListCollectionView)CollectionViewSource.GetDefaultView(_games);
         _view.Filter = FilterGame;
         GameList.ItemsSource = _view;
-        SystemFilter.Items.Add("Alle systemen");
+        SystemFilter.Items.Add("All systems");
         SystemFilter.SelectedIndex = 0;
         _loadingMask = true;
         MaskBox.IsChecked = OptimizerSettings.UseMasks;
@@ -65,7 +65,7 @@ public partial class GameOptimizerView : UserControl
         var cached = OptimizerLibraryCache.Load(CacheKey(), CacheHost());
         if (cached.Count == 0) return;
         ApplyScanResults(cached, prefetch: true);
-        HintText.Text = $"{_games.Count} games uit cache van deze Deck. Op de achtergrond opnieuw scannen…";
+        HintText.Text = $"{_games.Count} games from this Deck cache. Scanning again in the background…";
         StatusChanged?.Invoke($"Game Optimizer: {_games.Count} games (cache)");
     }
 
@@ -106,8 +106,8 @@ public partial class GameOptimizerView : UserControl
     private void UpdateHint()
     {
         HintText.Text = OptimizerSettings.HasSteamGridDb
-            ? "Deze verbonden Deck wordt live gescand: ROMs, Hydra-library en apps zoals Kodi. SESAME schrijft alleen eigen shortcuts."
-            : "Zet in Instellingen een SteamGridDB-sleutel om covers te krijgen.";
+            ? "This connected Deck is scanned live: ROMs, Hydra library and apps such as Kodi. SESAME writes its own shortcuts only."
+            : "Set a SteamGridDB key in Settings to get covers.";
     }
 
     private async Task ScanInBackgroundAsync()
@@ -117,8 +117,8 @@ public partial class GameOptimizerView : UserControl
         _scanCts?.Cancel();
         var cts = new CancellationTokenSource();
         _scanCts = cts;
-        HintText.Text = "Op de achtergrond scannen…";
-        StatusChanged?.Invoke("Game Optimizer: scannen…");
+        HintText.Text = "Scanning in the background…";
+        StatusChanged?.Invoke("Game Optimizer: scanning…");
         try
         {
             var catalog = _catalog;
@@ -131,7 +131,7 @@ public partial class GameOptimizerView : UserControl
             ApplyScanResults(games, prefetch: true);
             Persist();
             var ready = games.Count(g => !string.IsNullOrEmpty(g.Target));
-            HintText.Text = $"{games.Count} games gevonden, {ready} met emulator. Wijzigingen worden bewaard.";
+            HintText.Text = $"{games.Count} games found, {ready} with emulator. Changes are saved.";
             StatusChanged?.Invoke($"Game Optimizer: {games.Count} games");
         }
         catch (OperationCanceledException)
@@ -140,8 +140,8 @@ public partial class GameOptimizerView : UserControl
         }
         catch (Exception ex)
         {
-            HintText.Text = "Scannen mislukt: " + ex.Message;
-            StatusChanged?.Invoke("Game Optimizer: scannen mislukt");
+            HintText.Text = "Scan failed: " + ex.Message;
+            StatusChanged?.Invoke("Game Optimizer: scan failed");
         }
         finally
         {
@@ -158,7 +158,7 @@ public partial class GameOptimizerView : UserControl
             old.PropertyChanged -= Game_PropertyChanged;
         _games.Clear();
         SystemFilter.Items.Clear();
-        SystemFilter.Items.Add("Alle systemen");
+        SystemFilter.Items.Add("All systems");
         foreach (var system in games.Select(g => g.SystemName).Distinct().OrderBy(s => s))
             SystemFilter.Items.Add(system);
         if (filter is not null && SystemFilter.Items.Contains(filter))
@@ -214,12 +214,12 @@ public partial class GameOptimizerView : UserControl
         var selected = _games.Where(g => g.Selected).ToList();
         if (selected.Count == 0)
         {
-            MessageBox.Show("Selecteer minstens één game.", "Game Optimizer");
+            MessageBox.Show("Select at least one game.", "Game Optimizer");
             return;
         }
         if (_client is not { IsConnected: true })
         {
-            MessageBox.Show("Verbind eerst met de Steam Deck.", "Game Optimizer");
+            MessageBox.Show("Connect to the Steam Deck first.", "Game Optimizer");
             return;
         }
 
@@ -228,11 +228,11 @@ public partial class GameOptimizerView : UserControl
         var steamNote = kind switch
         {
             DeckSessionKind.GameMode =>
-                "Steam wordt altijd even gepauzeerd. SESAME schakelt kort naar Desktop Mode, schrijft alleen eigen shortcuts en collecties, en zet Game Mode daarna weer aan.",
+                "Steam is always paused briefly. SESAME switches to Desktop Mode, writes its own shortcuts and collections only, then turns Game Mode back on.",
             DeckSessionKind.Desktop =>
-                "Steam wordt altijd even gepauzeerd. Steam Desktop stopt kort zodat shortcuts, artwork en collecties geschreven kunnen worden.",
+                "Steam is always paused briefly. Steam Desktop stops shortly so shortcuts, artwork and collections can be written.",
             _ =>
-                "Steam wordt altijd even gepauzeerd zodat shortcuts, artwork en collecties veilig geschreven kunnen worden."
+                "Steam is always paused briefly so shortcuts, artwork and collections can be written safely."
         };
 
         var dlg = new OptimizeOptionsWindow { Owner = Window.GetWindow(this) };
@@ -278,13 +278,13 @@ public partial class GameOptimizerView : UserControl
     {
         if (_client is not { IsConnected: true } || _catalog is null)
         {
-            MessageBox.Show("Verbind eerst met de Steam Deck.", "Game Optimizer");
+            MessageBox.Show("Connect to the Steam Deck first.", "Game Optimizer");
             return;
         }
         if (_busy) return;
         if (!_games.Any(g => g.Selected))
         {
-            MessageBox.Show("Selecteer minstens één game.", "Game Optimizer");
+            MessageBox.Show("Select at least one game.", "Game Optimizer");
             return;
         }
 
@@ -301,8 +301,8 @@ public partial class GameOptimizerView : UserControl
         });
         ShowProgress(new OptimizeProgress
         {
-            Title = "Optimaliseren",
-            Detail = "Bezig…",
+            Title = "Optimize",
+            Detail = "Working…",
             Indeterminate = true
         });
         OptimizeReport? report = null;
@@ -335,7 +335,7 @@ public partial class GameOptimizerView : UserControl
             ProgressOverlay.Visibility = Visibility.Visible;
             _progressStarted = DateTime.UtcNow;
         }
-        OverlayTitle.Text = string.IsNullOrWhiteSpace(p.Title) ? "Bezig…" : p.Title;
+        OverlayTitle.Text = string.IsNullOrWhiteSpace(p.Title) ? "Working…" : p.Title;
         OverlayDetail.Text = p.Detail ?? "";
         OverlayCount.Text = p.Total > 0
             ? (p.Current > 0 ? $"Game {p.Current}/{p.Total}" : $"{p.Total} games")
@@ -368,12 +368,12 @@ public partial class GameOptimizerView : UserControl
         var elapsed = DateTime.UtcNow - _progressStarted;
         if (elapsed.TotalSeconds < 3) return "";
         var remain = TimeSpan.FromSeconds(elapsed.TotalSeconds * (100 - percent) / percent);
-        if (remain.TotalSeconds < 8) return "Bijna klaar…";
+        if (remain.TotalSeconds < 8) return "Almost done…";
         if (remain.TotalHours >= 1)
-            return $"Nog ongeveer {remain.Hours} u {remain.Minutes} min";
+            return $"About {remain.Hours} h {remain.Minutes} min left";
         if (remain.TotalMinutes >= 1.5)
-            return $"Nog ongeveer {Math.Ceiling(remain.TotalMinutes)} min";
-        return $"Nog ongeveer {Math.Max(10, Math.Ceiling(remain.TotalSeconds / 5) * 5)} s";
+            return $"About {Math.Ceiling(remain.TotalMinutes)} min left";
+        return $"About {Math.Max(10, Math.Ceiling(remain.TotalSeconds / 5) * 5)} s left";
     }
 
     private void Filter_Changed(object sender, SelectionChangedEventArgs e) => _view.Refresh();
@@ -387,7 +387,7 @@ public partial class GameOptimizerView : UserControl
     {
         if (obj is not OptimizerGame game) return false;
         if (SystemFilter.SelectedItem is string system &&
-            system != "Alle systemen" &&
+            system != "All systems" &&
             !string.Equals(game.SystemName, system, StringComparison.OrdinalIgnoreCase))
             return false;
         var q = SearchBox.Text?.Trim();
@@ -794,7 +794,7 @@ public partial class GameOptimizerView : UserControl
             old.PropertyChanged -= Game_PropertyChanged;
         _games.Clear();
         SystemFilter.Items.Clear();
-        SystemFilter.Items.Add("Alle systemen");
+        SystemFilter.Items.Add("All systems");
         SystemFilter.SelectedIndex = 0;
     }
 

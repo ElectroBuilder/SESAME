@@ -22,10 +22,8 @@ public static class SecretStore
         }
 
         var protectedBytes = Protect(Encoding.UTF8.GetBytes(value));
-        File.WriteAllBytes(path, protectedBytes);
+        WriteSecretFile(path, protectedBytes);
         AppDataPaths.RestrictFile(path);
-        try { File.SetAttributes(path, File.GetAttributes(path) | FileAttributes.Hidden); }
-        catch { /* verborgen is optioneel */ }
     }
 
     public static string Load(string name)
@@ -34,6 +32,7 @@ public static class SecretStore
         {
             var path = FilePath(CleanName(name));
             if (!File.Exists(path)) return "";
+            MakeWritable(path);
             var raw = File.ReadAllBytes(path);
             var bytes = Unprotect(raw, out var fromLegacy);
             var text = Encoding.UTF8.GetString(bytes);
@@ -67,11 +66,66 @@ public static class SecretStore
         try
         {
             var path = FilePath(CleanName(name));
+            if (!File.Exists(path)) return;
+            MakeWritable(path);
+            File.Delete(path);
+        }
+        catch
+        {
+            /* delete is best-effort */
+        }
+    }
+
+    private static void WriteSecretFile(string path, byte[] bytes)
+    {
+        MakeWritable(path);
+        var tmp = path + ".tmp";
+        MakeWritable(tmp);
+        try
+        {
+            if (File.Exists(tmp)) File.Delete(tmp);
+            File.WriteAllBytes(tmp, bytes);
+            if (File.Exists(path))
+            {
+                MakeWritable(path);
+                File.Delete(path);
+            }
+            File.Move(tmp, path);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            MakeWritable(path);
+            File.WriteAllBytes(path, bytes);
+            TryDelete(tmp);
+        }
+        finally
+        {
+            TryDelete(tmp);
+        }
+    }
+
+    private static void MakeWritable(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return;
+            File.SetAttributes(path, FileAttributes.Normal);
+        }
+        catch
+        {
+            /* attributes are best-effort */
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
             if (File.Exists(path)) File.Delete(path);
         }
         catch
         {
-            /* wissen is best-effort */
+            /* temp cleanup is optional */
         }
     }
 

@@ -34,7 +34,7 @@ public sealed class ConnectionProfile : INotifyPropertyChanged
     public static ConnectionProfile LocalDeck() => new()
     {
         Id = "local",
-        Name = "Deze Steam Deck",
+        Name = "This Steam Deck",
         Host = "local",
         Port = 0,
         User = Environment.UserName,
@@ -97,7 +97,7 @@ public sealed class RemoteItem
     public DateTime LastWrite { get; set; }
     public string Glyph => IsDirectory ? "\uE8B7" : "\uE8A5";
     public string SizeText => IsDirectory ? "" : FormatSize(Size);
-    public string Kind => IsDirectory ? "Map" : "Bestand";
+    public string Kind => IsDirectory ? "Folder" : "File";
     public string Label => string.IsNullOrWhiteSpace(DisplayName) ? Name : DisplayName;
     public bool HasAlias => !string.IsNullOrWhiteSpace(DisplayName) &&
                             !string.Equals(DisplayName, Name, StringComparison.Ordinal);
@@ -164,12 +164,12 @@ public sealed class GameEntry
         }
     }
     public string KindText =>
-        IsTranslation ? "Vertaling" : IsRomHack ? "ROM-hack" : "—";
+        IsTranslation ? "Translation" : IsRomHack ? "ROM-hack" : "—";
 }
 
 public sealed class StoreGame
 {
-    public static StoreGame All { get; } = new() { Name = "Alle games" };
+    public static StoreGame All { get; } = new() { Name = "All games" };
 
     public string Name { get; set; } = "";
     public string System { get; set; } = "";
@@ -184,9 +184,9 @@ public sealed class StoreGame
 
     public bool IsAll =>
         string.IsNullOrWhiteSpace(System) &&
-        (string.IsNullOrWhiteSpace(Name) || Name.Equals("Alle games", StringComparison.OrdinalIgnoreCase));
+        (string.IsNullOrWhiteSpace(Name) || Name.Equals("All games", StringComparison.OrdinalIgnoreCase));
 
-    public string Label => IsAll ? "Alle games" : $"{System} · {Name}";
+    public string Label => IsAll ? "All games" : $"{System} · {Name}";
 
     public string IdentityText
     {
@@ -749,7 +749,7 @@ public sealed class PackHit : INotifyPropertyChanged
             else if (!string.IsNullOrWhiteSpace(TargetPath))
                 parts.Add("Doel: " + TargetPath);
             if (!string.IsNullOrWhiteSpace(LocalFile))
-                parts.Add("Lokaal: " + LocalFile);
+                parts.Add("Local: " + LocalFile);
             return string.Join(Environment.NewLine, parts);
         }
     }
@@ -761,7 +761,7 @@ public sealed class PackHit : INotifyPropertyChanged
         ProgressUnknown = false;
         Progress = 0;
         StatusKind = "busy";
-        StatusText = position <= 1 ? "In wachtrij…" : "In wachtrij (" + position + ")";
+        StatusText = position <= 1 ? "Queued…" : "Queued (" + position + ")";
     }
 
     public void SetWork(string text, double progress, bool unknown = false)
@@ -785,12 +785,12 @@ public sealed class PackHit : INotifyPropertyChanged
         if (IsInstalled)
         {
             StatusKind = "ok";
-            StatusText = "Geïnstalleerd";
+            StatusText = "Installed";
         }
         else if (IsDownloaded)
         {
             StatusKind = "local";
-            StatusText = "Gedownload";
+            StatusText = "Downloaded";
         }
         else
         {
@@ -810,7 +810,7 @@ public sealed class PackHit : INotifyPropertyChanged
         ProgressUnknown = false;
         Progress = 100;
         StatusKind = IsEnabled ? "ok" : "off";
-        StatusText = IsEnabled ? "Geïnstalleerd" : "Uitgeschakeld";
+        StatusText = IsEnabled ? "Installed" : "Disabled";
     }
 
     public void SetEnabled(bool enabled)
@@ -820,7 +820,7 @@ public sealed class PackHit : INotifyPropertyChanged
         IsBusy = false;
         IsQueued = false;
         StatusKind = enabled ? "ok" : "off";
-        StatusText = enabled ? "Geïnstalleerd" : "Uitgeschakeld";
+        StatusText = enabled ? "Installed" : "Disabled";
     }
 
     public void ClearLocal()
@@ -909,5 +909,5 @@ public sealed class TransferJob
 {
     public string Name { get; set; } = "";
     public string Direction { get; set; } = "";
-    public string Status { get; set; } = "Bezig";
+    public string Status { get; set; } = "Working";
 }

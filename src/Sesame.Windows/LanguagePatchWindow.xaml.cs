@@ -48,7 +48,7 @@ public partial class LanguagePatchWindow : Window
         OnlineBtn.IsEnabled = false;
         try
         {
-            StatusText.Text = "Tekst zoeken in de ROM…";
+            StatusText.Text = "Searching for text in the ROM…";
             var extracted = await Task.Run(() => LanguagePatcher.Extract(_rom, msg =>
                 Dispatcher.Invoke(() => StatusText.Text = msg)));
             _lines.Clear();
@@ -60,29 +60,29 @@ public partial class LanguagePatchWindow : Window
             PhraseGrid.ItemsSource = DutchIdioms.Scan(_lines);
             if (_lines.Any(l => l.Codec == "dk64"))
                 HintText.Text =
-                    "Donkey Kong 64-teksttabel herkend. Alleen echte in-game zinnen staan in de tabel. " +
-                    "Een Nederlandse zin moet in het originele vak passen. Het origineel blijft staan.";
+                    "Donkey Kong 64 text table recognized. Only real in-game sentences are in the table. " +
+                    "A Dutch sentence must fit the original slot. The original file stays.";
             else if (_lines.Any(l => l.Codec == "sm64"))
                 HintText.Text =
-                    "Super Mario 64: elke dialoog wordt als geheel vertaald (verhaal en grap, geen losse woorden). " +
-                    "Een Nederlandse zin moet in het originele vak passen. Het origineel blijft staan.";
+                    "Super Mario 64: each dialogue is translated as a whole (story and joke, not loose words). " +
+                    "A Dutch sentence must fit the original slot. The original file stays.";
             else if (_lines.Any(l => l.Generic))
                 HintText.Text =
-                    "Geen Banjo-dialoogtabel. SESAME zoekt Engelse zinnen (ASCII of uitgepakte Rare-blokken) " +
-                    "en slaat binaire rommel over. Games met een eigen lettertype tonen niet alles. " +
-                    "Te lange zinnen worden afgekapt. Het origineel blijft staan.";
-            UpdateProgress(new TranslateProgress { Total = _lines.Count, Done = 0, Message = "Klaar om te vertalen…" });
+                    "No Banjo dialogue table. SESAME looks for English sentences (ASCII or unpacked Rare blocks) " +
+                    "and skips binary junk. Games with their own font will not show everything. " +
+                    "Lines that are too long are truncated. The original file stays.";
+            UpdateProgress(new TranslateProgress { Total = _lines.Count, Done = 0, Message = "Ready to translate…" });
             if (_lines.Count == 0)
             {
-                StatusText.Text = "Geen Engelse dialoog gevonden in deze dump.";
+                StatusText.Text = "No English dialogue found in this dump.";
                 return;
             }
 
             await TranslateNow(tryOnline: true);
             var pending = _lines.Count(DutchTranslator.IsPending);
             StatusText.Text = pending == 0
-                ? $"{_lines.Count} zinnen klaar (natuurlijk Nederlands, geen woord-voor-woord)."
-                : $"{_lines.Count - pending} klaar · {pending} nog open. Gebruik Online vertalen als een zin Engels blijft.";
+                ? $"{_lines.Count} lines done (natural Dutch, not word-for-word)."
+                : $"{_lines.Count - pending} done · {pending} still open. Use Translate online if a line stays English.";
 
             _view?.Refresh();
             ApplyBtn.IsEnabled = true;
@@ -90,7 +90,7 @@ public partial class LanguagePatchWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = ex.Message;
-            MessageBox.Show(this, ex.Message, "Taalpatch");
+            MessageBox.Show(this, ex.Message, "Language patch");
         }
         finally
         {
@@ -105,8 +105,8 @@ public partial class LanguagePatchWindow : Window
         if (string.IsNullOrWhiteSpace(typed))
         {
             StatusText.Text = TranslateSettings.HasDeepL
-                ? "Er is al een sleutel opgeslagen. Typ een nieuwe om die te vervangen."
-                : "Plak eerst een DeepL-sleutel.";
+                ? "A key is already stored. Type a new one to replace it."
+                : "Paste a DeepL key first.";
             UpdateDeepLStatus();
             return;
         }
@@ -114,27 +114,27 @@ public partial class LanguagePatchWindow : Window
         TranslateSettings.SaveDeepLKey(typed);
         DeepLKeyBox.Clear();
         UpdateDeepLStatus();
-        StatusText.Text = "DeepL-sleutel opgeslagen. Klik op Online vertalen voor contextuele zinnen.";
+        StatusText.Text = "DeepL key saved. Click Translate online for contextual sentences.";
     }
 
     private void ClearDeepL_Click(object sender, RoutedEventArgs e)
     {
         if (!TranslateSettings.HasDeepL && string.IsNullOrEmpty(DeepLKeyBox.Password))
             return;
-        if (MessageBox.Show(this, "Opgeslagen DeepL-sleutel verwijderen?", "Taalpatch",
+        if (MessageBox.Show(this, "Remove the saved DeepL key?", "Language patch",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         TranslateSettings.ClearKey();
         DeepLKeyBox.Clear();
         UpdateDeepLStatus();
-        StatusText.Text = "DeepL-sleutel gewist. Online vertalen valt terug op Google.";
+        StatusText.Text = "DeepL key cleared. Online translate falls back to Google.";
     }
 
     private void UpdateDeepLStatus()
     {
         DeepLStatus.Text = TranslateSettings.HasDeepL
-            ? "Sleutel opgeslagen. DeepL staat aan: hele dialogen, informeel Nederlands (je/jij), namen blijven Engels."
-            : "Geen DeepL-sleutel: Google als fallback. Gratis sleutel via deepl.com/pro-api (Free).";
+            ? "Key saved. DeepL is on: whole dialogues, informal Dutch (je/jij), names stay English."
+            : "No DeepL key: Google as fallback. Free key via deepl.com/pro-api (Free).";
     }
 
     private async void Retranslate_Click(object sender, RoutedEventArgs e)
@@ -171,18 +171,18 @@ public partial class LanguagePatchWindow : Window
             var done = _lines.Count - left;
             var filled = Math.Max(0, _lines.Count(l => l.Changed) - before);
             StatusText.Text = left == 0
-                ? $"{done} van {_lines.Count} klaar. Controleer gezegdes, daarna ROM maken."
+                ? $"{done} of {_lines.Count} done. Check idioms, then build the ROM."
                 : tryOnline
-                    ? $"{done} van {_lines.Count} vertaald. {left} korte namen/kreten blijven Engels."
-                    : $"{filled} regels lokaal bijgewerkt. {left} blijven Engels (vaak namen of kreten). Jouw handmatige edits zijn niet overschreven.";
+                    ? $"{done} of {_lines.Count} translated. {left} short names/shouts stay English."
+                    : $"{filled} rows updated locally. {left} stay English (often names or shouts). Your manual edits were not overwritten.";
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Vertalen gestopt. Wat al klaar was, is opgeslagen.";
+            StatusText.Text = "Translate stopped. What was already done is saved.";
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Vertalen deels mislukt: " + ex.Message;
+            StatusText.Text = "Translate partly failed: " + ex.Message;
         }
         finally
         {
@@ -203,8 +203,8 @@ public partial class LanguagePatchWindow : Window
     {
         WorkBar.Maximum = Math.Max(1, p.Total);
         WorkBar.Value = p.Done;
-        CountText.Text = $"{p.Done} vertaald · {p.Remaining} te gaan · {p.Total} totaal";
-        CacheText.Text = p.FromCache > 0 ? $"{p.FromCache} uit cache" : "";
+        CountText.Text = $"{p.Done} translated · {p.Remaining} remaining · {p.Total} total";
+        CacheText.Text = p.FromCache > 0 ? $"{p.FromCache} from cache" : "";
         if (!string.IsNullOrWhiteSpace(p.Message))
             StatusText.Text = p.Message;
     }
@@ -229,15 +229,15 @@ public partial class LanguagePatchWindow : Window
     {
         if (obj is not BkTextLine line) return false;
         var kind = (KindBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
-        if (kind.Contains("dialoog", StringComparison.OrdinalIgnoreCase) &&
+        if (kind.Contains("Dialogue", StringComparison.OrdinalIgnoreCase) &&
             line.Kind is not (BkTextKind.Dialog or BkTextKind.Raw))
             return false;
         if (kind.Contains("quiz", StringComparison.OrdinalIgnoreCase) &&
             line.Kind is not (BkTextKind.Quiz or BkTextKind.Grunty))
             return false;
-        if (kind.Contains("ROM-tekst", StringComparison.OrdinalIgnoreCase) && line.Kind != BkTextKind.Raw)
+        if (kind.Contains("ROM text", StringComparison.OrdinalIgnoreCase) && line.Kind != BkTextKind.Raw)
             return false;
-        if (kind.Contains("Gewijzigd", StringComparison.OrdinalIgnoreCase) && !line.Changed)
+        if (kind.Contains("Changed", StringComparison.OrdinalIgnoreCase) && !line.Changed)
             return false;
         var q = FilterBox.Text.Trim();
         if (q.Length == 0) return true;
@@ -253,10 +253,10 @@ public partial class LanguagePatchWindow : Window
         if (tooLong > 0)
         {
             var go = MessageBox.Show(this,
-                $"{tooLong} regels zijn langer dan het beschikbare ROM-vak. " +
-                "Die zinnen worden ingekort zodat het spel niet crasht; de rest blijft volledig. " +
-                "Lege regels en letters met accenten worden automatisch veilig gemaakt. Doorgaan?",
-                "Taalpatch", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                $"{tooLong} lines are longer than the available ROM slot. " +
+                "Those lines are shortened so the game does not crash; the rest stays complete. " +
+                "Empty lines and accented letters are made safe automatically. Continue?",
+                "Language patch", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (go != MessageBoxResult.Yes) return;
         }
 
@@ -266,7 +266,7 @@ public partial class LanguagePatchWindow : Window
         DeckBtn.Visibility = Visibility.Collapsed;
         ShowError("");
         ShowSuccess("");
-        SetBuildProgress(1, "ROM maken gestart…");
+        SetBuildProgress(1, "Build ROM started…");
         await Task.Delay(1);
         var sendToDeck = false;
         try
@@ -285,29 +285,29 @@ public partial class LanguagePatchWindow : Window
                     }));
             });
 
-            SetBuildProgress(97, "Bestand schrijven…", result.Errors);
+            SetBuildProgress(97, "Writing file…", result.Errors);
             var ext = CartRom.Extension(result.Rom);
             var name = Sanitize(_gameName) + " (NL)" + ext;
             var saved = await RomOutput.SaveAsync(result.Rom, name, (pct, msg) =>
                 Dispatcher.BeginInvoke(() => SetBuildProgress(pct, msg, result.Errors)));
             OutputPath = saved.Path;
-            CountText.Text = result.Errors > 0 ? $"100% · {result.Errors} fout(en)" : "100%";
+            CountText.Text = result.Errors > 0 ? $"100% · {result.Errors} error(s)" : "100%";
             ShowSuccess(result.Summary + Environment.NewLine + saved.Message);
             if (result.Errors > 0)
             {
-                ShowError(result.LastError ?? "Een deel van de tekst paste niet in de ROM.");
-                SetBuildProgress(100, "ROM lokaal opgeslagen, maar niet alles paste.", result.Errors);
+                ShowError(result.LastError ?? "Some of the text did not fit in the ROM.");
+                SetBuildProgress(100, "ROM saved locally, but not everything fitted.", result.Errors);
                 DeckBtn.Visibility = Visibility.Visible;
                 MessageBox.Show(this,
-                    (result.LastError ?? "Niet alle teksten pasten in de ROM.") +
+                    (result.LastError ?? "Not all texts fitted in the ROM.") +
                     Environment.NewLine + Environment.NewLine +
-                    "Het venster blijft open. Kort de rode regels in en klik opnieuw op ROM maken.",
-                    "ROM maken");
+                    "The window stays open. Shorten the red lines and click Build ROM again.",
+                    "Build ROM");
             }
             else
             {
                 ShowError("");
-                SetBuildProgress(100, "ROM klaar. Wordt op de Deck gezet…");
+                SetBuildProgress(100, "ROM ready. Putting it on the Deck…");
                 sendToDeck = true;
             }
         }
@@ -315,9 +315,9 @@ public partial class LanguagePatchWindow : Window
         {
             ShowSuccess("");
             ShowError(ex.Message);
-            StatusText.Text = "ROM maken mislukt.";
+            StatusText.Text = "Build ROM failed.";
             SetBuildProgress(0, StatusText.Text);
-            MessageBox.Show(this, ex.Message, "ROM maken");
+            MessageBox.Show(this, ex.Message, "Build ROM");
         }
         finally
         {
@@ -337,7 +337,7 @@ public partial class LanguagePatchWindow : Window
     {
         if (string.IsNullOrWhiteSpace(OutputPath) || !File.Exists(OutputPath))
         {
-            MessageBox.Show(this, "Er is nog geen ROM-bestand. Klik eerst op ROM maken.", "Taalpatch");
+            MessageBox.Show(this, "There is no ROM file yet. Click Build ROM first.", "Language patch");
             return;
         }
         _deckChosen = true;
@@ -349,9 +349,9 @@ public partial class LanguagePatchWindow : Window
         CommitGridEdits();
         var dlg = new SaveFileDialog
         {
-            Title = "Teksten exporteren",
-            Filter = "Excel-werkblad (*.xlsx)|*.xlsx|CSV voor Excel (*.csv)|*.csv",
-            FileName = Sanitize(_gameName) + " teksten.xlsx",
+            Title = "Export texts",
+            Filter = "Excel workbook (*.xlsx)|*.xlsx|CSV for Excel (*.csv)|*.csv",
+            FileName = Sanitize(_gameName) + " texts.xlsx",
             InitialDirectory = RomOutput.LocalDir()
         };
         if (dlg.ShowDialog(this) != true) return;
@@ -359,13 +359,13 @@ public partial class LanguagePatchWindow : Window
         {
             Directory.CreateDirectory(Path.GetDirectoryName(dlg.FileName)!);
             TranslationSheet.Export(dlg.FileName, _lines.ToList());
-            ShowSuccess("Excel-bestand opgeslagen: " + dlg.FileName);
+            ShowSuccess("Excel file saved: " + dlg.FileName);
             ShowError("");
         }
         catch (Exception ex)
         {
             ShowError(ex.Message);
-            MessageBox.Show(this, ex.Message, "Excel exporteren");
+            MessageBox.Show(this, ex.Message, "Export Excel");
         }
     }
 
@@ -374,8 +374,8 @@ public partial class LanguagePatchWindow : Window
         CommitGridEdits();
         var dlg = new OpenFileDialog
         {
-            Title = "Teksten importeren",
-            Filter = "Excel of CSV (*.xlsx;*.csv)|*.xlsx;*.csv|Excel-werkblad (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv"
+            Title = "Import texts",
+            Filter = "Excel or CSV (*.xlsx;*.csv)|*.xlsx;*.csv|Excel workbook (*.xlsx)|*.xlsx|CSV (*.csv)|*.csv"
         };
         if (dlg.ShowDialog(this) != true) return;
         try
@@ -389,13 +389,13 @@ public partial class LanguagePatchWindow : Window
                 Done = _lines.Count - _lines.Count(DutchTranslator.IsPending),
                 Message = StatusText.Text
             });
-            ShowSuccess($"{n} regels uit Excel gezet. Die zijn nu de nieuwe vertaling. Klik daarna op ROM maken.");
+            ShowSuccess($"{n} rows taken from Excel. Those are now the new translation. Then click Build ROM.");
             ShowError("");
         }
         catch (Exception ex)
         {
             ShowError(ex.Message);
-            MessageBox.Show(this, ex.Message, "Excel importeren");
+            MessageBox.Show(this, ex.Message, "Import Excel");
         }
     }
 
@@ -404,13 +404,13 @@ public partial class LanguagePatchWindow : Window
         CommitGridEdits();
         var n = DutchTranslator.CacheCount();
         var go = MessageBox.Show(this,
-            $"De opgeslagen vertaalcache wissen ({n} zinnen)? " +
-            "Teksten die je nu in dit scherm ziet blijven staan. Alleen automatische hergebruik bij een volgende keer verdwijnt.",
-            "Cache wissen", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            $"Clear the stored translation cache ({n} lines)? " +
+            "Texts you see on this screen stay. Only automatic reuse next time is removed.",
+            "Clear cache", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (go != MessageBoxResult.Yes) return;
         DutchTranslator.ClearCache();
         CacheText.Text = "";
-        ShowSuccess("Cache gewist. Handmatige teksten in de tabel blijven staan.");
+        ShowSuccess("Cache cleared. Manual texts in the table stay.");
         ShowError("");
     }
 
@@ -420,7 +420,7 @@ public partial class LanguagePatchWindow : Window
         WorkBar.Value = Math.Clamp(percent, 0, 100);
         StatusText.Text = message;
         CountText.Text = errors > 0
-            ? $"{percent}% · {errors} fout(en)"
+            ? $"{percent}% · {errors} error(s)"
             : $"{percent}%";
         CacheText.Text = "";
     }
@@ -449,8 +449,8 @@ public partial class LanguagePatchWindow : Window
         if (_deckChosen || DialogResult == true || DialogResult == false) return;
         if (string.IsNullOrWhiteSpace(OutputPath) || !File.Exists(OutputPath)) return;
         var go = MessageBox.Show(this,
-            "De Nederlandse ROM staat lokaal klaar." + Environment.NewLine + "Ook naar de Deck sturen?",
-            "ROM klaar", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            "The Dutch ROM is ready locally." + Environment.NewLine + "Also send it to the Deck?",
+            "ROM ready", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
         if (go == MessageBoxResult.Cancel)
         {
             e.Cancel = true;

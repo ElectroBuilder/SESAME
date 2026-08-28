@@ -23,7 +23,7 @@ internal static class RomSpace
 
     public static byte[] Place(byte[] rom, byte[] blob, int align, out int at)
     {
-        if (blob.Length == 0) throw new InvalidDataException("Geen gegevens om in de ROM te zetten.");
+        if (blob.Length == 0) throw new InvalidDataException("No data to write into the ROM.");
         var output = (byte[])rom.Clone();
         var start = Align(TrailingFillStart(output), align);
         if (output.Length - start < blob.Length + align)
