@@ -57,8 +57,6 @@ dotnet run --project src\Sesame.Windows\Sesame.Windows.csproj
 
 Or open `SESAME.sln`.
 
-Sessions, keys and API tokens live in `%APPDATA%\SESAME` (migrated from `%APPDATA%\VisualSSH` if you used an earlier build). SSH keys are stored with DPAPI (current Windows user).
-
 1. **Sessies…** — Deck IP, import private key  
 2. **Verbinden** — selected profile, then fallbacks, optional Wake-on-LAN  
 3. On a Steam Deck running SESAME itself, pick **Deze Steam Deck** (no SSH)

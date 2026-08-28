@@ -109,7 +109,7 @@
                     <StackPanel MaxWidth="640" HorizontalAlignment="Left">
                         <TextBlock Text="Wat SESAME bewaart" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
                         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
-                                   Text="Alles staat in %APPDATA%\SESAME, alleen leesbaar voor dit Windows-account. Data uit de oude VisualSSH-map wordt automatisch overgezet. SSH-sleutels, wachtwoorden, SteamGridDB- en DeepL-sleutels gaan via Windows DPAPI (versleuteld per gebruiker) en staan nooit in JSON. De bibliotheekcache is per Steam Deck-profiel: wissel je van Deck, dan scant SESAME die Deck live (ROMs, Hydra, apps) en toont niet de lijst van de vorige."/>
+                                   Text="Alles staat in %APPDATA%\SESAME, alleen leesbaar voor dit Windows-account. SSH-sleutels, wachtwoorden, SteamGridDB- en DeepL-sleutels gaan via Windows DPAPI (versleuteld per gebruiker) en staan nooit in JSON. De bibliotheekcache is per Steam Deck-profiel: wissel je van Deck, dan scant SESAME die Deck live (ROMs, Hydra, apps) en toont niet de lijst van de vorige."/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
                                    Text="• secrets\ — SSH, API-sleutels (DPAPI, verborgen)"/>
                         <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"

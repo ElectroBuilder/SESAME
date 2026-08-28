@@ -6,7 +6,7 @@ using System.Security.Principal;
 namespace Sesame.Services;
 
 /// <summary>
-/// App data for SESAME. Windows: %APPDATA%\SESAME (migrated from VisualSSH).
+/// App data for SESAME. Windows: %APPDATA%\SESAME.
 /// Linux: ~/.local/share/sesame. Access is limited to the current user.
 /// </summary>
 public static class AppDataPaths

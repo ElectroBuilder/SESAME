@@ -16,6 +16,28 @@ public static class RomOutput
         var dir = OperatingSystem.IsWindows()
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SESAME")
             : AppDataPaths.Combine("rom-output");
+        if (OperatingSystem.IsWindows())
+        {
+            var legacy = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VisualSSH");
+            try
+            {
+                if (Directory.Exists(legacy) && !string.Equals(legacy, dir, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!Directory.Exists(dir))
+                        Directory.Move(legacy, dir);
+                    else
+                    {
+                        foreach (var file in Directory.GetFiles(legacy))
+                        {
+                            var dest = Path.Combine(dir, Path.GetFileName(file));
+                            if (!File.Exists(dest))
+                                File.Move(file, dest);
+                        }
+                    }
+                }
+            }
+            catch { /* eenmalige verhuizing is best-effort */ }
+        }
         Directory.CreateDirectory(dir);
         return dir;
     }
