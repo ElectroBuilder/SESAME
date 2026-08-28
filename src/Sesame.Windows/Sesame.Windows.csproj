@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>Sesame</RootNamespace>
+    <AssemblyName>SESAME</AssemblyName>
+    <Product>SESAME</Product>
+    <Description>Steam Easy Shortcut Artwork Manager Engine</Description>
+    <Version>0.4.3</Version>
+    <ApplicationIcon>Assets\sesame-taskbar.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Models\**\*.cs" />
+    <Compile Remove="Services\**\*.cs" />
+    <Compile Include="Services\ThemeManager.cs" />
+    <Compile Include="Services\StoreImageCache.cs" />
+    <Compile Remove="AppBrand.cs" />
+    <Compile Remove="AppVersion.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\sesame-taskbar.ico" />
+    <Resource Include="Assets\sesame-icon.png" />
+    <Resource Include="Assets\sesame-icon-lg.png" />
+    <Resource Include="Assets\sesame-logo.png" />
+    <Resource Include="Assets\sesame-monogram.png" />
+    <None Update="Assets\Logos\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sesame.Core\Sesame.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Data\catalog.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

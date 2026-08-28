@@ -4,7 +4,7 @@
         Title="SESAME"
         Width="1280" Height="800"
         MinWidth="960" MinHeight="540"
-        Background="#05090C"
+        Background="#05070A"
         WindowStartupLocation="CenterScreen"
         KeyDown="OnKeyDown">
   <Grid>
@@ -19,22 +19,29 @@
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="*"/>
       </Grid.RowDefinitions>
-      <Border Background="#0A1C24" Padding="16,10" BorderBrush="#2A5A68" BorderThickness="0,0,0,1">
+      <Border Background="#070B10" Padding="16,12" BorderBrush="#00D9F5" BorderThickness="0,0,0,2">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <Image Source="avares://SESAME/Assets/sesame-logo.png" Height="36" Stretch="Uniform"/>
-            <TextBlock x:Name="VersionLabel" VerticalAlignment="Bottom" Margin="0,0,0,4"
-                       FontSize="12" Foreground="#3DE8F2"/>
+          <StackPanel Orientation="Horizontal" Spacing="16">
+            <Image Source="avares://SESAME/Assets/sesame-icon-lg.png" Width="80" Height="80" Stretch="Uniform"/>
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="SESAME" FontSize="28" FontWeight="Bold" Foreground="#00D9F5"/>
+                <TextBlock x:Name="VersionLabel" FontSize="14" FontWeight="SemiBold"
+                           Foreground="#FFB020" VerticalAlignment="Bottom" Margin="0,0,0,3"/>
+              </StackPanel>
+              <TextBlock Text="STEAM DECK SHORTCUT &amp; ARTWORK MANAGER"
+                         FontSize="12" FontWeight="SemiBold" Foreground="#FFB020"/>
+            </StackPanel>
           </StackPanel>
-          <TextBlock x:Name="StatusLabel" Grid.Column="1" VerticalAlignment="Center" Margin="20,0,0,0"
-                     Foreground="#8AA8B3"/>
+          <TextBlock x:Name="StatusLabel" Grid.Column="1" VerticalAlignment="Center" Margin="24,0,0,0"
+                     Foreground="#8EB8C4"/>
           <StackPanel Grid.Column="2" Orientation="Horizontal">
-            <Button x:Name="LocalBtn" Content="Deze Deck" Click="Local_Click"/>
+            <Button x:Name="LocalBtn" Classes="accent" Content="Deze Deck" Click="Local_Click"/>
             <Button x:Name="RemoteBtn" Content="SSH…" Click="Remote_Click"/>
             <Button Content="Verbreken" Click="Disconnect_Click"/>
           </StackPanel>
@@ -45,12 +52,12 @@
           <ColumnDefinition Width="220"/>
           <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        <Border Background="#0A1C24" BorderBrush="#2A5A68" BorderThickness="0,0,1,0" Padding="10">
+        <Border Background="#0B1218" BorderBrush="#1E4A58" BorderThickness="0,0,1,0" Padding="10">
           <StackPanel Spacing="8">
             <Button x:Name="NavOpt" Content="Optimaliseren" HorizontalAlignment="Stretch" Click="NavOpt_Click"/>
             <Button x:Name="NavFiles" Content="Bestanden" HorizontalAlignment="Stretch" Click="NavFiles_Click"/>
             <Button x:Name="NavSettings" Content="Instellingen" HorizontalAlignment="Stretch" Click="NavSettings_Click"/>
-            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#8AA8B3" Margin="4,16,4,0"
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#8EB8C4" Margin="4,16,4,0"
                        Text="Lokaal op de Deck of via SSH. Optimaliseren vanuit Game Mode kan niet: Steam moet even dicht."/>
           </StackPanel>
         </Border>
@@ -65,33 +72,40 @@
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <StackPanel Margin="48,28,48,0" Spacing="6">
-          <Image Source="avares://SESAME/Assets/sesame-logo.png" Height="72" Stretch="Uniform" HorizontalAlignment="Left"/>
-          <TextBlock x:Name="GameStatus" FontSize="18" Foreground="#8AA8B3"/>
+        <StackPanel Margin="48,28,48,0" Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="20">
+            <Image Source="avares://SESAME/Assets/sesame-icon-lg.png" Width="96" Height="96" Stretch="Uniform"/>
+            <StackPanel VerticalAlignment="Center" Spacing="4">
+              <TextBlock Text="SESAME" FontSize="36" FontWeight="Bold" Foreground="#00D9F5"/>
+              <TextBlock Text="STEAM DECK SHORTCUT &amp; ARTWORK MANAGER"
+                         FontSize="16" FontWeight="SemiBold" Foreground="#FFB020"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock x:Name="GameStatus" FontSize="18" Foreground="#8EB8C4"/>
         </StackPanel>
         <UniformGrid Grid.Row="1" Rows="2" Columns="2" Margin="48,16,48,24">
           <Button x:Name="Tile0" Classes="tile" Margin="10" Click="Tile0_Click">
             <StackPanel>
               <TextBlock Text="Optimaliseren" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Shortcuts, covers en tabs" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+              <TextBlock Text="Shortcuts, covers en tabs" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile1" Classes="tile" Margin="10" Click="Tile1_Click">
             <StackPanel>
               <TextBlock Text="Bibliotheek" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Gescande ROMs en apps" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+              <TextBlock Text="Gescande ROMs en apps" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile2" Classes="tile" Margin="10" Click="Tile2_Click">
             <StackPanel>
               <TextBlock Text="Bestanden" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Mappen op deze Deck" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+              <TextBlock Text="Mappen op deze Deck" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile3" Classes="tile" Margin="10" Click="Tile3_Click">
             <StackPanel>
               <TextBlock Text="Instellingen" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="SteamGridDB, lokaal of SSH" Foreground="#8AA8B3" Margin="0,8,0,0"/>
+              <TextBlock Text="SteamGridDB, lokaal of SSH" Foreground="#8EB8C4" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
         </UniformGrid>
@@ -101,7 +115,7 @@
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <Border Background="#0A1C24" Padding="20,12">
+        <Border Background="#070B10" Padding="20,12" BorderBrush="#00D9F5" BorderThickness="0,0,0,2">
           <DockPanel>
             <Button Content="Terug" Click="GameBack_Click" DockPanel.Dock="Left"/>
             <TextBlock x:Name="GamePageTitle" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" Margin="16,0,0,0"/>
@@ -111,11 +125,11 @@
       </Grid>
     </Grid>
 
-    <Border Grid.Row="1" Background="#0A1C24" Padding="16,8" BorderBrush="#2A5A68" BorderThickness="0,1,0,0">
+    <Border Grid.Row="1" Background="#070B10" Padding="16,8" BorderBrush="#1E4A58" BorderThickness="0,1,0,0">
       <DockPanel>
-        <TextBlock x:Name="HintBar" Foreground="#8AA8B3" FontSize="14"
+        <TextBlock x:Name="HintBar" Foreground="#8EB8C4" FontSize="14"
                    Text="A bevestigen   B terug   D-pad navigeren   L/R tabs"/>
-        <TextBlock x:Name="FooterStatus" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="#3DE8F2"/>
+        <TextBlock x:Name="FooterStatus" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="#00D9F5"/>
       </DockPanel>
     </Border>
   </Grid>

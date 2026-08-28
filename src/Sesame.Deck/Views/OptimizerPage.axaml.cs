@@ -2,8 +2,8 @@ using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
-using VisualSSH.Models;
-using VisualSSH.Services.GameOptimizer;
+using Sesame.Models;
+using Sesame.Services.GameOptimizer;
 
 namespace Sesame.Deck.Views;
 

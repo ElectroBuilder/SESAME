@@ -1,0 +1,37 @@
+name: build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - run: dotnet restore SESAME.sln
+      - run: dotnet publish src/Sesame.Windows/Sesame.Windows.csproj -c Release -o artifacts/windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sesame-windows
+          path: artifacts/windows
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - run: sudo apt-get update && sudo apt-get install -y libx11-dev libice-dev libsm-dev libfontconfig1
+      - run: dotnet publish src/Sesame.Deck/Sesame.Deck.csproj -c Release -r linux-x64 --self-contained true -o artifacts/linux-x64
+      - run: cp pack/steamdeck/install.sh artifacts/linux-x64/ && chmod +x artifacts/linux-x64/install.sh artifacts/linux-x64/SESAME
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sesame-linux-x64
+          path: artifacts/linux-x64

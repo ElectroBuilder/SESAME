@@ -5,13 +5,13 @@ Thanks for helping. SESAME is **Steam Easy Shortcut Artwork Manager Engine**.
 ## Dev setup
 
 - .NET 8 SDK
-- Windows: Visual Studio 2022 or `dotnet build VisualSSH.sln`
+- Windows: Visual Studio 2022 or `dotnet build SESAME.sln`
 - Linux / Steam Deck: `dotnet publish src/Sesame.Deck/Sesame.Deck.csproj -c Release -r linux-x64 --self-contained`
 
 ## Layout
 
 - `src/Sesame.Core` — shared services (local filesystem + SSH)
-- `src/VisualSSH` — Windows WPF desktop (full UI)
+- `src/Sesame.Windows` — Windows WPF desktop (full UI)
 - `src/Sesame.Deck` — Avalonia UI for SteamOS (desktop + game mode)
 
 ## Rules

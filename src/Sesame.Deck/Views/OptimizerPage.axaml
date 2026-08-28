@@ -18,19 +18,19 @@
         <DataTemplate>
           <Grid ColumnDefinitions="Auto,Auto,*" Margin="4">
             <CheckBox IsChecked="{Binding Selected}" VerticalAlignment="Center"/>
-            <Border Grid.Column="1" Width="40" Height="60" Margin="10,0" Background="#102A34" ClipToBounds="True">
+            <Border Grid.Column="1" Width="40" Height="60" Margin="10,0" Background="#0B1218" ClipToBounds="True">
               <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
             </Border>
             <StackPanel Grid.Column="2" VerticalAlignment="Center">
               <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding SystemName}" Foreground="#8AA8B3" FontSize="13"/>
-              <TextBlock Text="{Binding SteamText}" Foreground="#8AA8B3" FontSize="12"/>
+              <TextBlock Text="{Binding SystemName}" Foreground="#8EB8C4" FontSize="13"/>
+              <TextBlock Text="{Binding SteamText}" Foreground="#8EB8C4" FontSize="12"/>
             </StackPanel>
           </Grid>
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
-    <TextBlock x:Name="Hint" Grid.Row="2" Margin="16" TextWrapping="Wrap" Foreground="#8AA8B3"
+    <TextBlock x:Name="Hint" Grid.Row="2" Margin="16" TextWrapping="Wrap" Foreground="#8EB8C4"
                Text="Scan ROMs op deze machine of via SSH. Toepassen schrijft Steam-shortcuts; doe dat in Desktop Mode."/>
   </Grid>
 </UserControl>

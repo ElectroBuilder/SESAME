@@ -1,8 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using VisualSSH.Models;
-using VisualSSH.Services;
+using Sesame.Models;
+using Sesame.Services;
 
 namespace Sesame.Deck.Views;
 

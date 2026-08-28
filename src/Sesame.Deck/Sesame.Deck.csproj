@@ -8,7 +8,7 @@
     <AssemblyName>SESAME</AssemblyName>
     <Product>SESAME</Product>
     <Description>Steam Easy Shortcut Artwork Manager Engine</Description>
-    <Version>0.4.1</Version>
+    <Version>0.4.3</Version>
     <ApplicationIcon>Assets\sesame.ico</ApplicationIcon>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>

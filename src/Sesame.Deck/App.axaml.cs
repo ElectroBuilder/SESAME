@@ -2,8 +2,8 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Sesame.Deck.Views;
-using VisualSSH.Services;
-using VisualSSH.Services.GameOptimizer;
+using Sesame.Services;
+using Sesame.Services.GameOptimizer;
 
 namespace Sesame.Deck;
 

@@ -61,3 +61,6 @@ dump-*
 *.log
 artifacts/
 publish/
+
+**/__pycache__/
+*.pyc

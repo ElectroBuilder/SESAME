@@ -3,24 +3,27 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>VisualSSH</RootNamespace>
+    <RootNamespace>Sesame</RootNamespace>
     <AssemblyName>Sesame.Core</AssemblyName>
     <Product>SESAME</Product>
     <Description>Steam Easy Shortcut Artwork Manager Engine</Description>
-    <Version>0.4.1</Version>
+    <Version>0.4.3</Version>
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\VisualSSH\AppBrand.cs" Link="AppBrand.cs" />
-    <Compile Include="..\VisualSSH\AppVersion.cs" Link="AppVersion.cs" />
-    <Compile Include="..\VisualSSH\Models\**\*.cs" Link="Models\%(RecursiveDir)%(Filename)%(Extension)" />
-    <Compile Include="..\VisualSSH\Services\**\*.cs" Link="Services\%(RecursiveDir)%(Filename)%(Extension)"
-             Exclude="..\VisualSSH\Services\ThemeManager.cs;..\VisualSSH\Services\StoreImageCache.cs" />
+    <Compile Include="..\Sesame.Windows\AppBrand.cs" Link="AppBrand.cs" />
+    <Compile Include="..\Sesame.Windows\AppVersion.cs" Link="AppVersion.cs" />
+    <Compile Include="..\Sesame.Windows\Models\**\*.cs" Link="Models\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Sesame.Windows\Services\**\*.cs" Link="Services\%(RecursiveDir)%(Filename)%(Extension)"
+             Exclude="..\Sesame.Windows\Services\ThemeManager.cs;..\Sesame.Windows\Services\StoreImageCache.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\VisualSSH\Assets\Logos\*.png" LogicalName="VisualSSH.Assets.Logos.%(Filename)%(Extension)" />
-    <Content Include="..\VisualSSH\Data\catalog.json" Link="Data\catalog.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\VisualSSH\Assets\Logos\*.png" Link="Assets\Logos\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="..\Sesame.Windows\Scripts\extra-scan.py" LogicalName="Sesame.extra-scan.py" />
+    <EmbeddedResource Include="..\Sesame.Windows\Scripts\sesame-dolphin.sh" LogicalName="Sesame.sesame-dolphin.sh" />
+    <EmbeddedResource Include="..\Sesame.Windows\Scripts\sesame-dolphin-cfg.py" LogicalName="Sesame.sesame-dolphin-cfg.py" />
+    <EmbeddedResource Include="..\Sesame.Windows\Assets\Logos\*.png" LogicalName="Sesame.Assets.Logos.%(Filename)%(Extension)" />
+    <Content Include="..\Sesame.Windows\Data\catalog.json" Link="Data\catalog.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Sesame.Windows\Assets\Logos\*.png" Link="Assets\Logos\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="SSH.NET" Version="2026.0.0" />

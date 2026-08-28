@@ -1,6 +1,6 @@
-using VisualSSH.Models;
-using VisualSSH.Services;
-using VisualSSH.Services.GameOptimizer;
+using Sesame.Models;
+using Sesame.Services;
+using Sesame.Services.GameOptimizer;
 
 namespace Sesame.Deck;
 

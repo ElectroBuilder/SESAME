@@ -52,10 +52,10 @@ SESAME --remote       # do not auto-connect locally; use SSH
 ## Windows (SSH)
 
 ```powershell
-dotnet run --project src\VisualSSH\VisualSSH.csproj
+dotnet run --project src\Sesame.Windows\Sesame.Windows.csproj
 ```
 
-Or open `VisualSSH.sln`.
+Or open `SESAME.sln`.
 
 Sessions, keys and API tokens live in `%APPDATA%\SESAME` (migrated from `%APPDATA%\VisualSSH` if you used an earlier build). SSH keys are stored with DPAPI (current Windows user).
 
@@ -77,8 +77,8 @@ SESAME does not ship ROMs, keys, or copyrighted game assets.
 .NET 8 SDK.
 
 ```powershell
-dotnet build VisualSSH.sln -c Release
-dotnet publish src\VisualSSH\VisualSSH.csproj -c Release
+dotnet build SESAME.sln -c Release
+dotnet publish src\Sesame.Windows\Sesame.Windows.csproj -c Release
 dotnet publish src\Sesame.Deck\Sesame.Deck.csproj -c Release -r linux-x64 --self-contained
 ```
 
@@ -87,7 +87,7 @@ dotnet publish src\Sesame.Deck\Sesame.Deck.csproj -c Release -r linux-x64 --self
 | Project | Role |
 | --- | --- |
 | `src/Sesame.Core` | Local + SSH host, optimizer, catalog |
-| `src/VisualSSH` | Windows WPF app |
+| `src/Sesame.Windows` | Windows WPF app |
 | `src/Sesame.Deck` | Avalonia app for SteamOS |
 | `Assets/` | Brand pack (icons, Steam grids) |
 | `pack/steamdeck/` | Installer and Deck artwork |

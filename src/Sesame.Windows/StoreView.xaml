@@ -1,0 +1,251 @@
+<UserControl x:Class="Sesame.StoreView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+    <DockPanel Background="{DynamicResource Bg}">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
+                BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="110"/>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="QueryBox" Grid.Column="0" Margin="0,0,8,0"
+                         KeyDown="Query_KeyDown"
+                         ToolTip="Extra zoekwoorden binnen de gekozen game"/>
+                <ComboBox x:Name="GameBox" Grid.Column="1" Margin="0,0,8,0"
+                          DisplayMemberPath="Label"
+                          SelectionChanged="Game_Changed"
+                          ToolTip="Game-identiteit: platform + titel"/>
+                <ComboBox x:Name="KindBox" Grid.Column="2" Margin="0,0,8,0" SelectedIndex="0">
+                    <ComboBoxItem Content="Alles"/>
+                    <ComboBoxItem Content="Mods"/>
+                    <ComboBoxItem Content="ROM-hacks"/>
+                    <ComboBoxItem Content="Texture packs"/>
+                    <ComboBoxItem Content="Saves"/>
+                </ComboBox>
+                <ComboBox x:Name="SourceBox" Grid.Column="3" Margin="0,0,8,0" SelectedIndex="0">
+                    <ComboBoxItem Content="Alle bronnen"/>
+                    <ComboBoxItem Content="GameBanana"/>
+                    <ComboBoxItem Content="Emulation King"/>
+                    <ComboBoxItem Content="HD Packs List"/>
+                    <ComboBoxItem Content="GBAtemp"/>
+                    <ComboBoxItem Content="Internet Archive"/>
+                </ComboBox>
+                <ComboBox x:Name="StatusFilterBox" Grid.Column="4" Margin="0,0,8,0" SelectedIndex="0"
+                          SelectionChanged="StatusFilter_Changed"
+                          ToolTip="Toon alle, alleen gedownloade of alleen geïnstalleerde mods">
+                    <ComboBoxItem Content="Alle status"/>
+                    <ComboBoxItem Content="Gedownload"/>
+                    <ComboBoxItem Content="Geïnstalleerd"/>
+                </ComboBox>
+                <ComboBox x:Name="SortBox" Grid.Column="5" Margin="0,0,8,0"
+                          DisplayMemberPath="Label"
+                          SelectionChanged="Sort_Changed"
+                          ToolTip="GameBanana-sortering (likes, downloads, nieuw, uitgelicht)"/>
+                <Button Grid.Column="6" Content="Zoeken" Style="{StaticResource AccentButton}" Click="Search_Click"/>
+                <Button Grid.Column="7" Content="Downloaden &amp; installeren" Click="Install_Click"
+                        ToolTip="Zet de geselecteerde mod in de wachtrij"/>
+                <Button Grid.Column="8" Content="Open pagina" Click="OpenPage_Click"/>
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="HintText" DockPanel.Dock="Bottom" Margin="10,2,10,6"
+                   Foreground="{DynamicResource Muted}"
+                   Text="Kies een game (platform + titel). Extra woorden filteren binnen die identiteit."/>
+        <Border x:Name="GameHeader" DockPanel.Dock="Top" Padding="12,10"
+                Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Border}"
+                BorderThickness="0,0,0,1" Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Width="72" Height="72" CornerRadius="8" Margin="0,0,12,0"
+                        Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource Border}"
+                        BorderThickness="1" ClipToBounds="True">
+                    <Grid>
+                        <TextBlock Text="GAME" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Muted}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image x:Name="GameCover" Stretch="UniformToFill"/>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="GameTitle" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="GameMeta" Foreground="{DynamicResource Accent}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="GameDesc" Foreground="{DynamicResource Muted}" Margin="0,4,0,0"
+                               TextWrapping="Wrap" MaxHeight="52" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="340"/>
+            </Grid.ColumnDefinitions>
+
+            <ListView x:Name="ResultList" Grid.Column="0" BorderThickness="0"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      MouseDoubleClick="Install_Click"
+                      SelectionChanged="Result_Changed"
+                      GridViewColumnHeader.Click="SortHeader_Click"
+                      ScrollViewer.ScrollChanged="Result_ScrollChanged"
+                      ContextMenuOpening="ResultMenu_Opening">
+                <ListView.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Downloaden &amp; installeren" Click="Install_Click"/>
+                        <MenuItem x:Name="EnableMenu" Header="Inschakelen" Click="Enable_Click"/>
+                        <MenuItem x:Name="DisableMenu" Header="Uitschakelen" Click="Disable_Click"/>
+                        <MenuItem x:Name="DeleteMenu" Header="Verwijderen" Click="Delete_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Open pagina" Click="OpenPage_Click"/>
+                    </ContextMenu>
+                </ListView.ContextMenu>
+                <ListView.GroupStyle>
+                    <GroupStyle>
+                        <GroupStyle.HeaderTemplate>
+                            <DataTemplate>
+                                <Border Padding="10,12,10,4" Background="{DynamicResource PanelAlt}">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+                                               Foreground="{DynamicResource Text}"/>
+                                </Border>
+                            </DataTemplate>
+                        </GroupStyle.HeaderTemplate>
+                    </GroupStyle>
+                </ListView.GroupStyle>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Width="72">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Width="56" Height="36" CornerRadius="4"
+                                            Background="{DynamicResource PanelAlt}"
+                                            BorderBrush="{DynamicResource Border}" BorderThickness="1"
+                                            ClipToBounds="True">
+                                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                    </Border>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Titel" Width="240" DisplayMemberBinding="{Binding Title}"/>
+                        <GridViewColumn Header="Soort" Width="100" DisplayMemberBinding="{Binding Kind}"/>
+                        <GridViewColumn Header="Auteur" Width="120" DisplayMemberBinding="{Binding Author}"/>
+                        <GridViewColumn Header="Toegevoegd" Width="100" DisplayMemberBinding="{Binding AddedText}"/>
+                        <GridViewColumn Header="Bijgewerkt" Width="100" DisplayMemberBinding="{Binding UpdatedText}"/>
+                        <GridViewColumn Header="Bron" Width="110" DisplayMemberBinding="{Binding Source}"/>
+                        <GridViewColumn Header="Grootte" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
+                        <GridViewColumn Header="Status" Width="170">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,1" ToolTip="{Binding StatusDetail}">
+                                        <TextBlock Text="{Binding StatusText}" FontSize="11" TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding StatusKind}" Value="ok">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Ok}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusKind}" Value="local">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Warn}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusKind}" Value="busy">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusKind}" Value="err">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Danger}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusKind}" Value="off">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Warn}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <Grid Height="5" Margin="0,3,8,0"
+                                              Background="{DynamicResource PanelAlt}"
+                                              Visibility="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                                            <Rectangle HorizontalAlignment="Left" Width="1"
+                                                       Fill="{DynamicResource Accent}"
+                                                       RenderTransformOrigin="0,0.5">
+                                                <Rectangle.RenderTransform>
+                                                    <ScaleTransform ScaleX="{Binding Progress, Mode=OneWay}"/>
+                                                </Rectangle.RenderTransform>
+                                            </Rectangle>
+                                        </Grid>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+                          Background="{DynamicResource Border}"/>
+
+            <DockPanel Grid.Column="2" Background="{DynamicResource Panel}">
+                <Border DockPanel.Dock="Top" Height="200" Background="{DynamicResource PanelAlt}"
+                        BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <TextBlock x:Name="PreviewPlaceholder" Text="Geen screenshot"
+                                   Foreground="{DynamicResource Muted}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image x:Name="PreviewImage" Stretch="Uniform" Margin="4"/>
+                    </Grid>
+                </Border>
+                <ListBox x:Name="ShotList" DockPanel.Dock="Top" Height="64" Margin="8,8,8,0"
+                         BorderThickness="0" Background="Transparent"
+                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         SelectionChanged="Shot_Changed">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="72" Height="48" Margin="0,0,6,0" CornerRadius="4"
+                                    BorderBrush="{DynamicResource Border}" BorderThickness="1"
+                                    ClipToBounds="True" Background="{DynamicResource PanelAlt}">
+                                <Image Source="{Binding}" Stretch="UniformToFill"/>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel Margin="12,10">
+                    <TextBlock x:Name="DetailTitle" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="DetailMeta" Foreground="{DynamicResource Accent}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="DetailSummary" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"
+                               TextWrapping="Wrap"/>
+                    <TextBlock x:Name="DetailStatus" Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                    <WrapPanel x:Name="DetailActions" Margin="0,12,0,0" Visibility="Collapsed">
+                        <Button x:Name="EnableBtn" Content="Inschakelen" Click="Enable_Click"
+                                ToolTip="Zet de Eden-mod aan (haalt het voorvoegsel disabled weg)"/>
+                        <Button x:Name="DisableBtn" Content="Uitschakelen" Click="Disable_Click"
+                                ToolTip="Zet de Eden-mod uit (mapnaam begint met disabled)"/>
+                        <Button x:Name="DeleteBtn" Content="Verwijderen" Click="Delete_Click"
+                                ToolTip="Verwijder de mod van de Deck en uit de lokale bibliotheek"/>
+                    </WrapPanel>
+                    <TextBlock x:Name="DetailRom" Margin="0,10,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                </StackPanel>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

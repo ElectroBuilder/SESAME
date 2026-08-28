@@ -1,5 +1,5 @@
 using Avalonia;
-using VisualSSH.Services;
+using Sesame.Services;
 
 namespace Sesame.Deck;
 

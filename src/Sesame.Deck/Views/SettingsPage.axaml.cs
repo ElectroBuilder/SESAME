@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using VisualSSH.Services;
-using VisualSSH.Services.GameOptimizer;
+using Sesame.Services;
+using Sesame.Services.GameOptimizer;
 
 namespace Sesame.Deck.Views;
 
