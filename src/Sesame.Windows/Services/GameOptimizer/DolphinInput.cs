@@ -11,11 +11,12 @@ public static class DolphinInput
     public const string ProfileName = "SESAME-gyro";
 
     public const string DutchGyroHint =
-        "Wii gyro: SESAME sets an emulated Wiimote with Steam Deck IMU (hidraw) and IR via mouse as fallback. " +
-        "Optimize Wii games again and start them in Game Mode. " +
-        "Joy-Con or 8BitDo (Bluetooth/Switch): set Steam Input for that controller to Off if the controller's own gyro should work. " +
-        "8BitDo Ultimate 2.4 GHz (XInput) has no gyro — use Switch mode or the Deck gyro. " +
-        "Optional in Steam: gyro as mouse for the IR pointer.";
+        "Wii / Joy-Con: pair Joy-Cons to the Steam Deck over Bluetooth, then Optimize Wii games again. " +
+        "SESAME maps Right Joy-Con → Wiimote (gyro) and Left Joy-Con → Nunchuk — same idea as BetterJoyForDolphin, but native on Linux. " +
+        "Extra Joy-Cons become Wiimote 2–4 (sideways) for Wii Sports. " +
+        "In Steam: set Steam Input for each Joy-Con to Off so Dolphin sees gyro. " +
+        "Without Joy-Cons, SESAME uses the Deck IMU and mouse IR. " +
+        "8BitDo Ultimate 2.4 GHz (XInput) has no gyro — use Switch/Bluetooth mode or the Deck gyro.";
 
     public static string WrapperPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, WrapperName);
@@ -79,10 +80,15 @@ public static class DolphinInput
                 PatchIni(client, DeckClient.Combine(dir, "Dolphin.ini"));
                 client.WriteText(DeckClient.Combine(dir, "Profiles/Wiimote/" + ProfileName + ".ini"),
                     WiiProfile("SDL/0/Steam Virtual Gamepad"));
+                client.WriteText(DeckClient.Combine(dir, "Profiles/Wiimote/SESAME-joycon-nunchuk.ini"),
+                    JoyConNunchukProfile());
+                client.WriteText(DeckClient.Combine(dir, "Profiles/Wiimote/SESAME-joycon-remote.ini"),
+                    JoyConRemoteProfile());
                 client.WriteText(DeckClient.Combine(dir, "Profiles/GCPad/" + ProfileName + ".ini"),
                     GcProfile("SDL/0/Steam Virtual Gamepad"));
                 MergeWiimote(client, DeckClient.Combine(dir, "WiimoteNew.ini"));
                 EnsureGcPad(client, DeckClient.Combine(dir, "GCPadNew.ini"));
+                EnsureDsu(client, DeckClient.Combine(dir, "DSUClient.ini"));
             }
             catch
             {
@@ -194,6 +200,110 @@ public static class DolphinInput
         var text = ReadUtf8(client, path);
         if (string.IsNullOrWhiteSpace(text) || !text.Contains("[GCPad1]", StringComparison.OrdinalIgnoreCase))
             client.WriteText(path, GcPad("SDL/0/Steam Virtual Gamepad"));
+    }
+
+    private static void EnsureDsu(DeckClient client, string path)
+    {
+        var text = ReadUtf8(client, path);
+        if (string.IsNullOrWhiteSpace(text))
+            text = "[Server]\n";
+        text = SetIni(text, "Server", "Enabled", "True");
+        if (string.IsNullOrWhiteSpace(GetIni(text, "Server", "Server1Name")))
+        {
+            text = SetIni(text, "Server", "Server1Name", "BetterJoy");
+            text = SetIni(text, "Server", "Server1IP", "127.0.0.1");
+            text = SetIni(text, "Server", "Server1Port", "26760");
+        }
+        client.WriteText(path, text);
+    }
+
+    private static string JoyConNunchukProfile()
+    {
+        const string right = "SDL/0/Nintendo Switch Right Joy-Con";
+        const string left = "SDL/0/Nintendo Switch Left Joy-Con";
+        return
+            "[Profile]\n" +
+            "Device = " + right + "\n" +
+            "Source = 1\n" +
+            "Buttons/A = `Button A`|`Button S`|SOUTH|EAST\n" +
+            "Buttons/B = `Button B`|`Button ZR`|`Trigger R`|EAST\n" +
+            "Buttons/1 = `Button X`|`Button N`|NORTH\n" +
+            "Buttons/2 = `Button Y`|`Button W`|WEST\n" +
+            "Buttons/- = `Button Minus`|`Button Capture`|SELECT\n" +
+            "Buttons/+ = `Button Plus`|START\n" +
+            "Buttons/Home = `Button Home`|`Button Guide`|MODE\n" +
+            "D-Pad/Up = `Pad N`|`Hat 0 N`|`Left Y-`\n" +
+            "D-Pad/Down = `Pad S`|`Hat 0 S`|`Left Y+`\n" +
+            "D-Pad/Left = `Pad W`|`Hat 0 W`|`Left X-`\n" +
+            "D-Pad/Right = `Pad E`|`Hat 0 E`|`Left X+`\n" +
+            "Shake/X = `Button SL`|`Button SR`|TL\n" +
+            "Shake/Y = `Button SL`|`Button SR`|TL\n" +
+            "Shake/Z = `Button SL`|`Button SR`|TL\n" +
+            "Extension = Nunchuk\n" +
+            "Nunchuk/Buttons/C = `" + left + ":Button L`|`" + left + ":Button SL`|TL\n" +
+            "Nunchuk/Buttons/Z = `" + left + ":Button ZL`|`" + left + ":Trigger L`|`Full Axis 2+`\n" +
+            "Nunchuk/Stick/Up = `" + left + ":Left Y-`|`" + left + ":Axis 1-`\n" +
+            "Nunchuk/Stick/Down = `" + left + ":Left Y+`|`" + left + ":Axis 1+`\n" +
+            "Nunchuk/Stick/Left = `" + left + ":Left X-`|`" + left + ":Axis 0-`\n" +
+            "Nunchuk/Stick/Right = `" + left + ":Left X+`|`" + left + ":Axis 0+`\n" +
+            JoyConImu(right) +
+            "IMUIR/Enabled = True\n" +
+            "IR/Up = `Cursor Y-`\nIR/Down = `Cursor Y+`\nIR/Left = `Cursor X-`\nIR/Right = `Cursor X+`\n" +
+            "IR/Auto-Hide = False\n" +
+            "Rumble/Motor = Strong\n";
+    }
+
+    private static string JoyConRemoteProfile()
+    {
+        const string pad = "SDL/0/Nintendo Switch Right Joy-Con";
+        return
+            "[Profile]\n" +
+            "Device = " + pad + "\n" +
+            "Source = 1\n" +
+            "Extension = None\n" +
+            "Options/Sideways Wiimote = True\n" +
+            "Buttons/A = `Button A`|`Button S`|SOUTH|EAST\n" +
+            "Buttons/B = `Button B`|`Button ZR`|EAST\n" +
+            "Buttons/1 = `Button X`|NORTH\n" +
+            "Buttons/2 = `Button Y`|WEST\n" +
+            "Buttons/- = `Button Minus`|SELECT\n" +
+            "Buttons/+ = `Button Plus`|START\n" +
+            "Buttons/Home = `Button Home`|MODE\n" +
+            "D-Pad/Up = `Pad N`|`Left Y-`\n" +
+            "D-Pad/Down = `Pad S`|`Left Y+`\n" +
+            "D-Pad/Left = `Pad W`|`Left X-`\n" +
+            "D-Pad/Right = `Pad E`|`Left X+`\n" +
+            "Shake/X = `Button SL`|`Button SR`\n" +
+            "Shake/Y = `Button SL`|`Button SR`\n" +
+            "Shake/Z = `Button SL`|`Button SR`\n" +
+            JoyConImu(pad) +
+            "IMUIR/Enabled = True\n" +
+            "Rumble/Motor = Strong\n";
+    }
+
+    private static string JoyConImu(string device)
+    {
+        var sb = new StringBuilder();
+        foreach (var (key, axis) in new (string, string)[]
+                 {
+                     ("IMUAccelerometer/Up", "Accel Up"),
+                     ("IMUAccelerometer/Down", "Accel Down"),
+                     ("IMUAccelerometer/Left", "Accel Left"),
+                     ("IMUAccelerometer/Right", "Accel Right"),
+                     ("IMUAccelerometer/Forward", "Accel Forward"),
+                     ("IMUAccelerometer/Backward", "Accel Backward"),
+                     ("IMUGyroscope/Pitch Up", "Gyro Pitch Up"),
+                     ("IMUGyroscope/Pitch Down", "Gyro Pitch Down"),
+                     ("IMUGyroscope/Roll Left", "Gyro Roll Left"),
+                     ("IMUGyroscope/Roll Right", "Gyro Roll Right"),
+                     ("IMUGyroscope/Yaw Left", "Gyro Yaw Left"),
+                     ("IMUGyroscope/Yaw Right", "Gyro Yaw Right"),
+                 })
+        {
+            sb.Append(key).Append(" = `").Append(device).Append(':').Append(axis)
+                .Append("`|`DSUClient/0/BetterJoy:").Append(axis).Append("`|`").Append(axis).Append("`\n");
+        }
+        return sb.ToString();
     }
 
     private static string SetIni(string text, string section, string key, string value)

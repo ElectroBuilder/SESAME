@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.3 — 2026-08-29
+
+- Wii / Dolphin: Joy-Cons on the Deck map like BetterJoy — Right → Wiimote (+ gyro), Left → Nunchuk; extra Joy-Cons become remotes 2–4 for Wii Sports. Re-Optimize Wii games after pairing; turn Steam Input Off for the Joy-Cons.
+
 ## 0.6.2 — 2026-08-29
 
 - Dashboard tab on Windows and Steam Deck: scan apps/games/library and jump into Optimize from one place.

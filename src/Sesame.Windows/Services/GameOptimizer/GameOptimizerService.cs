@@ -364,7 +364,7 @@ public static class GameOptimizerService
                          (stripped > 0 ? $", {stripped} oude scripts vervangen" : "") +
                          (string.IsNullOrEmpty(collectionError) ? "" : ", collections partly failed") +
                          (dolphinIds.Count > 0
-                             ? ". Wii gyro: start in Game Mode. Joy-Con/8BitDo: see the hint when optimizing."
+                             ? ". Wii: Joy-Cons → Wiimote/Nunchuk when paired (Steam Input Off). See the Optimize hint."
                              : "") +
                          (restoreGameMode
                              ? " Game Mode wordt weer gestart."
