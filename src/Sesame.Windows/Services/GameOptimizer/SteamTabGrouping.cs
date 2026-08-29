@@ -13,7 +13,8 @@ public static class SteamTabGrouping
     public static string TabName(OptimizerGame game)
     {
         if (game.ShortcutKind == ShortcutKind.Hydra) return "Hydra";
-        if (game.ShortcutKind == ShortcutKind.Game) return "Games";
+        if (game.ShortcutKind == ShortcutKind.Game)
+            return string.IsNullOrWhiteSpace(game.SystemName) ? "Games" : game.SystemName.Trim();
         if (game.ShortcutKind == ShortcutKind.App) return "Apps";
         return OptimizerSettings.SteamTabScheme switch
         {
@@ -34,8 +35,8 @@ public static class SteamTabGrouping
     public static string PlatformName(OptimizerGame game)
     {
         var profile = Resolve(game);
-        if (!string.IsNullOrWhiteSpace(profile?.Name))
-            return profile!.Name.Trim();
+        if (profile is not null)
+            return SteamName(profile);
         if (!string.IsNullOrWhiteSpace(game.SystemName))
             return game.SystemName.Trim();
         if (!string.IsNullOrWhiteSpace(game.FolderName))
@@ -74,13 +75,11 @@ public static class SteamTabGrouping
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            EmulationName, "Nintendo", "PlayStation", "Sega", "Arcade", "Xbox", "Overig"
+            EmulationName, "Nintendo", "PlayStation", "Sega", "Arcade", "Xbox", "Overig",
+            "Hydra", "Lutris", "Games", "Apps", "PSX", "PS2", "GameCube", "Sega Genesis"
         };
         foreach (var profile in SystemCatalog.All)
-        {
-            if (!string.IsNullOrWhiteSpace(profile.Name))
-                names.Add(profile.Name);
-        }
+            names.Add(SteamName(profile));
         return names;
     }
 
@@ -96,6 +95,19 @@ public static class SteamTabGrouping
         if (c.Contains("snk") || c.Contains("neo geo") || c.Contains("neogeo")) return "SNK";
         return string.IsNullOrWhiteSpace(fallback) ? "Overig" : fallback;
     }
+
+    public static string SteamName(SystemProfile profile) => profile.Id switch
+    {
+        "genesis" => "Sega Genesis",
+        "sms" => "Sega Master System",
+        "saturn" => "Sega Saturn",
+        "dc" => "Dreamcast",
+        "ps1" => "PSX",
+        "ps2" => "PS2",
+        "psp" => "PSP",
+        "gc" => "GameCube",
+        _ => string.IsNullOrWhiteSpace(profile.Name) ? profile.Id : profile.Name.Trim()
+    };
 
     private static SystemProfile? Resolve(OptimizerGame game) =>
         SystemCatalog.FromFolder(game.FolderName) ??

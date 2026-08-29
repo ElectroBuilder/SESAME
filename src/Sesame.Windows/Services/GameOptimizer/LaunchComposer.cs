@@ -99,12 +99,15 @@ public static class LaunchComposer
         var start = SteamCrc.Quote(WithSlash(startDir));
 
         // Game Mode treats Exe as the binary and LaunchOptions as arguments.
-        // Putting the ROM inside Exe makes sesame-dolphin.sh start without a game.
+        // Proton also needs a real .exe in Exe — extra flags belong in LaunchOptions.
         if (DolphinInput.IsBound(exePath) || DolphinInput.IsBound(target) ||
-            DolphinInput.IsBound(args) || DolphinInput.IsBound(options))
+            DolphinInput.IsBound(args) || DolphinInput.IsBound(options) ||
+            IsWindowsExe(exePath))
         {
-            var rom = string.IsNullOrWhiteSpace(args) ? options : args;
-            return (SteamCrc.Quote(exePath), start, string.IsNullOrWhiteSpace(rom) ? options : rom);
+            var extra = args;
+            if (!string.IsNullOrEmpty(options))
+                extra = string.IsNullOrEmpty(extra) ? options : extra + " " + options;
+            return (SteamCrc.Quote(exePath), start, extra);
         }
 
         if (!string.IsNullOrEmpty(options))
@@ -117,6 +120,12 @@ public static class LaunchComposer
     }
 
     public static string ExePath(string target) => StripQuotes(FirstToken(target ?? ""));
+
+    private static bool IsWindowsExe(string path)
+    {
+        var ext = Path.GetExtension(path ?? "").ToLowerInvariant();
+        return ext is ".exe" or ".bat" or ".cmd" or ".msi" or ".com";
+    }
 
     public static string Preview(SystemLaunchConfig cfg, string? sampleRom = null)
     {

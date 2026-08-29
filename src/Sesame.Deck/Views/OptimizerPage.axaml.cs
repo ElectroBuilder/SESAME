@@ -14,6 +14,10 @@ public partial class OptimizerPage : UserControl
 
     public event Action<string>? StatusChanged;
 
+    public int Count => _games.Count;
+    public int InSteamCount => _games.Count(g => g.InSteam);
+    public int SelectedCount => _games.Count(g => g.Selected);
+
     public OptimizerPage()
     {
         InitializeComponent();
@@ -35,11 +39,26 @@ public partial class OptimizerPage : UserControl
         var id = session.Client.ActiveProfile?.Id ?? "local";
         var host = session.Client.ActiveProfile?.Host ?? "local";
         var cached = OptimizerLibraryCache.Load(id, host);
-        if (cached.Count == 0) return;
-        DeckCovers.Hydrate(session.Client, cached);
-        Replace(cached);
-        Hint.Text = cached.Count + " games from cache, including artwork already in Steam.";
-        _ = DeckCovers.PrefetchAsync(_games.ToList(), CancellationToken.None);
+        if (cached.Count == 0)
+        {
+            Hint.Text = "Scan to load ROMs, Hydra games and apps from this Deck.";
+            StatusChanged?.Invoke("Optimize: not scanned yet");
+            return;
+        }
+
+        var client = session.Client;
+        _ = Task.Run(() =>
+        {
+            try { SteamGridArt.AttachAll(client, cached); }
+            catch { /* covers are optional */ }
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                Replace(cached);
+                Hint.Text = cached.Count + " games from cache, including artwork already in Steam.";
+                StatusChanged?.Invoke($"Optimize: {cached.Count} games (cache)");
+                _ = DeckCovers.PrefetchAsync(_games.ToList(), CancellationToken.None);
+            });
+        });
     }
 
     public void UpsertManual(OptimizerGame game)
@@ -64,7 +83,9 @@ public partial class OptimizerPage : UserControl
         Persist();
     }
 
-    private async void Scan_Click(object? sender, RoutedEventArgs e)
+    private async void Scan_Click(object? sender, RoutedEventArgs e) => await ScanLibraryAsync();
+
+    public async Task ScanLibraryAsync(bool overlay = true)
     {
         if (_busy) return;
         var session = DeckSession.Current;
@@ -74,31 +95,45 @@ public partial class OptimizerPage : UserControl
             return;
         }
         _busy = true;
-        ShowBusy("Scanning library", "ROMs, Hydra games and apps…");
+        if (overlay)
+            ShowBusy("Scanning library", "ROMs, Hydra games and apps…");
+        StatusChanged?.Invoke("Optimize: scanning…");
         try
         {
             var progress = new Progress<OptimizeProgress>(p =>
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowBusy(p.Title, p.Detail)));
-            var games = await Task.Run(() => GameOptimizerService.Scan(session.Client, session.Catalog, progress));
-            DeckCovers.Hydrate(session.Client, games);
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (overlay) ShowBusy(p.Title, p.Detail);
+                    else StatusChanged?.Invoke(p.Detail);
+                }));
+            var games = await Task.Run(() =>
+            {
+                var found = GameOptimizerService.Scan(session.Client, session.Catalog, progress);
+                SteamGridArt.AttachAll(session.Client, found);
+                return found;
+            });
             Replace(games);
             Persist();
-            Hint.Text = games.Count + " items. Existing Steam covers are shown; Apply writes SESAME shortcuts.";
-            StatusChanged?.Invoke($"Artwork: {games.Count}");
+            Hint.Text = games.Count + " items. Existing Steam covers are shown; Optimize writes SESAME shortcuts.";
+            StatusChanged?.Invoke($"Optimize: {games.Count}");
             _ = DeckCovers.PrefetchAsync(_games.ToList(), CancellationToken.None);
         }
         catch (Exception ex)
         {
             Hint.Text = ex.Message;
+            StatusChanged?.Invoke("Optimize: scan failed");
         }
         finally
         {
             _busy = false;
-            HideBusy();
+            if (overlay) HideBusy();
         }
     }
 
-    private async void Apply_Click(object? sender, RoutedEventArgs e)
+    private async void Apply_Click(object? sender, RoutedEventArgs e) =>
+        await RunOptimizeInteractiveAsync();
+
+    public async Task RunOptimizeInteractiveAsync(bool selectAllIfEmpty = false)
     {
         if (_busy) return;
         var session = DeckSession.Current;
@@ -107,13 +142,31 @@ public partial class OptimizerPage : UserControl
             Hint.Text = "Connect first.";
             return;
         }
+
+        if (selectAllIfEmpty && !_games.Any(g => g.Selected))
+        {
+            foreach (var g in _games)
+                g.Selected = true;
+        }
+
         if (!_games.Any(g => g.Selected))
         {
             Hint.Text = "Select at least one game.";
             return;
         }
+
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is not null)
+        {
+            var count = _games.Count(g => g.Selected);
+            var ok = await ConfirmWindow.Ask(owner, "Optimize",
+                "Write Steam shortcuts, artwork and collections for " + count +
+                " selected title(s)? Steam may pause briefly while SESAME writes.");
+            if (!ok) return;
+        }
+
         _busy = true;
-        ShowBusy("Apply artwork", "Writing shortcuts and covers…");
+        ShowBusy("Optimize", "Writing shortcuts and covers…");
         try
         {
             var report = await GameOptimizerService.ApplyAsync(
@@ -121,8 +174,11 @@ public partial class OptimizerPage : UserControl
                 new Progress<OptimizeProgress>(p =>
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowBusy(p.Title, p.Detail))),
                 CancellationToken.None);
-            DeckCovers.Hydrate(session.Client, _games);
+            await Task.Run(() => SteamGridArt.AttachAll(session.Client, _games));
+            foreach (var game in _games)
+                DeckCovers.ApplyBytes(game);
             Hint.Text = report.Summary;
+            StatusChanged?.Invoke(report.Summary);
             Persist();
         }
         catch (Exception ex)

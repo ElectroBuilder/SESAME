@@ -15,6 +15,8 @@ public partial class AppsPage : UserControl
     public event Action<string?>? ManualRemoved;
     public event Action<string>? StatusChanged;
 
+    public int Count => _apps.Count;
+
     public AppsPage()
     {
         InitializeComponent();
@@ -40,19 +42,26 @@ public partial class AppsPage : UserControl
 
     private async void Scan_Click(object? sender, RoutedEventArgs e) => await ScanAsync();
 
-    private async Task ScanAsync()
+    public async Task ScanAsync(bool overlay = true)
     {
         var session = DeckSession.Current;
         if (!session.Connected || _busy) return;
         _busy = true;
-        BusyOverlay.IsVisible = true;
-        BusyText.Text = "Reading installed apps…";
+        if (overlay)
+        {
+            BusyOverlay.IsVisible = true;
+            BusyText.Text = "Reading installed apps…";
+        }
         HintText.Text = "Scanning native apps…";
         try
         {
             var found = await Task.Run(() =>
                 GameOptimizerService.ScanNativeApps(session.Client, new Progress<string>(t =>
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => BusyText.Text = t))));
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        if (overlay) BusyText.Text = t;
+                        StatusChanged?.Invoke(t);
+                    }))));
             _apps.Clear();
             foreach (var app in found)
                 _apps.Add(app);
@@ -68,7 +77,7 @@ public partial class AppsPage : UserControl
         finally
         {
             _busy = false;
-            BusyOverlay.IsVisible = false;
+            if (overlay) BusyOverlay.IsVisible = false;
         }
     }
 

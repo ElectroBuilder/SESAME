@@ -84,6 +84,8 @@ public static class SteamSession
         Try(client, "steamos-session-select gamescope");
     }
 
+    public static bool IsSteamRunning(DeckClient client) => SteamRunning(client);
+
     public static void CloseSteam(DeckClient client)
     {
         Try(client, "steam -shutdown");

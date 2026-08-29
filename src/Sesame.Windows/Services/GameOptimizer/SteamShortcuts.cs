@@ -1,3 +1,4 @@
+using System.IO;
 using Sesame.Models;
 
 namespace Sesame.Services.GameOptimizer;
@@ -111,14 +112,31 @@ public static class SteamShortcuts
 
     public const string OwnerTag = "SESAME";
     public const string LegacyOwnerTag = "VisualSSH";
+    public const string AppShortcutPath = SteamSelfShortcut.ShortcutPath;
 
     public static bool IsOwned(SteamShortcut shortcut)
     {
+        if (IsSesameLauncher(shortcut)) return false;
         if (shortcut.Tags.Any(IsOwnerTag))
             return true;
         if (IsOwnerTag(shortcut.ShortcutPath))
             return true;
         return LaunchComposer.IsVisualSshLaunch(shortcut.Exe, shortcut.LaunchOptions);
+    }
+
+    public static bool IsSesameLauncher(SteamShortcut shortcut)
+    {
+        if (string.Equals(shortcut.ShortcutPath, AppShortcutPath, StringComparison.OrdinalIgnoreCase))
+            return true;
+        var name = (shortcut.AppName ?? "").Trim();
+        if (!name.Equals("SESAME", StringComparison.OrdinalIgnoreCase) &&
+            !name.StartsWith("SESAME ", StringComparison.OrdinalIgnoreCase) &&
+            !name.Equals("SESAME (Game Mode)", StringComparison.OrdinalIgnoreCase))
+            return false;
+        var exe = LaunchComposer.ExePath(shortcut.Exe ?? "").Replace('\\', '/');
+        return exe.EndsWith("/SESAME", StringComparison.OrdinalIgnoreCase) ||
+               exe.Contains("/Applications/SESAME", StringComparison.OrdinalIgnoreCase) ||
+               Path.GetFileName(exe).Equals("SESAME", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsOwnerTag(string? value) =>
@@ -147,13 +165,7 @@ public static class SteamShortcuts
         game.LaunchOptions = steam.LaunchOptions;
         var appId = SteamCrc.ShortcutId(steam.Exe, game.DisplayName);
         game.SteamAppId = appId;
-        var collection = game.ShortcutKind switch
-        {
-            ShortcutKind.Hydra => "Hydra",
-            ShortcutKind.Game => "Games",
-            ShortcutKind.App => "Apps",
-            _ => string.IsNullOrWhiteSpace(game.SystemName) ? game.Category : game.SystemName
-        };
+        var collection = SteamTabGrouping.TabName(game);
         return new SteamShortcut
         {
             AppId = appId,
@@ -193,11 +205,24 @@ public static class SteamShortcuts
         existing.AllowDesktopConfig = item.AllowDesktopConfig;
         if (!existing.Tags.Any(t => t.Equals(OwnerTag, StringComparison.OrdinalIgnoreCase)))
             existing.Tags.Insert(0, OwnerTag);
+        EnsureCollectionTag(existing, item.Tags);
         if (!overwrite) return;
         existing.AppName = item.AppName;
         existing.Icon = string.IsNullOrEmpty(item.Icon) ? existing.Icon : item.Icon;
         existing.Tags.Clear();
         existing.Tags.AddRange(item.Tags);
+    }
+
+    private static void EnsureCollectionTag(SteamShortcut existing, IReadOnlyList<string> tags)
+    {
+        var collection = tags.FirstOrDefault(t =>
+            !t.Equals(OwnerTag, StringComparison.OrdinalIgnoreCase) &&
+            !t.Equals(LegacyOwnerTag, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(collection)) return;
+        existing.Tags.RemoveAll(t =>
+            !t.Equals(OwnerTag, StringComparison.OrdinalIgnoreCase) &&
+            !t.Equals(LegacyOwnerTag, StringComparison.OrdinalIgnoreCase));
+        existing.Tags.Add(collection);
     }
 
     public static int RemoveLegacyFor(List<SteamShortcut> shortcuts, IEnumerable<SteamShortcut> written)

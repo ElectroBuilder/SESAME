@@ -17,19 +17,9 @@ public static class SteamCollections
     };
 
     public static string? Apply(DeckClient client, IReadOnlyList<string> configDirs,
-        IReadOnlyList<OptimizerGame> games)
+        IReadOnlyList<OptimizerGame> games, IReadOnlyList<SteamShortcut>? shortcuts = null)
     {
-        var tabs = games
-            .Where(g => g.SteamAppId != 0)
-            .GroupBy(SteamTabGrouping.TabName, StringComparer.OrdinalIgnoreCase)
-            .Select(g =>
-            {
-                var name = g.Key.Trim();
-                return (Id: SteamTabGrouping.TabId(name), Name: name,
-                    AppIds: g.Select(x => x.SteamAppId).Distinct().ToList());
-            })
-            .Where(t => t.Name.Length > 0 && t.AppIds.Count > 0)
-            .ToList();
+        var tabs = BuildTabs(games, shortcuts);
         if (tabs.Count == 0) return null;
 
         var keep = new HashSet<string>(tabs.Select(t => t.Id), StringComparer.OrdinalIgnoreCase);
@@ -45,6 +35,58 @@ public static class SteamCollections
         return errors.Count == 0 ? null : string.Join(" · ", errors);
     }
 
+    private static List<(string Id, string Name, List<uint> AppIds)> BuildTabs(
+        IReadOnlyList<OptimizerGame> games, IReadOnlyList<SteamShortcut>? shortcuts)
+    {
+        var byApp = games
+            .Where(g => g.SteamAppId != 0)
+            .GroupBy(g => g.SteamAppId)
+            .ToDictionary(g => g.Key, g => g.First());
+        var groups = new Dictionary<string, (string Name, HashSet<uint> Ids)>(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string name, uint appId)
+        {
+            if (appId == 0 || string.IsNullOrWhiteSpace(name)) return;
+            name = name.Trim();
+            if (!groups.TryGetValue(name, out var bucket))
+            {
+                bucket = (name, new HashSet<uint>());
+                groups[name] = bucket;
+            }
+            bucket.Ids.Add(appId);
+        }
+
+        if (shortcuts is not null)
+        {
+            foreach (var shortcut in shortcuts)
+            {
+                if (!SteamShortcuts.IsOwned(shortcut) || SteamShortcuts.IsSesameLauncher(shortcut))
+                    continue;
+                var name = byApp.TryGetValue(shortcut.AppId, out var game)
+                    ? SteamTabGrouping.TabName(game)
+                    : CollectionTag(shortcut);
+                Add(name, shortcut.AppId);
+            }
+        }
+
+        foreach (var game in games.Where(g => g.SteamAppId != 0))
+            Add(SteamTabGrouping.TabName(game), game.SteamAppId);
+
+        return groups
+            .Select(kv => (Id: SteamTabGrouping.TabId(kv.Value.Name), Name: kv.Value.Name,
+                AppIds: kv.Value.Ids.ToList()))
+            .Where(t => t.Name.Length > 0 && t.AppIds.Count > 0)
+            .ToList();
+    }
+
+    private static string CollectionTag(SteamShortcut shortcut)
+    {
+        var tag = shortcut.Tags.FirstOrDefault(t =>
+            !t.Equals(SteamShortcuts.OwnerTag, StringComparison.OrdinalIgnoreCase) &&
+            !t.Equals(SteamShortcuts.LegacyOwnerTag, StringComparison.OrdinalIgnoreCase));
+        return string.IsNullOrWhiteSpace(tag) ? "Overig" : tag.Trim();
+    }
+
     private static void WriteCloud(DeckClient client, string configDir,
         IReadOnlyList<(string Id, string Name, List<uint> AppIds)> tabs, HashSet<string> keep)
     {
@@ -53,32 +95,24 @@ public static class SteamCollections
         var nsPath = DeckClient.Combine(dir, "cloud-storage-namespaces.json");
         var namespaces = ReadNamespaces(client, nsPath);
         var active = ActiveNamespace(namespaces);
-        var targets = new HashSet<int> { active, 1 };
-        foreach (var pair in namespaces)
-            targets.Add(pair.ns);
 
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        foreach (var ns in targets)
+        var path = DeckClient.Combine(dir, "cloud-storage-namespace-" + active + ".json");
+        JsonArray root;
+        if (client.Exists(path))
         {
-            var path = DeckClient.Combine(dir, "cloud-storage-namespace-" + ns + ".json");
-            JsonArray root;
-            if (client.Exists(path))
-            {
-                var text = Encoding.UTF8.GetString(client.ReadBytes(path));
-                root = JsonNode.Parse(string.IsNullOrWhiteSpace(text) ? "[]" : text) as JsonArray
-                       ?? new JsonArray();
-            }
-            else if (ns == active)
-                root = new JsonArray();
-            else
-                continue;
-
-            foreach (var tab in tabs)
-                UpsertCloudCollection(root, tab.Id, tab.Name, tab.AppIds, timestamp);
-            RemoveStaleCloud(root, keep, timestamp);
-
-            client.WriteText(path, root.ToJsonString(CompactJson));
+            var text = Encoding.UTF8.GetString(client.ReadBytes(path));
+            root = JsonNode.Parse(string.IsNullOrWhiteSpace(text) ? "[]" : text) as JsonArray
+                   ?? new JsonArray();
         }
+        else
+            root = new JsonArray();
+
+        foreach (var tab in tabs)
+            UpsertCloudCollection(root, tab.Id, tab.Name, tab.AppIds, timestamp);
+        RemoveStaleCloud(root, keep, timestamp);
+
+        client.WriteText(path, root.ToJsonString(CompactJson));
 
         BumpNamespaceVersion(client, nsPath, namespaces, active);
     }
@@ -244,21 +278,38 @@ public static class SteamCollections
         payload["name"] = name;
         payload["id"] = collectionId;
 
-        foreach (var id in appIds)
+        var wanted = appIds.Select(CollectionAppId).Distinct().ToList();
+        foreach (var stored in wanted)
         {
-            var stored = CollectionAppId(id);
             if (!ContainsId(added, stored))
                 added.Add(stored);
             RemoveId(removed, stored);
         }
+
+        NormalizeAdded(added);
     }
 
     /// <summary>
-    /// Steam bewaart shortcut-appids in user-collections als positieve uint-waarde.
-    /// De binary VDF leest dezelfde bits als signed int, maar in localconfig/cloud
-    /// verwacht Steam het ongetekende 32-bit nummer.
+    /// Game Mode matches collection members to shortcut appids from shortcuts.vdf.
+    /// Those are signed 32-bit values (high bit set → negative). Unsigned JSON
+    /// numbers never match, so the tab looks empty and Steam hides it.
     /// </summary>
-    private static long CollectionAppId(uint id) => id;
+    private static long CollectionAppId(uint id) => unchecked((int)id);
+
+    private static void NormalizeAdded(JsonArray added)
+    {
+        var keep = new List<long>();
+        foreach (var node in added)
+        {
+            if (!TryGetLong(node, out var value)) continue;
+            var signed = unchecked((int)value);
+            if (!keep.Contains(signed))
+                keep.Add(signed);
+        }
+        added.Clear();
+        foreach (var id in keep)
+            added.Add(id);
+    }
 
     private static List<(int ns, int ver)> ReadNamespaces(DeckClient client, string nsPath)
     {

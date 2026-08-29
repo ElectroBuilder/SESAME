@@ -183,7 +183,7 @@ public static class ArtworkClient
     private static async Task<int?> SearchGameIdAsync(string title, SystemProfile system, CancellationToken ct)
     {
         var clean = StoreGame.StripVariant(title);
-        var terms = system.Id is "hydra" or "app"
+        var terms = system.Id is "hydra" or "app" or "lutris" or "game"
             ? new[] { clean, title, StoreGame.FoldTitle(clean) }
             : new[]
             {

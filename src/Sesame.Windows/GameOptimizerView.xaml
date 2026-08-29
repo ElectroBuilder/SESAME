@@ -20,7 +20,9 @@
         <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
                 BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
             <StackPanel Orientation="Horizontal">
-                <Button Content="Apply artwork" Style="{StaticResource AccentButton}"
+                <Button Content="Scan" Click="Scan_Click"
+                        ToolTip="Read ROMs, Hydra games and apps on the Deck"/>
+                <Button Content="Optimize" Style="{StaticResource AccentButton}"
                         Click="OptimizeSelected_Click"
                         ToolTip="Write shortcuts, artwork, category and FPS for Steam Game Mode"/>
                 <Button Content="Choose launch" Click="PickLaunch_Click"
@@ -34,7 +36,7 @@
 
         <TextBlock x:Name="HintText" DockPanel.Dock="Bottom" Margin="10,4,10,6"
                    Foreground="{DynamicResource Muted}" TextWrapping="Wrap"
-                   Text="Connect to a Deck: SESAME scans it live (ROMs, Hydra, apps). Own shortcuts only; Hydra/SRM stay."/>
+                   Text="Connect, then Scan. SESAME writes its own shortcuts only; Hydra and Steam ROM Manager stay."/>
 
         <Grid>
             <Grid.ColumnDefinitions>

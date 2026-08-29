@@ -302,6 +302,9 @@ public static class GameOptimizerService
         Report(progress, "Save shortcuts", "Writing Steam shortcuts to the Deck…", 90);
         foreach (var config in configs)
             SteamShortcuts.Save(client, config, shortcuts);
+        try { SteamSelfShortcut.Ensure(client); }
+        catch { /* Game Mode SESAME tile is extra */ }
+        shortcuts = SteamShortcuts.LoadAll(client, configs);
 
         var leftover = shortcuts.Count(s => SteamShortcuts.IsOwned(s) &&
                                             LaunchComposer.IsLegacyScript(s.Exe, s.LaunchOptions) &&
@@ -322,9 +325,21 @@ public static class GameOptimizerService
 
         Report(progress, "Update collections", "Set Steam tabs…", 94);
         var inSteam = games.Where(g => g.SteamAppId != 0).ToList();
-        var collectionError = SteamCollections.Apply(client, configs, inSteam);
+        var collectionError = SteamCollections.Apply(client, configs, inSteam, shortcuts);
         if (!string.IsNullOrEmpty(collectionError))
             report.Errors.Add("Collecties: " + collectionError);
+
+        var protonGames = written
+            .Select(s => selected.FirstOrDefault(g => g.SteamAppId == s.AppId))
+            .Where(g => g is not null)
+            .Cast<OptimizerGame>()
+            .Where(SteamCompat.NeedsProton)
+            .ToList();
+        if (protonGames.Count > 0)
+        {
+            Report(progress, "UMU Proton", "Set compatibility for Windows games…", 95);
+            SteamCompat.Apply(client, protonGames);
+        }
 
         if (configs.Count > 1)
         {

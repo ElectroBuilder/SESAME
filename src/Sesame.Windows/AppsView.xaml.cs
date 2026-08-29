@@ -24,6 +24,8 @@ public partial class AppsView : UserControl
         ListColumns.Attach(AppList, _apps);
     }
 
+    public int Count => _apps.Count;
+
     public void Attach(DeckClient client) => _client = client;
 
     public void OnConnected()
@@ -47,7 +49,7 @@ public partial class AppsView : UserControl
 
     private async void Scan_Click(object sender, RoutedEventArgs e) => await ScanAsync();
 
-    public async Task ScanAsync()
+    public async Task ScanAsync(bool overlay = true)
     {
         if (_busy) return;
         if (_client is not { IsConnected: true })
@@ -57,8 +59,9 @@ public partial class AppsView : UserControl
         }
 
         _busy = true;
-        ShowBusy("Reading installed apps…",
-            "Looking up desktop entries and Flatpaks on the Deck. The list stays usable afterwards.");
+        if (overlay)
+            ShowBusy("Reading installed apps…",
+                "Looking up desktop entries and Flatpaks on the Deck. The list stays usable afterwards.");
         HintText.Text = "Reading installed apps…";
         StatusChanged?.Invoke("Apps: reading installed apps…");
         try
@@ -91,7 +94,7 @@ public partial class AppsView : UserControl
         finally
         {
             _busy = false;
-            ProgressOverlay.Visibility = Visibility.Collapsed;
+            if (overlay) ProgressOverlay.Visibility = Visibility.Collapsed;
         }
     }
 

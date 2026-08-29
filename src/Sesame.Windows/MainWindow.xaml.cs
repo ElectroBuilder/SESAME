@@ -15,6 +15,12 @@ namespace Sesame;
 
 public partial class MainWindow : Window
 {
+    private const int TabDash = 0;
+    private const int TabFiles = 1;
+    private const int TabApps = 2;
+    private const int TabGames = 3;
+    private const int TabOptimize = 4;
+    private const int TabStore = 5;
     private readonly AppCatalog _catalog = new();
     private readonly ProfileStore _profiles = new();
     private readonly QuickAccessStore _pins = new();
@@ -26,6 +32,8 @@ public partial class MainWindow : Window
     private string _cwd = "/home/deck";
     private readonly TerminalDisplay _term = new();
     private bool _busy;
+    private int _navGen;
+    private bool _workOpen;
     private readonly List<PackHit> _storeQueue = new();
     private bool _drainingStoreQueue;
     private uint _termCols = 120;
@@ -57,11 +65,14 @@ public partial class MainWindow : Window
         ResetTerminal("Connect to the Steam Deck to run commands and scripts.");
         StorePanel.SetGames(_catalog.StoreGames, []);
         OptimizerPanel.Attach(_client, _catalog);
-        OptimizerPanel.StatusChanged += text => FooterText.Text = text;
+        OptimizerPanel.StatusChanged += SetStatus;
         AppsPanel.Attach(_client);
-        AppsPanel.StatusChanged += text => FooterText.Text = text;
+        AppsPanel.StatusChanged += SetStatus;
         AppsPanel.ManualChanged += OptimizerPanel.UpsertManual;
         AppsPanel.ManualRemoved += OptimizerPanel.RemoveManual;
+        DashPanel.OpenTab += OpenDashboardTab;
+        DashPanel.ScanRequested += () => _ = DashboardScanAsync();
+        DashPanel.OptimizeRequested += () => _ = DashboardOptimizeAsync();
         StorePanel.InstallRequested += EnqueueStoreInstall;
         StorePanel.DeleteRequested += hit => _ = DeletePackAsync(hit);
         StorePanel.ToggleRequested += (hit, enabled) => _ = TogglePackAsync(hit, enabled);
@@ -256,11 +267,15 @@ public partial class MainWindow : Window
         StatusText.Foreground = (Brush)FindResource("Ok");
         _client.ResizeShell(_termCols, _termRows);
         TermHint.Text = "  ·  click in the window and type  ·  Enter runs  ·  Ctrl+C stops";
-        await Task.Run(() => LibraryLayout.Ensure(_client, _catalog));
-        Navigate(_client.Home, push: false);
-        await ScanSilent();
+        _ = Task.Run(() =>
+        {
+            try { LibraryLayout.Ensure(_client, _catalog); }
+            catch { /* folders are created on first scan if this fails */ }
+        });
+        Navigate(_client.Home, push: false, showFilesTab: false);
         OptimizerPanel.OnConnected();
         AppsPanel.OnConnected();
+        RefreshDashboard();
     }
 
     private void ConnectOrWake(ConnectionProfile chosen, List<ConnectionProfile> fallback)
@@ -388,6 +403,7 @@ public partial class MainWindow : Window
         StatusText.Foreground = (Brush)FindResource("Muted");
         TermHint.Text = "  ·  click here and type a command";
         ResetTerminal("Disconnected.");
+        RefreshDashboard();
     }
 
     private void QuickTree_Selected(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -463,9 +479,10 @@ public partial class MainWindow : Window
 
         if (e.Key == Key.F5)
         {
-            if (MainTabs.SelectedIndex == 2) ScanGames_Click(sender, e);
-            else if (MainTabs.SelectedIndex == 3) OptimizerPanel.StartBackgroundScan();
-            else if (MainTabs.SelectedIndex == 1) _ = AppsPanel.ScanAsync();
+            if (MainTabs.SelectedIndex == TabGames) ScanGames_Click(sender, e);
+            else if (MainTabs.SelectedIndex == TabOptimize) OptimizerPanel.StartBackgroundScan();
+            else if (MainTabs.SelectedIndex == TabApps) _ = AppsPanel.ScanAsync();
+            else if (MainTabs.SelectedIndex == TabDash) _ = DashboardScanAsync();
             else Refresh_Click(sender, e);
             e.Handled = true;
         }
@@ -481,7 +498,7 @@ public partial class MainWindow : Window
         }
         else if (ctrl && e.Key == Key.L)
         {
-            MainTabs.SelectedIndex = 0;
+            MainTabs.SelectedIndex = TabFiles;
             PathBox.Focus();
             PathBox.SelectAll();
             e.Handled = true;
@@ -651,7 +668,7 @@ public partial class MainWindow : Window
         FooterText.Text = $"Downloaded to {dest}";
     }
 
-    private async void ScanGames_Click(object sender, RoutedEventArgs e) => await ScanSilent();
+    private async void ScanGames_Click(object sender, RoutedEventArgs e) => await ScanGamesLibraryAsync();
 
     private void OpenRom_Click(object sender, RoutedEventArgs e)
     {
@@ -679,8 +696,8 @@ public partial class MainWindow : Window
 
     private void MainTabs_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (MainTabs.SelectedIndex == 1)
-            _ = AppsPanel.EnsureScannedAsync();
+        if (MainTabs.SelectedIndex == TabDash)
+            RefreshDashboard();
     }
 
     private void AddGame_Click(object sender, RoutedEventArgs e)
@@ -716,7 +733,7 @@ public partial class MainWindow : Window
 
     private void SearchPacks_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 4;
+        MainTabs.SelectedIndex = TabStore;
         if (GameList.SelectedItem is GameEntry g)
             StorePanel.Prefill(g.Identity);
     }
@@ -769,7 +786,7 @@ public partial class MainWindow : Window
             enabled: !string.IsNullOrEmpty(game.RomPath) && CartRom.IsSupportedSystem(game.System));
         AddMenu(GameMenu, "Search packs…", (_, _) =>
         {
-            MainTabs.SelectedIndex = 4;
+            MainTabs.SelectedIndex = TabStore;
             StorePanel.Prefill(game.Identity);
         });
         GameMenu.Items.Add(new Separator());
@@ -841,7 +858,7 @@ public partial class MainWindow : Window
         FooterText.Text = remotes.Count == 1
             ? "Mod placed in " + remotes[0]
             : $"{remotes.Count} mods geplaatst in {dest}";
-        await ScanSilent();
+        await ScanGamesLibraryAsync(overlay: false);
     }
 
     private async void TranslateDutch_Click(object sender, RoutedEventArgs e)
@@ -912,7 +929,7 @@ public partial class MainWindow : Window
                 RomHackLog.Remember(remote, game.DisplayName + " (NL)", game.FileName, "translation");
                 Dispatcher.Invoke(() => FooterText.Text = "Dutch ROM ready: " + name);
             });
-            await ScanSilent();
+            await ScanGamesLibraryAsync(overlay: false);
         }
         catch (Exception ex)
         {
@@ -953,7 +970,7 @@ public partial class MainWindow : Window
                     msg => Dispatcher.Invoke(() => FooterText.Text = msg));
                 Dispatcher.Invoke(() => FooterText.Text = "ROM hack placed as " + Path.GetFileName(remote));
             });
-            await ScanSilent();
+            await ScanGamesLibraryAsync(overlay: false);
         }
         catch (Exception ex)
         {
@@ -1114,7 +1131,7 @@ public partial class MainWindow : Window
             });
             FooterText.Text = $"{hit.Kind} installed in {hit.RemotePath ?? dest}";
             if (scanAfter)
-                await ScanSilent();
+                await ScanGamesLibraryAsync(overlay: false);
         }
         catch (Exception ex)
         {
@@ -1222,7 +1239,7 @@ public partial class MainWindow : Window
             });
             FooterText.Text = $"{hit.Kind} installed in {hit.RemotePath ?? dest}";
             if (scanAfter)
-                await ScanSilent();
+                await ScanGamesLibraryAsync(overlay: false);
         }
         catch (Exception ex)
         {
@@ -1324,7 +1341,7 @@ public partial class MainWindow : Window
             hit.ClearLocal();
             FooterText.Text = hit.Title + " verwijderd";
             if (remote)
-                await ScanSilent();
+                await ScanGamesLibraryAsync(overlay: false);
         }
         catch (Exception ex)
         {
@@ -1476,7 +1493,7 @@ public partial class MainWindow : Window
                     FooterText.Text = "ROM hack placed as " + Path.GetFileName(remote);
                 });
             });
-            await ScanSilent();
+            await ScanGamesLibraryAsync(overlay: false);
         }
         catch (Exception ex)
         {
@@ -1694,12 +1711,12 @@ public partial class MainWindow : Window
         });
         FooterText.Text = "Upload done";
         Navigate(_cwd, push: false);
-        await ScanSilent();
+        await ScanGamesLibraryAsync(overlay: false);
     }
 
     private string RouteDestination(string localPath, string fallbackDir)
     {
-        if (GameList.SelectedItem is GameEntry { TitleId: not null } game && MainTabs.SelectedIndex == 2)
+        if (GameList.SelectedItem is GameEntry { TitleId: not null } game && MainTabs.SelectedIndex == TabGames)
             return game.ModPath ?? DeckClient.Combine(_catalog.EdenMods, game.TitleId);
 
         var ext = Path.GetExtension(localPath);
@@ -1936,12 +1953,22 @@ public partial class MainWindow : Window
             item.DisplayName = item.Name;
     }
 
-    private void Navigate(string path, bool push = true)
+    private void Navigate(string path, bool push = true, bool showFilesTab = true)
     {
         if (!_client.IsConnected || string.IsNullOrWhiteSpace(path)) return;
+        var gen = ++_navGen;
+        if (showFilesTab)
+            MainTabs.SelectedIndex = TabFiles;
+        FooterText.Text = "Opening " + path + "…";
+        _ = NavigateAsync(path, push, gen);
+    }
+
+    private async Task NavigateAsync(string path, bool push, int gen)
+    {
         try
         {
-            var items = _client.List(path);
+            var items = await Task.Run(() => _client.List(path));
+            if (gen != _navGen) return;
             if (push && !string.Equals(_cwd, path, StringComparison.Ordinal))
                 _back.Push(_cwd);
             _cwd = path;
@@ -1952,56 +1979,177 @@ public partial class MainWindow : Window
                 ApplyDisplayAlias(item);
                 Files.Add(item);
             }
-            MainTabs.SelectedIndex = 0;
             FooterText.Text = $"{items.Count} items in {path}";
+            RefreshDashboard();
         }
         catch (Exception ex)
         {
+            if (gen != _navGen) return;
             MessageBox.Show(ex.Message, "Could not open folder");
         }
     }
 
-    private async Task ScanSilent()
+    private async Task ScanGamesLibraryAsync(bool overlay = true)
     {
         if (!_client.IsConnected) return;
-        await RunBusy("Scanning games…", () =>
+        if (overlay) ShowWork("Scanning games…", "Reading ROM folders and mods on the Deck. This can take a moment.");
+        else FooterText.Text = "Scanning games…";
+        try
         {
-            var games = _library.Scan(_client, _catalog);
-            var installed = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
-            foreach (var game in games.Where(g =>
-                         !string.IsNullOrEmpty(g.TitleId) && !string.IsNullOrEmpty(g.ModPath)))
+            var catalog = _catalog;
+            var client = _client;
+            var (games, installed) = await Task.Run(() =>
             {
-                try
+                var found = _library.Scan(client, catalog);
+                var mods = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+                foreach (var game in found.Where(g =>
+                             !string.IsNullOrEmpty(g.TitleId) && !string.IsNullOrEmpty(g.ModPath)))
                 {
-                    installed[game.TitleId!] = _client.Exists(game.ModPath!)
-                        ? _client.List(game.ModPath!)
-                            .Where(i => i.IsDirectory)
-                            .Select(i => i.Name)
-                            .ToList()
-                        : [];
+                    try
+                    {
+                        mods[game.TitleId!] = client.Exists(game.ModPath!)
+                            ? client.List(game.ModPath!)
+                                .Where(i => i.IsDirectory)
+                                .Select(i => i.Name)
+                                .ToList()
+                            : [];
+                    }
+                    catch
+                    {
+                        // map blijft leeg tot de volgende scan
+                    }
                 }
-                catch
-                {
-                    // map blijft leeg tot de volgende scan
-                }
-            }
-            Dispatcher.Invoke(() =>
-            {
-                Games.Clear();
-                foreach (var g in games) Games.Add(g);
-                foreach (var item in ManualShortcutStore.Load()
-                             .Where(x => x.AddedByUser &&
-                                         x.Kind.Equals("Game", StringComparison.OrdinalIgnoreCase)))
-                {
-                    var entry = ManualShortcutStore.ToLibraryEntry(item);
-                    if (!Games.Any(g => string.Equals(g.RomPath, entry.RomPath, StringComparison.OrdinalIgnoreCase)))
-                        Games.Add(entry);
-                }
-                BuildQuickAccess();
-                StorePanel.SetGames(_catalog.StoreGames, games.Select(x => x.Identity));
-                StorePanel.RefreshLocalState(installed);
+                return (found, mods);
             });
+            Games.Clear();
+            foreach (var g in games) Games.Add(g);
+            foreach (var item in ManualShortcutStore.Load()
+                         .Where(x => x.AddedByUser &&
+                                     x.Kind.Equals("Game", StringComparison.OrdinalIgnoreCase)))
+            {
+                var entry = ManualShortcutStore.ToLibraryEntry(item);
+                if (!Games.Any(g => string.Equals(g.RomPath, entry.RomPath, StringComparison.OrdinalIgnoreCase)))
+                    Games.Add(entry);
+            }
+            BuildQuickAccess();
+            StorePanel.SetGames(_catalog.StoreGames, games.Select(x => x.Identity));
+            StorePanel.RefreshLocalState(installed);
+            FooterText.Text = $"Games: {Games.Count}";
+            RefreshDashboard();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, AppBrand.ShortName);
+        }
+        finally
+        {
+            if (overlay) HideWork();
+        }
+    }
+
+    private void OpenDashboardTab(string id)
+    {
+        MainTabs.SelectedIndex = id switch
+        {
+            "files" => TabFiles,
+            "apps" => TabApps,
+            "games" => TabGames,
+            "optimize" => TabOptimize,
+            "store" => TabStore,
+            _ => TabDash
+        };
+    }
+
+    private async Task DashboardScanAsync()
+    {
+        if (!_client.IsConnected)
+        {
+            MessageBox.Show(this, "Connect to the Steam Deck first.", "Scan");
+            return;
+        }
+        if (_workOpen) return;
+        ShowWork("Scanning apps…", "Looking up desktop entries and Flatpaks on the Deck.");
+        try
+        {
+            await AppsPanel.ScanAsync(overlay: false);
+            ShowWork("Scanning games…", "Reading ROM folders and mods on the Deck.");
+            await ScanGamesLibraryAsync(overlay: false);
+            ShowWork("Scanning library…", "Reading ROMs, Hydra games and apps for Optimize.");
+            await OptimizerPanel.ScanLibraryAsync(overlay: false);
+            FooterText.Text = $"Scan done · {AppsPanel.Count} apps · {Games.Count} games · {OptimizerPanel.Count} for Optimize";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Scan");
+        }
+        finally
+        {
+            HideWork();
+            RefreshDashboard();
+        }
+    }
+
+    private async Task DashboardOptimizeAsync()
+    {
+        if (!_client.IsConnected)
+        {
+            MessageBox.Show(this, "Connect to the Steam Deck first.", "Optimize");
+            return;
+        }
+        if (OptimizerPanel.Count == 0)
+        {
+            ShowWork("Scanning library…", "Reading ROMs, Hydra games and apps on the Deck.");
+            try { await OptimizerPanel.ScanLibraryAsync(overlay: false); }
+            finally { HideWork(); }
+            RefreshDashboard();
+            if (OptimizerPanel.Count == 0)
+            {
+                MessageBox.Show(this, "No games found. Scan first.", "Optimize");
+                return;
+            }
+        }
+        MainTabs.SelectedIndex = TabOptimize;
+        await OptimizerPanel.RunOptimizeInteractiveAsync(selectAllIfEmpty: true);
+        RefreshDashboard();
+    }
+
+    private void RefreshDashboard()
+    {
+        DashPanel.UpdateStats(new DashboardStats
+        {
+            Connected = _client.IsConnected,
+            FileCount = Files.Count,
+            Folder = _cwd,
+            AppCount = AppsPanel.Count,
+            GameCount = Games.Count,
+            OptimizeCount = OptimizerPanel.Count,
+            InSteamCount = OptimizerPanel.InSteamCount,
+            SelectedCount = OptimizerPanel.SelectedCount,
+            StoreCount = _catalog.StoreGames.Count
         });
+    }
+
+    private void SetStatus(string text)
+    {
+        FooterText.Text = text;
+        if (_workOpen)
+            WorkDetail.Text = text;
+    }
+
+    private void ShowWork(string title, string detail)
+    {
+        _workOpen = true;
+        WorkOverlay.Visibility = Visibility.Visible;
+        WorkTitle.Text = title;
+        WorkDetail.Text = detail;
+        WorkBar.IsIndeterminate = true;
+        FooterText.Text = title;
+    }
+
+    private void HideWork()
+    {
+        _workOpen = false;
+        WorkOverlay.Visibility = Visibility.Collapsed;
     }
 
     private async Task RunBusy(string? status, Action work)

@@ -194,6 +194,114 @@ for root in (HYDRA_ROOTS if MODE in ('all', 'hydra') else []):
             elif low.endswith(('.db', '.sqlite', '.sqlite3')) and 'hydra' in (dirpath.lower() + low):
                 scan_sqlite(path)
 
+if 'LUTRIS_ROOT' not in globals():
+    LUTRIS_ROOT = os.path.join(HOME, 'Games', 'Lutris')
+if 'OTHER_ROOT' not in globals():
+    OTHER_ROOT = os.path.join(HOME, 'Games', 'Other')
+if 'HYDRA_GAMES' not in globals():
+    HYDRA_GAMES = os.path.join(HOME, 'Games', 'Hydra')
+
+SKIP_EXE = (
+    'unitycrashhandler', 'unitycrashhandler64', 'unitycrashhandler32',
+    'uninstall', 'unins000', 'crashpad', 'vcredist', 'vc_redist',
+    'directx', 'dxsetup', 'easyanticheat', 'eac', 'battleye',
+    'dotnetfx', 'oalinst', 'physx',
+)
+
+def skip_exe(path):
+    name = os.path.splitext(os.path.basename(path or ''))[0].lower()
+    return any(s in name for s in SKIP_EXE)
+
+def pick_exe(folder):
+    hits = []
+    try:
+        names = os.listdir(folder)
+    except Exception:
+        return None
+    folder_key = os.path.basename(folder).lower().replace(' ', '')
+    for n in names:
+        full = os.path.join(folder, n)
+        if not os.path.isfile(full):
+            continue
+        if os.path.splitext(n)[1].lower() != '.exe':
+            continue
+        if skip_exe(full):
+            continue
+        try:
+            size = os.path.getsize(full)
+        except Exception:
+            size = 0
+        stem = os.path.splitext(n)[0].lower().replace(' ', '')
+        score = size
+        if stem == folder_key or folder_key.startswith(stem) or stem.startswith(folder_key):
+            score += 10 ** 12
+        hits.append((score, full))
+    if not hits:
+        return None
+    hits.sort(reverse=True)
+    return hits[0][1]
+
+def scan_game_root(root, kind):
+    if not root or not os.path.isdir(root):
+        return
+    try:
+        names = os.listdir(root)
+    except Exception:
+        return
+    files = [n for n in names if os.path.isfile(os.path.join(root, n))]
+    dirs = [n for n in names if os.path.isdir(os.path.join(root, n))]
+    direct = pick_exe(root)
+    if direct and not dirs:
+        emit(kind, os.path.splitext(os.path.basename(direct))[0], direct, root, '')
+        return
+    for n in dirs:
+        if n.startswith('.'):
+            continue
+        folder = os.path.join(root, n)
+        exe = pick_exe(folder)
+        if not exe:
+            for sub in ('bin', 'Bin', 'x64', 'win64', 'Game', 'game'):
+                nested = os.path.join(folder, sub)
+                if os.path.isdir(nested):
+                    exe = pick_exe(nested)
+                    if exe:
+                        break
+        if exe:
+            emit(kind, n, exe, os.path.dirname(exe), '')
+
+def scan_lutris_yaml():
+    roots = [
+        os.path.join(HOME, '.config', 'lutris', 'games'),
+        os.path.join(HOME, '.var', 'app', 'net.lutris.Lutris', 'config', 'lutris', 'games'),
+    ]
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for name in os.listdir(root):
+            if not name.endswith(('.yml', '.yaml')):
+                continue
+            path = os.path.join(root, name)
+            try:
+                text = open(path, encoding='utf-8', errors='ignore').read()
+            except Exception:
+                continue
+            title = None
+            exe = None
+            for line in text.splitlines():
+                low = line.strip()
+                if low.startswith('name:'):
+                    title = low.split(':', 1)[1].strip().strip("'\"")
+                elif low.startswith('exe:'):
+                    exe = low.split(':', 1)[1].strip().strip("'\"")
+            if title and exe and os.path.isfile(exe) and exe.lower().endswith('.exe') and not skip_exe(exe):
+                emit('LUTRIS', title, exe, os.path.dirname(exe), '')
+
+if MODE in ('all', 'hydra'):
+    scan_lutris_yaml()
+    scan_game_root(LUTRIS_ROOT, 'LUTRIS')
+    scan_game_root(OTHER_ROOT, 'OTHER')
+    scan_game_root(HYDRA_GAMES, 'HYDRA')
+
 if MODE not in ('all', 'apps'):
     raise SystemExit(0)
 

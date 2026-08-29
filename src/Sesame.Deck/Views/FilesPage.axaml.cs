@@ -10,9 +10,11 @@ public partial class FilesPage : UserControl
 {
     private string _cwd = "/home/deck";
     private readonly Stack<string> _back = new();
+    private int _navGen;
 
     public event Action<string>? PathChanged;
     public string CurrentPath => _cwd;
+    public int ItemCount { get; private set; }
 
     public FilesPage() => InitializeComponent();
 
@@ -108,17 +110,30 @@ public partial class FilesPage : UserControl
     {
         var session = DeckSession.Current;
         if (!session.Connected) return;
+        var gen = ++_navGen;
+        var target = string.IsNullOrWhiteSpace(path) ? session.Client.Home : path.Trim();
+        PathBox.Text = target;
+        PathChanged?.Invoke("Opening " + target + "…");
+        _ = NavigateAsync(target, push, gen);
+    }
+
+    private async Task NavigateAsync(string path, bool push, int gen)
+    {
         try
         {
+            var items = await Task.Run(() => DeckSession.Current.Client.List(path));
+            if (gen != _navGen) return;
             if (push && !string.Equals(_cwd, path, StringComparison.Ordinal))
                 _back.Push(_cwd);
-            _cwd = string.IsNullOrWhiteSpace(path) ? session.Client.Home : path.Trim();
-            PathBox.Text = _cwd;
-            FileList.ItemsSource = session.Client.List(_cwd);
-            PathChanged?.Invoke(_cwd);
+            _cwd = path;
+            PathBox.Text = path;
+            FileList.ItemsSource = items;
+            ItemCount = items.Count;
+            PathChanged?.Invoke(path);
         }
         catch (Exception ex)
         {
+            if (gen != _navGen) return;
             PathBox.Text = ex.Message;
         }
     }

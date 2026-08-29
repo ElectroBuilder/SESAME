@@ -16,6 +16,7 @@
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="Themes\**" />
     <Content Include="Assets\sesame.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\sesame-icon-lg.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.4" />

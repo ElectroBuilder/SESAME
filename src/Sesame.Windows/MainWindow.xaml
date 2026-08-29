@@ -113,6 +113,9 @@
                 <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="{DynamicResource Bg}"/>
 
                 <TabControl Grid.Column="2" x:Name="MainTabs" SelectionChanged="MainTabs_Changed">
+                    <TabItem Header="Dashboard">
+                        <local:DashboardView x:Name="DashPanel"/>
+                    </TabItem>
                     <TabItem Header="Files">
                         <DockPanel Background="{DynamicResource Bg}">
                             <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
@@ -242,7 +245,7 @@
                             </ListView>
                         </DockPanel>
                     </TabItem>
-                    <TabItem Header="Artwork">
+                    <TabItem Header="Optimize">
                         <local:GameOptimizerView x:Name="OptimizerPanel"/>
                     </TabItem>
                     <TabItem Header="Store">
@@ -288,6 +291,22 @@
                          SizeChanged="TermBox_SizeChanged"
                          DataObject.Pasting="TermBox_Pasting"/>
             </DockPanel>
+
+            <Grid x:Name="WorkOverlay" Grid.Row="0" Grid.RowSpan="3" Visibility="Collapsed" Panel.ZIndex="40">
+                <Border Background="{DynamicResource Bg}" Opacity="0.82"/>
+                <Border Width="520" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Accent}"
+                        BorderThickness="1.5" CornerRadius="14" Padding="28,24">
+                    <StackPanel>
+                        <TextBlock x:Name="WorkTitle" FontSize="20" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" Text="Working…"/>
+                        <TextBlock x:Name="WorkDetail" FontSize="14" Foreground="{DynamicResource Muted}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap"
+                                   Text="This can take a moment while the Deck is busy."/>
+                        <ProgressBar x:Name="WorkBar" Height="16" IsIndeterminate="True" Margin="0,18,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>

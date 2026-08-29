@@ -1,0 +1,74 @@
+<UserControl x:Class="Sesame.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Background="{DynamicResource Bg}">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
+                BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="12,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Button Content="Scan" Click="Scan_Click"
+                            ToolTip="Scan native apps and the game library on the Deck"/>
+                    <Button Content="Optimize" Style="{StaticResource AccentButton}" Click="Optimize_Click"
+                            ToolTip="Write Steam shortcuts, artwork, collections and launch settings"/>
+                </StackPanel>
+                <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="16,0,0,0"
+                           Foreground="{DynamicResource Muted}" TextWrapping="Wrap"
+                           Text="Connect, then Scan. Optimize writes shortcuts and covers to Steam Game Mode."/>
+            </DockPanel>
+        </Border>
+        <ScrollViewer Padding="20">
+            <UniformGrid Columns="3" Rows="2">
+                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
+                        Click="Files_Click" ToolTip="Browse folders on the Deck">
+                    <StackPanel>
+                        <TextBlock Text="Files" FontSize="22" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="FilesCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource Accent}" Text="—"/>
+                        <TextBlock x:Name="FilesDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
+                                   TextWrapping="Wrap" Text="Folders on the connected Deck"/>
+                    </StackPanel>
+                </Button>
+                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
+                        Click="Apps_Click" ToolTip="Native Deck apps">
+                    <StackPanel>
+                        <TextBlock Text="Apps" FontSize="22" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="AppsCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource Accent}" Text="—"/>
+                        <TextBlock x:Name="AppsDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
+                                   TextWrapping="Wrap" Text="Kodi, Stremio, browsers and other native apps"/>
+                    </StackPanel>
+                </Button>
+                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
+                        Click="Games_Click" ToolTip="ROM library">
+                    <StackPanel>
+                        <TextBlock Text="Games" FontSize="22" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="GamesCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource Accent}" Text="—"/>
+                        <TextBlock x:Name="GamesDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
+                                   TextWrapping="Wrap" Text="ROMs and games you added yourself"/>
+                    </StackPanel>
+                </Button>
+                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
+                        Click="OptimizeTab_Click" ToolTip="Shortcuts, artwork and collections">
+                    <StackPanel>
+                        <TextBlock Text="Optimize" FontSize="22" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="OptimizeCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource Accent}" Text="—"/>
+                        <TextBlock x:Name="OptimizeDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
+                                   TextWrapping="Wrap" Text="Steam shortcuts, covers and FPS"/>
+                    </StackPanel>
+                </Button>
+                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
+                        Click="Store_Click" ToolTip="Mods, packs and ROM hacks">
+                    <StackPanel>
+                        <TextBlock Text="Store" FontSize="22" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="StoreCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource Accent}" Text="—"/>
+                        <TextBlock x:Name="StoreDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
+                                   TextWrapping="Wrap" Text="Mods, texture packs and ROM hacks"/>
+                    </StackPanel>
+                </Button>
+            </UniformGrid>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

@@ -28,6 +28,8 @@ public static class OptimizerSettings
 
     public static bool MasksByDefault(string systemId) =>
         !systemId.Equals("hydra", StringComparison.OrdinalIgnoreCase) &&
+        !systemId.Equals("lutris", StringComparison.OrdinalIgnoreCase) &&
+        !systemId.Equals("game", StringComparison.OrdinalIgnoreCase) &&
         !systemId.Equals("app", StringComparison.OrdinalIgnoreCase);
 
     public static bool PlatformMask(string? systemId)
@@ -53,6 +55,8 @@ public static class OptimizerSettings
         var rows = new List<MaskPlatformOption>
         {
             new("hydra", "Hydra", PlatformMask("hydra")),
+            new("lutris", "Lutris", PlatformMask("lutris")),
+            new("game", "Games", PlatformMask("game")),
             new("app", "Apps", PlatformMask("app"))
         };
         rows.AddRange(SystemCatalog.All.Select(p => new MaskPlatformOption(p.Id, p.Name, PlatformMask(p.Id))));
@@ -149,6 +153,8 @@ public static class OptimizerSettings
         var masks = new Dictionary<string, bool>(MaskPlatforms, StringComparer.OrdinalIgnoreCase)
         {
             ["hydra"] = PlatformMask("hydra"),
+            ["lutris"] = PlatformMask("lutris"),
+            ["game"] = PlatformMask("game"),
             ["app"] = PlatformMask("app")
         };
         foreach (var profile in SystemCatalog.All)

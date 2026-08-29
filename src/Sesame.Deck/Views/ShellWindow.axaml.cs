@@ -4,18 +4,27 @@ using Avalonia.Interactivity;
 using Sesame.Deck.Input;
 using Sesame.Models;
 using Sesame.Services;
+using Sesame.Services.GameOptimizer;
 using Sesame;
 
 namespace Sesame.Deck.Views;
 
 public partial class ShellWindow : Window
 {
+    private const int TabDash = 0;
+    private const int TabFiles = 1;
+    private const int TabApps = 2;
+    private const int TabGames = 3;
+    private const int TabOptimize = 4;
+    private const int TabStore = 5;
+
     private readonly DeckSession _session = DeckSession.Current;
     private readonly bool _gameMode;
     private readonly GamepadPump _pad;
     private readonly QuickAccessStore _pins = new();
     private int _tile;
     private bool _tabsReady;
+    private bool _workOpen;
 
     public ShellWindow()
     {
@@ -61,6 +70,24 @@ public partial class ShellWindow : Window
             {
                 await _session.EnsureConnectedAsync();
                 AfterConnect();
+                if (!_gameMode && HostEnvironment.LocalAvailable && _session.Connected)
+                {
+                    var client = _session.Client;
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            if (SteamSession.IsSteamRunning(client))
+                                SteamSelfShortcut.TryEnsure(client);
+                            else
+                                SteamSelfShortcut.Ensure(client);
+                        }
+                        catch
+                        {
+                            /* Game Mode tile is optional until the next optimize */
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -75,26 +102,45 @@ public partial class ShellWindow : Window
 
     private void WirePanels()
     {
-        FilesPanel.PathChanged += path => FooterStatus.Text = path;
-        AppsPanel.StatusChanged += text => FooterStatus.Text = text;
+        FilesPanel.PathChanged += path =>
+        {
+            FooterStatus.Text = path;
+            RefreshDashboard();
+        };
+        AppsPanel.StatusChanged += text =>
+        {
+            SetStatus(text);
+            RefreshDashboard();
+        };
         AppsPanel.ManualChanged += ArtPanel.UpsertManual;
         AppsPanel.ManualRemoved += ArtPanel.RemoveManual;
-        GamesPanel.StatusChanged += text => FooterStatus.Text = text;
+        GamesPanel.StatusChanged += text =>
+        {
+            SetStatus(text);
+            RefreshDashboard();
+        };
         GamesPanel.ManualChanged += ArtPanel.UpsertManual;
         GamesPanel.ManualRemoved += ArtPanel.RemoveManual;
         GamesPanel.OpenFolder += path =>
         {
-            MainTabs.SelectedIndex = 0;
+            MainTabs.SelectedIndex = TabFiles;
             FilesPanel.OpenPath(path);
         };
         GamesPanel.SearchPacks += game =>
         {
-            MainTabs.SelectedIndex = 4;
+            MainTabs.SelectedIndex = TabStore;
             StorePanel.Prefill(game);
         };
-        ArtPanel.StatusChanged += text => FooterStatus.Text = text;
+        ArtPanel.StatusChanged += text =>
+        {
+            SetStatus(text);
+            RefreshDashboard();
+        };
         ArtPanel.SetCompact(_gameMode);
         StorePanel.SetGames(_session.Catalog.StoreGames, []);
+        DashPanel.OpenTab += OpenDashboardTab;
+        DashPanel.ScanRequested += () => _ = DashboardScanAsync();
+        DashPanel.OptimizeRequested += () => _ = DashboardOptimizeAsync();
     }
 
     private void AfterConnect()
@@ -106,6 +152,7 @@ public partial class ShellWindow : Window
         StorePanel.SetGames(_session.Catalog.StoreGames, GamesPanel.Items.Select(g => g.Identity));
         if (_gameMode)
             ArtPanel.SetCompact(true);
+        RefreshDashboard();
     }
 
     private void BuildQuickAccess()
@@ -117,17 +164,15 @@ public partial class ShellWindow : Window
     {
         if (!_tabsReady) return;
         if (QuickList.SelectedItem is not QuickPath path) return;
-        MainTabs.SelectedIndex = 0;
+        MainTabs.SelectedIndex = TabFiles;
         FilesPanel.OpenPath(path.Path);
     }
 
-    private async void Tabs_Changed(object? sender, SelectionChangedEventArgs e)
+    private void Tabs_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (!_tabsReady) return;
-        if (MainTabs.SelectedIndex == 1)
-            await AppsPanel.EnsureScannedAsync();
-        if (MainTabs.SelectedIndex == 2 && GamesPanel.Items.Count == 0)
-            await GamesPanel.ScanAsync();
+        if (MainTabs.SelectedIndex == TabDash)
+            RefreshDashboard();
     }
 
     private void RefreshStatus()
@@ -144,6 +189,111 @@ public partial class ShellWindow : Window
             FooterStatus.Text = _session.Status;
         ConnectBtn.IsEnabled = !_session.Connected;
         DisconnectBtn.IsEnabled = _session.Connected;
+        RefreshDashboard();
+    }
+
+    private void OpenDashboardTab(string id)
+    {
+        MainTabs.SelectedIndex = id switch
+        {
+            "files" => TabFiles,
+            "apps" => TabApps,
+            "games" => TabGames,
+            "optimize" => TabOptimize,
+            "store" => TabStore,
+            _ => TabDash
+        };
+    }
+
+    private async Task DashboardScanAsync()
+    {
+        if (!_session.Connected)
+        {
+            FooterStatus.Text = "Connect to the Steam Deck first.";
+            return;
+        }
+        if (_workOpen) return;
+        ShowWork("Scanning apps…", "Looking up desktop entries and Flatpaks on the Deck.");
+        try
+        {
+            await AppsPanel.ScanAsync(overlay: false);
+            ShowWork("Scanning games…", "Reading ROM folders and mods on the Deck.");
+            await GamesPanel.ScanAsync(overlay: false);
+            ShowWork("Scanning library…", "Reading ROMs, Hydra games and apps for Optimize.");
+            await ArtPanel.ScanLibraryAsync(overlay: false);
+            FooterStatus.Text =
+                $"Scan done · {AppsPanel.Count} apps · {GamesPanel.Items.Count} games · {ArtPanel.Count} for Optimize";
+        }
+        catch (Exception ex)
+        {
+            FooterStatus.Text = ex.Message;
+        }
+        finally
+        {
+            HideWork();
+            RefreshDashboard();
+        }
+    }
+
+    private async Task DashboardOptimizeAsync()
+    {
+        if (!_session.Connected)
+        {
+            FooterStatus.Text = "Connect to the Steam Deck first.";
+            return;
+        }
+        if (ArtPanel.Count == 0)
+        {
+            ShowWork("Scanning library…", "Reading ROMs, Hydra games and apps on the Deck.");
+            try { await ArtPanel.ScanLibraryAsync(overlay: false); }
+            finally { HideWork(); }
+            RefreshDashboard();
+            if (ArtPanel.Count == 0)
+            {
+                FooterStatus.Text = "No games found. Scan first.";
+                return;
+            }
+        }
+        MainTabs.SelectedIndex = TabOptimize;
+        await ArtPanel.RunOptimizeInteractiveAsync(selectAllIfEmpty: true);
+        RefreshDashboard();
+    }
+
+    private void RefreshDashboard()
+    {
+        DashPanel.UpdateStats(new DashboardStats
+        {
+            Connected = _session.Connected,
+            FileCount = FilesPanel.ItemCount,
+            Folder = FilesPanel.CurrentPath,
+            AppCount = AppsPanel.Count,
+            GameCount = GamesPanel.Items.Count,
+            OptimizeCount = ArtPanel.Count,
+            InSteamCount = ArtPanel.InSteamCount,
+            SelectedCount = ArtPanel.SelectedCount,
+            StoreCount = _session.Catalog.StoreGames.Count
+        });
+    }
+
+    private void SetStatus(string text)
+    {
+        FooterStatus.Text = text;
+        if (_workOpen)
+            WorkDetail.Text = text;
+    }
+
+    private void ShowWork(string title, string detail)
+    {
+        _workOpen = true;
+        WorkOverlay.IsVisible = true;
+        WorkTitle.Text = title;
+        WorkDetail.Text = detail;
+    }
+
+    private void HideWork()
+    {
+        _workOpen = false;
+        WorkOverlay.IsVisible = false;
     }
 
     private void OpenTab(int index, bool compactArt)
@@ -207,27 +357,26 @@ public partial class ShellWindow : Window
     {
         _session.Disconnect();
         RefreshStatus();
+        RefreshDashboard();
     }
 
     private void Tile0_Click(object? sender, RoutedEventArgs e)
     {
         _tile = 0;
-        OpenTab(3, compactArt: true);
+        OpenTab(TabOptimize, compactArt: true);
         ArtPanel.OnConnected();
     }
 
-    private async void Tile1_Click(object? sender, RoutedEventArgs e)
+    private void Tile1_Click(object? sender, RoutedEventArgs e)
     {
         _tile = 1;
-        OpenTab(2, compactArt: false);
-        if (GamesPanel.Items.Count == 0)
-            await GamesPanel.ScanAsync();
+        OpenTab(TabGames, compactArt: false);
     }
 
     private void Tile2_Click(object? sender, RoutedEventArgs e)
     {
         _tile = 2;
-        OpenTab(0, compactArt: false);
+        OpenTab(TabFiles, compactArt: false);
         FilesPanel.OnConnected();
     }
 

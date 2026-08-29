@@ -63,6 +63,9 @@
         </DockPanel>
         <GridSplitter Grid.Column="1" Width="6" Background="{DynamicResource Bg}"/>
         <TabControl x:Name="MainTabs" Grid.Column="2" SelectionChanged="Tabs_Changed">
+          <TabItem Header="Dashboard">
+            <views:DashboardPage x:Name="DashPanel"/>
+          </TabItem>
           <TabItem Header="Files">
             <views:FilesPage x:Name="FilesPanel"/>
           </TabItem>
@@ -72,13 +75,27 @@
           <TabItem Header="Games">
             <views:GamesPage x:Name="GamesPanel"/>
           </TabItem>
-          <TabItem Header="Artwork">
+          <TabItem Header="Optimize">
             <views:OptimizerPage x:Name="ArtPanel"/>
           </TabItem>
           <TabItem Header="Store">
             <views:StorePage x:Name="StorePanel"/>
           </TabItem>
         </TabControl>
+      </Grid>
+      <Grid x:Name="WorkOverlay" Grid.RowSpan="2" IsVisible="False" ZIndex="40">
+        <Border Background="{DynamicResource Overlay}"/>
+        <Border Width="520" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Accent}"
+                BorderThickness="1.5" CornerRadius="14" Padding="28,24">
+          <StackPanel>
+            <TextBlock x:Name="WorkTitle" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" Text="Working…"/>
+            <TextBlock x:Name="WorkDetail" FontSize="14" Foreground="{DynamicResource Muted}"
+                       Margin="0,10,0,0" TextWrapping="Wrap"
+                       Text="This can take a moment while the Deck is busy."/>
+            <ProgressBar Height="16" IsIndeterminate="True" Margin="0,18,0,0"/>
+          </StackPanel>
+        </Border>
       </Grid>
     </Grid>
 
@@ -102,8 +119,8 @@
         <UniformGrid Grid.Row="1" Rows="2" Columns="2" Margin="48,16,48,24">
           <Button x:Name="Tile0" Classes="tile" Margin="10" Click="Tile0_Click">
             <StackPanel>
-              <TextBlock Text="Artwork" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Covers already on this Deck" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
+              <TextBlock Text="Optimize" FontSize="28" FontWeight="Bold"/>
+              <TextBlock Text="Shortcuts, covers and collections" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile1" Classes="tile" Margin="10" Click="Tile1_Click">

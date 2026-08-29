@@ -1,5 +1,6 @@
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using Sesame.Models;
 using Sesame.Services;
 
@@ -23,7 +24,7 @@ public static class ExtraShortcuts
             progress?.Report("Reading Hydra library…");
             try
             {
-                Parse(Run(client, "hydra", 70), games);
+                Parse(Run(client, "hydra", 90), games);
             }
             catch
             {
@@ -192,33 +193,22 @@ public static class ExtraShortcuts
             var start = parts[3].Trim();
             var options = parts.Length > 4 ? parts[4].Trim() : "";
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(exe)) continue;
-            var hydra = kind.Equals("HYDRA", StringComparison.OrdinalIgnoreCase);
-            if (!hydra)
+            if (kind.Equals("APP", StringComparison.OrdinalIgnoreCase))
             {
                 if (!DeckApps.TryMatch(title, exe, options, out var app))
                     continue;
                 title = app.Title;
+                AddParsed(games, title, exe, start, options, ShortcutKind.App, "apps", "app", "Apps");
+                continue;
             }
 
-            var steam = LaunchComposer.ForSteam(exe, start, options);
-            games.Add(new OptimizerGame
-            {
-                DisplayName = title,
-                FileName = Path.GetFileName(exe.Trim('"')),
-                RomPath = exe.Trim('"'),
-                FolderName = hydra ? "hydra" : "apps",
-                SystemId = hydra ? "hydra" : "app",
-                SystemName = hydra ? "Hydra" : "Apps",
-                Category = hydra ? "Hydra" : "Apps",
-                Fps = 60,
-                SearchQuery = title,
-                ShortcutKind = hydra ? ShortcutKind.Hydra : ShortcutKind.App,
-                EmulatorName = hydra ? "Game" : "App",
-                Target = steam.Exe,
-                StartDir = steam.StartDir,
-                LaunchOptions = steam.LaunchOptions,
-                LaunchChoices = { ToChoice(exe, start, options) }
-            });
+            if (kind.Equals("LUTRIS", StringComparison.OrdinalIgnoreCase))
+                AddParsed(games, title, exe, start, options, ShortcutKind.Game, "lutris", "lutris", "Lutris");
+            else if (kind.Equals("OTHER", StringComparison.OrdinalIgnoreCase) ||
+                     kind.Equals("GAME", StringComparison.OrdinalIgnoreCase))
+                AddParsed(games, title, exe, start, options, ShortcutKind.Game, "other", "game", "Games");
+            else
+                AddParsed(games, title, exe, start, options, ShortcutKind.Hydra, "hydra", "hydra", "Hydra");
         }
     }
 
@@ -259,9 +249,17 @@ public static class ExtraShortcuts
 
     private static string Run(DeckClient client, string mode, int timeout)
     {
-        var code = "MODE = '" + mode + "'\n" + Script();
+        var code =
+            "MODE = " + JsonText(mode) + "\n" +
+            "LUTRIS_ROOT = " + JsonText(LibraryPaths.Current.LutrisRoot) + "\n" +
+            "OTHER_ROOT = " + JsonText(LibraryPaths.Current.OtherGamesRoot) + "\n" +
+            "HYDRA_GAMES = " + JsonText(LibraryPaths.Current.HydraRoot) + "\n" +
+            Script();
         return client.Execute("python3 -u -c " + DeckClient.ShQuote(code), timeout);
     }
+
+    private static string JsonText(string? value) =>
+        JsonSerializer.Serialize(value ?? "");
 
     private static string? _script;
 
@@ -276,5 +274,29 @@ public static class ExtraShortcuts
         using var reader = new StreamReader(stream);
         _script = reader.ReadToEnd();
         return _script;
+    }
+
+    private static void AddParsed(List<OptimizerGame> games, string title, string exe, string start,
+        string options, ShortcutKind kind, string folder, string systemId, string systemName)
+    {
+        var steam = LaunchComposer.ForSteam(exe, start, options);
+        games.Add(new OptimizerGame
+        {
+            DisplayName = title,
+            FileName = Path.GetFileName(exe.Trim('"')),
+            RomPath = exe.Trim('"'),
+            FolderName = folder,
+            SystemId = systemId,
+            SystemName = systemName,
+            Category = systemName,
+            Fps = 60,
+            SearchQuery = title,
+            ShortcutKind = kind,
+            EmulatorName = kind == ShortcutKind.App ? "App" : "Game",
+            Target = steam.Exe,
+            StartDir = steam.StartDir,
+            LaunchOptions = steam.LaunchOptions,
+            LaunchChoices = { ToChoice(exe, start, options) }
+        });
     }
 }

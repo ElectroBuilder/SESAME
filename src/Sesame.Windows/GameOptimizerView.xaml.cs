@@ -30,6 +30,10 @@ public partial class GameOptimizerView : UserControl
 
     public event Action<string>? StatusChanged;
 
+    public int Count => _games.Count;
+    public int InSteamCount => _games.Count(g => g.InSteam);
+    public int SelectedCount => _games.Count(g => g.Selected);
+
     public GameOptimizerView()
     {
         InitializeComponent();
@@ -61,27 +65,34 @@ public partial class GameOptimizerView : UserControl
         CancelBackgroundScan();
         ClearGames();
         LoadCachedLibrary();
-        StartBackgroundScan();
     }
 
     public void LoadCachedLibrary()
     {
         OptimizerPicks.CurrentKey = CacheKey();
         var cached = OptimizerLibraryCache.Load(CacheKey(), CacheHost());
-        if (cached.Count == 0) return;
-        if (_client is { IsConnected: true })
-            SteamGridArt.AttachAll(_client, cached);
+        if (cached.Count == 0)
+        {
+            HintText.Text = "Scan to load ROMs, Hydra games and apps from this Deck.";
+            StatusChanged?.Invoke("Optimize: not scanned yet");
+            return;
+        }
+
         ApplyScanResults(cached, prefetch: true);
-        HintText.Text = $"{_games.Count} games from this Deck cache. Scanning again in the background…";
-        StatusChanged?.Invoke($"Artwork: {_games.Count} games (cache)");
+        HintText.Text = $"{_games.Count} games from cache. Scan to refresh from the Deck.";
+        StatusChanged?.Invoke($"Optimize: {_games.Count} games (cache)");
+        var client = _client;
+        if (client is not { IsConnected: true }) return;
+        var snapshot = _games.ToList();
+        _ = Task.Run(() =>
+        {
+            try { SteamGridArt.AttachAll(client, snapshot); }
+            catch { /* covers are optional */ }
+            Dispatcher.BeginInvoke(() => _ = PrefetchCoversAsync());
+        });
     }
 
-    public void StartBackgroundScan()
-    {
-        if (_client is not { IsConnected: true } || _catalog is null) return;
-        if (_busy || _scanning) return;
-        _scanTask = ScanInBackgroundAsync();
-    }
+    public void StartBackgroundScan() => _ = ScanLibraryAsync();
 
     public void CancelBackgroundScan() => _scanCts?.Cancel();
 
@@ -107,62 +118,79 @@ public partial class GameOptimizerView : UserControl
             _ = PrefetchCoversAsync();
         }
         if (launchersChanged)
-            StartBackgroundScan();
+            HintText.Text = "Emulator settings changed. Scan again to refresh launchers.";
     }
 
     private void UpdateHint()
     {
         HintText.Text = OptimizerSettings.HasSteamGridDb
-            ? "This connected Deck is scanned live: ROMs, Hydra library and apps such as Kodi. SESAME writes its own shortcuts only."
+            ? "Connect, then Scan. SESAME writes its own shortcuts only; Hydra and Steam ROM Manager stay."
             : "Set a SteamGridDB key in Settings to get covers.";
     }
 
-    private async Task ScanInBackgroundAsync()
+    private async void Scan_Click(object sender, RoutedEventArgs e) => await ScanLibraryAsync();
+
+    public Task ScanLibraryAsync(bool overlay = true)
+    {
+        if (_busy) return Task.CompletedTask;
+        if (_scanning && _scanTask is { IsCompleted: false }) return _scanTask;
+        _scanTask = ScanLibraryCoreAsync(overlay);
+        return _scanTask;
+    }
+
+    private async Task ScanLibraryCoreAsync(bool overlay)
     {
         if (_client is not { IsConnected: true } || _catalog is null) return;
+        if (_busy || _scanning) return;
         _scanning = true;
         _scanCts?.Cancel();
         var cts = new CancellationTokenSource();
         _scanCts = cts;
-        ShowProgress(new OptimizeProgress
+        if (overlay)
         {
-            Title = "Scanning library",
-            Detail = "Reading ROMs, Hydra games and apps on the Deck…",
-            Indeterminate = true
-        });
+            ShowProgress(new OptimizeProgress
+            {
+                Title = "Scanning library",
+                Detail = "Reading ROMs, Hydra games and apps on the Deck…",
+                Indeterminate = true
+            });
+        }
         HintText.Text = "Scanning library…";
-        StatusChanged?.Invoke("Artwork: scanning…");
+        StatusChanged?.Invoke("Optimize: scanning…");
         try
         {
             var catalog = _catalog;
             var client = _client;
             var scanKey = CacheKey();
             OptimizerPicks.CurrentKey = scanKey;
-            var progress = new Progress<OptimizeProgress>(p => Dispatcher.Invoke(() => ShowProgress(p)));
+            var progress = overlay
+                ? new Progress<OptimizeProgress>(p => Dispatcher.Invoke(() => ShowProgress(p)))
+                : new Progress<OptimizeProgress>(p => Dispatcher.Invoke(() =>
+                    StatusChanged?.Invoke(string.IsNullOrEmpty(p.Detail) ? p.Title : p.Title + " — " + p.Detail)));
             var games = await Task.Run(() => GameOptimizerService.Scan(client, catalog, progress), cts.Token);
             if (cts.IsCancellationRequested) return;
             if (!string.Equals(CacheKey(), scanKey, StringComparison.OrdinalIgnoreCase)) return;
             ApplyScanResults(games, prefetch: true);
             Persist();
             var ready = games.Count(g => !string.IsNullOrEmpty(g.Target));
-            HintText.Text = $"{games.Count} games found, {ready} with emulator. Changes are saved.";
-            StatusChanged?.Invoke($"Artwork: {games.Count} games");
+            HintText.Text = $"{games.Count} games found, {ready} with a launcher. Changes are saved.";
+            StatusChanged?.Invoke($"Optimize: {games.Count} games");
         }
         catch (OperationCanceledException)
         {
-            /* verbinding verbroken */
+            /* disconnected */
         }
         catch (Exception ex)
         {
             HintText.Text = "Scan failed: " + ex.Message;
-            StatusChanged?.Invoke("Artwork: scan failed");
+            StatusChanged?.Invoke("Optimize: scan failed");
         }
         finally
         {
             if (ReferenceEquals(_scanCts, cts))
             {
                 _scanning = false;
-                HideProgress();
+                if (overlay) HideProgress();
             }
         }
     }
@@ -234,17 +262,26 @@ public partial class GameOptimizerView : UserControl
         to.ArtworkChoices.AddRange(from.ArtworkChoices);
     }
 
-    private async void OptimizeSelected_Click(object sender, RoutedEventArgs e)
+    private async void OptimizeSelected_Click(object sender, RoutedEventArgs e) =>
+        await RunOptimizeInteractiveAsync();
+
+    public async Task RunOptimizeInteractiveAsync(bool selectAllIfEmpty = false)
     {
+        if (selectAllIfEmpty && !_games.Any(g => g.Selected))
+        {
+            foreach (var game in _games)
+                game.Selected = true;
+        }
+
         var selected = _games.Where(g => g.Selected).ToList();
         if (selected.Count == 0)
         {
-            MessageBox.Show("Select at least one game.", "Artwork");
+            MessageBox.Show("Select at least one game.", "Optimize");
             return;
         }
         if (_client is not { IsConnected: true })
         {
-            MessageBox.Show("Connect to the Steam Deck first.", "Artwork");
+            MessageBox.Show("Connect to the Steam Deck first.", "Optimize");
             return;
         }
 
@@ -303,13 +340,13 @@ public partial class GameOptimizerView : UserControl
     {
         if (_client is not { IsConnected: true } || _catalog is null)
         {
-            MessageBox.Show("Connect to the Steam Deck first.", "Artwork");
+            MessageBox.Show("Connect to the Steam Deck first.", "Optimize");
             return;
         }
         if (_busy) return;
         if (!_games.Any(g => g.Selected))
         {
-            MessageBox.Show("Select at least one game.", "Artwork");
+            MessageBox.Show("Select at least one game.", "Optimize");
             return;
         }
 
@@ -342,7 +379,7 @@ public partial class GameOptimizerView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Artwork");
+            MessageBox.Show(ex.Message, "Optimize");
         }
         finally
         {
@@ -350,7 +387,7 @@ public partial class GameOptimizerView : UserControl
             HideProgress();
         }
         if (report is { Errors.Count: > 0 })
-            MessageBox.Show(string.Join(Environment.NewLine, report.Errors.Take(8)), "Artwork");
+            MessageBox.Show(string.Join(Environment.NewLine, report.Errors.Take(8)), "Optimize");
     }
 
     private void ShowProgress(OptimizeProgress p)

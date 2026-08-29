@@ -250,7 +250,9 @@ install_desktop_files() {
   local icon_src="" f
   for f in \
     "$DEST/Assets/sesame.png" \
+    "$DEST/Assets/sesame-icon-lg.png" \
     "$DEST/sesame.png" \
+    "$DEST/sesame-icon-lg.png" \
     "${ROOT:-}/src/Sesame.Deck/Assets/sesame.png" \
     "${ROOT:-}/pack/steamdeck/sesame.png"
   do
@@ -288,8 +290,24 @@ Categories=Game;
 StartupWMClass=SESAME
 EOF
   update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
-  if command -v steamos-add-to-steam >/dev/null 2>&1; then
-    steamos-add-to-steam "$DEST/SESAME" || true
+  register_sesame_steam
+}
+
+register_sesame_steam() {
+  if [[ ! -x "$DEST/SESAME" ]]; then
+    return 0
+  fi
+  if pgrep -x gamescope >/dev/null 2>&1 && ! pgrep -x plasmashell >/dev/null 2>&1; then
+    log "Game Mode: extra SESAME tiles are removed the next time you optimize from Desktop Mode."
+    return 0
+  fi
+  if pgrep -x steam >/dev/null 2>&1; then
+    log "Closing Steam briefly so only one SESAME Game Mode shortcut remains…"
+    steam -shutdown >/dev/null 2>&1 || true
+    sleep 2
+  fi
+  if ! "$DEST/SESAME" --register-steam; then
+    log "Could not install the SESAME Game Mode shortcut. Open SESAME in Desktop Mode once after Steam is closed."
   fi
 }
 

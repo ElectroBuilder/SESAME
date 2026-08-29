@@ -12,6 +12,7 @@ public static class HostEnvironment
     public static bool ForceLocal { get; set; }
     public static bool ForceRemote { get; set; }
     public static bool PreferGameModeUi { get; set; }
+    public static bool RegisterSteamOnly { get; set; }
 
     public static bool IsLinux => OperatingSystem.IsLinux();
 
@@ -88,6 +89,7 @@ public static class HostEnvironment
             else if (a is "--remote" or "-remote") ForceRemote = true;
             else if (a is "--gamemode" or "--game-mode" or "-g") PreferGameModeUi = true;
             else if (a is "--desktop" or "-d") PreferGameModeUi = false;
+            else if (a is "--register-steam" or "--registersteam") RegisterSteamOnly = true;
         }
     }
 

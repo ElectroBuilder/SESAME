@@ -7,7 +7,10 @@ namespace Sesame.Services.GameOptimizer;
 /// </summary>
 public static class SteamGridArt
 {
-    public static void Attach(DeckClient client, OptimizerGame game)
+    public static void Attach(DeckClient client, OptimizerGame game) =>
+        Attach(client, game, SteamShortcuts.FindUserConfigs(client));
+
+    public static void Attach(DeckClient client, OptimizerGame game, IReadOnlyList<string> configs)
     {
         if (game.SteamAppId == 0) return;
         if (game.GridBytes is { Length: > 0 })
@@ -18,7 +21,7 @@ public static class SteamGridArt
             return;
         }
 
-        var bytes = ReadPortrait(client, game.SteamAppId);
+        var bytes = ReadPortrait(client, game.SteamAppId, configs);
         if (bytes is not { Length: > 0 }) return;
         game.GridBytes = bytes;
         game.HasArtwork = true;
@@ -28,17 +31,23 @@ public static class SteamGridArt
 
     public static void AttachAll(DeckClient client, IEnumerable<OptimizerGame> games)
     {
+        IReadOnlyList<string> configs;
+        try { configs = SteamShortcuts.FindUserConfigs(client); }
+        catch { return; }
         foreach (var game in games)
         {
-            try { Attach(client, game); }
+            try { Attach(client, game, configs); }
             catch { /* cover is optional */ }
         }
     }
 
-    public static byte[]? ReadPortrait(DeckClient client, uint appId)
+    public static byte[]? ReadPortrait(DeckClient client, uint appId) =>
+        ReadPortrait(client, appId, SteamShortcuts.FindUserConfigs(client));
+
+    public static byte[]? ReadPortrait(DeckClient client, uint appId, IReadOnlyList<string> configs)
     {
         if (appId == 0) return null;
-        foreach (var config in SteamShortcuts.FindUserConfigs(client))
+        foreach (var config in configs)
         {
             var grid = DeckClient.Combine(config, "grid");
             foreach (var name in new[] { appId + "p.png", appId + "_p.png", appId + ".png", appId + "_hero.png" })

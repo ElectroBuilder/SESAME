@@ -29,13 +29,17 @@ public partial class GamesPage : UserControl
 
     private async void Scan_Click(object? sender, RoutedEventArgs e) => await ScanAsync();
 
-    public async Task ScanAsync()
+    public async Task ScanAsync(bool overlay = true)
     {
         var session = DeckSession.Current;
         if (!session.Connected || _busy) return;
         _busy = true;
-        BusyOverlay.IsVisible = true;
-        BusyText.Text = "Scanning games…";
+        if (overlay)
+        {
+            BusyOverlay.IsVisible = true;
+            BusyTitle.Text = "Scanning games…";
+            BusyText.Text = "Reading ROM folders and mods. This can take a moment.";
+        }
         try
         {
             var found = await Task.Run(() => session.Library.Scan(session.Client, session.Catalog));
@@ -53,7 +57,7 @@ public partial class GamesPage : UserControl
         finally
         {
             _busy = false;
-            BusyOverlay.IsVisible = false;
+            if (overlay) BusyOverlay.IsVisible = false;
         }
     }
 
