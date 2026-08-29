@@ -178,8 +178,9 @@ public static class RomScan
     {
         var roots = new HashSet<string>(StringComparer.Ordinal)
         {
-            "/home/deck/Emulation/roms",
-            LaunchConfigStore.Current.RomsRoot
+            LibraryPaths.Current.RomsRoot,
+            LaunchConfigStore.Current.RomsRoot,
+            "/home/deck/Emulation/roms"
         };
         foreach (var folder in catalog.RomFolders.Values)
         {

@@ -24,6 +24,7 @@ public partial class App : Application
             TranslateSettings.Load();
             OptimizerSettings.Load();
             LaunchConfigStore.Load();
+            LibraryPaths.Load();
             var window = new MainWindow();
             MainWindow = window;
             window.Show();

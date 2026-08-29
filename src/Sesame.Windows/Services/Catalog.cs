@@ -16,10 +16,23 @@ public sealed class AppCatalog
     public IReadOnlyDictionary<string, string> TextureByGame { get; }
     public IReadOnlyDictionary<string, string> RetroarchSaves { get; }
     public IReadOnlyList<StoreGame> StoreGames { get; }
-    public string EdenMods { get; }
-    public string EdenSaves { get; }
-    public string EdenUsersRoot { get; }
-    public string EdenProfiles { get; }
+    private readonly string _edenMods;
+    private readonly string _edenSaves;
+    private readonly string _edenUsersRoot;
+    private readonly string _edenProfiles;
+    public string EdenMods => FirstPath(LibraryPaths.Current.PrimaryModsRoot, _edenMods);
+    public string EdenSaves => FirstPath(LibraryPaths.Current.PrimarySavesRoot, _edenSaves);
+    public string EdenUsersRoot
+    {
+        get
+        {
+            var saves = LibraryPaths.Current.PrimarySavesRoot;
+            return string.IsNullOrEmpty(saves)
+                ? _edenUsersRoot
+                : DeckClient.Combine(saves, "0000000000000000");
+        }
+    }
+    public string EdenProfiles => FirstPath(LibraryPaths.Current.SwitchProfiles(LibraryPaths.Current.PrimarySwitchId), _edenProfiles);
 
     public AppCatalog()
     {
@@ -47,16 +60,16 @@ public sealed class AppCatalog
 
         RomFolders = ReadMap(root.GetProperty("romFolders"));
         InstallRoutes = ReadMap(root.GetProperty("installRoutes"));
-        TitleIds = ReadMap(root.GetProperty("titleIds"))
-            .ToDictionary(kv => kv.Key.ToUpperInvariant(), kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+        TitleIds = root.TryGetProperty("titleIds", out var ids) ? ReadMap(ids)
+            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         var eden = root.GetProperty("eden");
-        EdenMods = eden.GetProperty("mods").GetString() ?? "";
-        EdenSaves = eden.GetProperty("saves").GetString() ?? "";
-        EdenUsersRoot = eden.TryGetProperty("usersRoot", out var users)
+        _edenMods = eden.GetProperty("mods").GetString() ?? "";
+        _edenSaves = eden.GetProperty("saves").GetString() ?? "";
+        _edenUsersRoot = eden.TryGetProperty("usersRoot", out var users)
             ? users.GetString() ?? ""
-            : DeckClient.Combine(EdenSaves, "0000000000000000");
-        EdenProfiles = eden.TryGetProperty("profiles", out var profiles)
+            : DeckClient.Combine(_edenSaves, "0000000000000000");
+        _edenProfiles = eden.TryGetProperty("profiles", out var profiles)
             ? profiles.GetString() ?? ""
             : "";
 
@@ -72,9 +85,9 @@ public sealed class AppCatalog
     {
         var folded = StoreGame.FoldSystem(system);
         if (RomFolders.TryGetValue(folded, out var path) && !string.IsNullOrEmpty(path))
-            return path;
+            return RelocateRomFolder(path, folded);
         if (RomFolders.TryGetValue(system, out path) && !string.IsNullOrEmpty(path))
-            return path;
+            return RelocateRomFolder(path, system);
         var discovered = RomScan.Systems.FirstOrDefault(s =>
             s.SystemId.Equals(folded, StringComparison.OrdinalIgnoreCase) ||
             s.Key.Equals(system, StringComparison.OrdinalIgnoreCase) ||
@@ -88,11 +101,24 @@ public sealed class AppCatalog
                 s.Key.Equals(folder, StringComparison.OrdinalIgnoreCase));
             if (discovered is not null) return discovered.Path;
             if (RomFolders.TryGetValue(folder, out path) && !string.IsNullOrEmpty(path))
-                return path;
+                return RelocateRomFolder(path, folder);
         }
         var name = profile.Folders.FirstOrDefault() ?? profile.Id;
-        return "/home/deck/Emulation/roms/" + name;
+        return LibraryPaths.Current.RomFolder(name);
     }
+
+    private static string RelocateRomFolder(string catalogPath, string systemKey)
+    {
+        if (systemKey.Equals("hydra", StringComparison.OrdinalIgnoreCase) ||
+            catalogPath.Contains("/Games/Hydra", StringComparison.OrdinalIgnoreCase))
+            return LibraryPaths.Current.HydraRoot;
+        var name = Path.GetFileName(catalogPath.Trim().TrimEnd('/'));
+        if (string.IsNullOrEmpty(name)) name = systemKey;
+        return LibraryPaths.Current.RomFolder(name);
+    }
+
+    private static string FirstPath(string preferred, string fallback) =>
+        string.IsNullOrWhiteSpace(preferred) ? fallback : preferred;
 
     public StoreGame ResolveStoreGame(string name, string system, string? titleId,
         bool isTranslation = false)

@@ -23,6 +23,7 @@ public partial class SettingsWindow : Window
         MasksMasterBox.IsChecked = OptimizerSettings.UseMasks;
         BindMasks();
         RefreshKeyStatus();
+        BindLibrary();
         _loading = false;
         Closing += Settings_Closing;
     }
@@ -149,6 +150,34 @@ public partial class SettingsWindow : Window
     {
         Launchers.Commit();
         LaunchersChanged = true;
+    }
+
+    private void BindLibrary()
+    {
+        var paths = LibraryPaths.Current;
+        RomsRootBox.Text = paths.RomsRoot;
+        HydraRootBox.Text = paths.HydraRoot;
+        LutrisRootBox.Text = paths.LutrisRoot;
+        OtherGamesBox.Text = paths.OtherGamesRoot;
+        UseEdenBox.IsChecked = paths.UseEden;
+        UseYuzuBox.IsChecked = paths.UseYuzu;
+        UseRyujinxBox.IsChecked = paths.UseRyujinx;
+        UseCitronBox.IsChecked = paths.UseCitron;
+    }
+
+    private void SaveLibrary_Click(object sender, RoutedEventArgs e)
+    {
+        LibraryPaths.Current.RomsRoot = RomsRootBox.Text?.Trim() ?? "";
+        LibraryPaths.Current.HydraRoot = HydraRootBox.Text?.Trim() ?? "";
+        LibraryPaths.Current.LutrisRoot = LutrisRootBox.Text?.Trim() ?? "";
+        LibraryPaths.Current.OtherGamesRoot = OtherGamesBox.Text?.Trim() ?? "";
+        LibraryPaths.Current.UseEden = UseEdenBox.IsChecked == true;
+        LibraryPaths.Current.UseYuzu = UseYuzuBox.IsChecked == true;
+        LibraryPaths.Current.UseRyujinx = UseRyujinxBox.IsChecked == true;
+        LibraryPaths.Current.UseCitron = UseCitronBox.IsChecked == true;
+        LibraryPaths.Save();
+        Launchers.Reload();
+        LibraryStatus.Text = "Saved. Empty folders are created the next time you connect to the Deck.";
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => DialogResult = true;

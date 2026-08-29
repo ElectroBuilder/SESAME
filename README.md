@@ -49,7 +49,7 @@ Or from inside the repo: `git pull --ff-only && bash install.sh` (same as `bash 
 
 The installer downloads the prebuilt Linux release (`sesame-linux-x64.tar.gz`), or builds from source if the download is unavailable.
 
-Sessions, SSH keys and caches stay in `~/.local/share/sesame`. They are never copied into `~/Applications/SESAME`.
+Sessions, SSH keys and caches stay in `~/.local/share/sesame`. They are never copied into `~/Applications/SESAME`. The installer only creates empty ROM and Hydra folders; it does not ship a list of games. Games appear after SESAME scans this Deck.
 
 ```
 SESAME --desktop      # windowed desktop UI
@@ -72,6 +72,7 @@ Or open `SESAME.sln`.
 
 ## Features
 
+- Settings: ROM / Hydra / Lutris / other game paths and Switch emulator folders (Eden, Yuzu, Ryujinx, Citron)
 - File browser with ROM / mods / texture-pack drop targets
 - Game Optimizer: shortcuts, SteamGridDB artwork, category masks, collections
 - Store tab for mods / texture packs / ROM hacks (you supply your own dumps)

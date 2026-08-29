@@ -293,6 +293,39 @@ EOF
   fi
 }
 
+# Empty ROM / Hydra folders only. Never write a list of games.
+ensure_library_folders() {
+  local home="${HOME:-/home/deck}"
+  local roms="$home/Emulation/roms"
+  local sys
+  log "Creating empty ROM and Hydra folders…"
+  for sys in nes snes n64 gc wii wiiu switch gb gbc gba nds 3ds genesis mastersystem saturn dreamcast psx ps2 psp psvita arcade xbox; do
+    mkdir -p "$roms/$sys"
+  done
+  mkdir -p "$home/Emulation/hdpacks" \
+    "$home/Emulation/bios/Mupen64plus/hires_texture" \
+    "$home/Emulation/bios/Mupen64plus/cache" \
+    "$home/Emulation/saves/retroarch" \
+    "$home/Emulation/saves/nes/retroarch/saves" \
+    "$home/Emulation/saves/snes/retroarch/saves" \
+    "$home/Emulation/saves/n64/retroarch/saves" \
+    "$home/Emulation/saves/gc/dolphin/User/GC" \
+    "$home/Emulation/saves/gba/retroarch/saves" \
+    "$home/Emulation/saves/nds/retroarch/saves" \
+    "$home/Emulation/saves/genesis/retroarch/saves" \
+    "$home/Emulation/saves/psx/duckstation" \
+    "$home/Emulation/saves/ps2/pcsx2" \
+    "$home/Emulation/storage/eden/load" \
+    "$home/Emulation/storage/eden/nand/user/save" \
+    "$home/Games/Hydra" \
+    "$home/Games/Lutris" \
+    "$home/Games/Other" \
+    "$home/.config/hydra" \
+    "$home/.config/hydralauncher" \
+    "$home/.local/share/hydra" \
+    "$home/.local/share/hydralauncher"
+}
+
 PULL=0
 for arg in "$@"; do
   case "$arg" in
@@ -328,6 +361,7 @@ if [[ -n "${CACHE:-}" && "$PAYLOAD" == "$CACHE/"* ]]; then
   rm -rf "$PAYLOAD"
 fi
 install_desktop_files
+ensure_library_folders
 
 if ! payload_dir "$DEST"; then
   die "Install finished but $DEST is empty (SESAME binary missing)."

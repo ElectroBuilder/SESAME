@@ -29,13 +29,21 @@ public sealed class DeckSession
 
     public async Task ConnectLocalAsync()
     {
-        await Task.Run(Client.ConnectLocal);
+        await Task.Run(() =>
+        {
+            Client.ConnectLocal();
+            LibraryLayout.Ensure(Client, Catalog);
+        });
         Changed?.Invoke();
     }
 
     public async Task ConnectRemoteAsync(ConnectionProfile profile)
     {
-        await Task.Run(() => Client.Connect(profile));
+        await Task.Run(() =>
+        {
+            Client.Connect(profile);
+            LibraryLayout.Ensure(Client, Catalog);
+        });
         Changed?.Invoke();
     }
 

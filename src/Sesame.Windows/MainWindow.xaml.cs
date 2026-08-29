@@ -256,6 +256,7 @@ public partial class MainWindow : Window
         StatusText.Foreground = (Brush)FindResource("Ok");
         _client.ResizeShell(_termCols, _termRows);
         TermHint.Text = "  ·  click in the window and type  ·  Enter runs  ·  Ctrl+C stops";
+        await Task.Run(() => LibraryLayout.Ensure(_client, _catalog));
         Navigate(_client.Home, push: false);
         await ScanSilent();
         OptimizerPanel.OnConnected();

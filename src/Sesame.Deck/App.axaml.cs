@@ -16,6 +16,7 @@ public partial class App : Application
         AppDataPaths.EnsureProtected();
         OptimizerSettings.Load();
         LaunchConfigStore.Load();
+        LibraryPaths.Load();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

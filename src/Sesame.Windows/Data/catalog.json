@@ -12,8 +12,8 @@
     { "name": "Genesis", "path": "/home/deck/Emulation/roms/genesis", "group": "ROMs" },
     { "name": "PlayStation", "path": "/home/deck/Emulation/roms/psx", "group": "ROMs" },
     { "name": "PlayStation 2", "path": "/home/deck/Emulation/roms/ps2", "group": "ROMs" },
+    { "name": "Hydra", "path": "/home/deck/Games/Hydra", "group": "Games" },
     { "name": "Eden mods", "path": "/home/deck/Emulation/storage/eden/load", "group": "Mods & saves" },
-    { "name": "Eden accounts", "path": "/home/deck/Emulation/storage/eden/nand/user/save/0000000000000000", "group": "Mods & saves" },
     { "name": "RetroArch saves", "path": "/home/deck/Emulation/saves/retroarch", "group": "Mods & saves" },
     { "name": "N64 texture packs", "path": "/home/deck/Emulation/bios/Mupen64plus", "group": "Mods & saves" },
     { "name": "HD packs", "path": "/home/deck/Emulation/hdpacks", "group": "Mods & saves" }
@@ -29,7 +29,8 @@
     "genesis": "/home/deck/Emulation/roms/genesis",
     "ps1": "/home/deck/Emulation/roms/psx",
     "psx": "/home/deck/Emulation/roms/psx",
-    "ps2": "/home/deck/Emulation/roms/ps2"
+    "ps2": "/home/deck/Emulation/roms/ps2",
+    "hydra": "/home/deck/Games/Hydra"
   },
   "installRoutes": {
     ".nes": "/home/deck/Emulation/roms/nes",
@@ -67,11 +68,6 @@
     "n64Cache": "/home/deck/Emulation/bios/Mupen64plus/cache",
     "hdpacks": "/home/deck/Emulation/hdpacks"
   },
-  "textureByGame": {
-    "Super Mario 64": "/home/deck/Emulation/bios/Mupen64plus/hires_texture/SUPER MARIO 64",
-    "Banjo-Kazooie": "/home/deck/Emulation/bios/Mupen64plus/cache",
-    "Banjo Kazooie": "/home/deck/Emulation/bios/Mupen64plus/cache"
-  },
   "retroarchSaves": {
     "nes": "/home/deck/Emulation/saves/nes/retroarch/saves",
     "snes": "/home/deck/Emulation/saves/snes/retroarch/saves",
@@ -83,179 +79,5 @@
     "ps1": "/home/deck/Emulation/saves/psx/duckstation",
     "psx": "/home/deck/Emulation/saves/psx/duckstation",
     "ps2": "/home/deck/Emulation/saves/ps2/pcsx2"
-  },
-  "titleIds": {
-    "0100152000022000": "Mario Kart 8 Deluxe",
-    "01006A800016E000": "Super Smash Bros. Ultimate",
-    "01009D901BC56000": "Donkey Kong Country Returns HD",
-    "010028600EBDA000": "Super Mario 3D World + Bowser's Fury",
-    "01006E001823C000": "Sonic Racing CrossWorlds",
-    "0100EA80032EA000": "New Super Mario Bros. U Deluxe",
-    "010015100B514000": "Super Mario Bros. Wonder",
-    "0100965017338000": "Super Mario Party Jamboree",
-    "0100B99019412000": "Mario vs. Donkey Kong",
-    "010019401051C000": "Mario Strikers Battle League"
-  },
-  "storeGames": [
-    {
-      "name": "Super Mario 64",
-      "system": "N64",
-      "gameBananaId": 5710,
-      "kingSlugs": ["supermario64"],
-      "aliases": ["sm64", "super mario 64"]
-    },
-    {
-      "name": "Banjo-Kazooie",
-      "system": "N64",
-      "gameBananaId": 6168,
-      "kingSlugs": ["banjokazooie"],
-      "aliases": ["banjo kazooie", "banjo-kazooie"]
-    },
-    {
-      "name": "Mario Kart 64",
-      "system": "N64",
-      "gameBananaId": 6558,
-      "kingSlugs": ["mariokart64"],
-      "aliases": ["mk64"]
-    },
-    {
-      "name": "Donkey Kong 64",
-      "system": "N64",
-      "gameBananaId": 7489,
-      "kingSlugs": ["donkeykong64"],
-      "aliases": ["dk64"]
-    },
-    {
-      "name": "Super Smash Bros.",
-      "system": "N64",
-      "gameBananaId": 5912,
-      "kingSlugs": ["supersmashbros"],
-      "aliases": ["super smash bros", "smash 64", "ssb64"]
-    },
-    {
-      "name": "Star Fox 64",
-      "system": "N64",
-      "gameBananaId": 6202,
-      "kingSlugs": ["starfox64"],
-      "aliases": ["starfox 64", "lylat wars"]
-    },
-    {
-      "name": "The Legend of Zelda: Ocarina of Time",
-      "system": "N64",
-      "gameBananaId": 7060,
-      "kingSlugs": ["zeldaocarinaoftime"],
-      "aliases": ["ocarina of time", "oot", "zelda oot"]
-    },
-    {
-      "name": "The Legend of Zelda: Majora's Mask",
-      "system": "N64",
-      "gameBananaId": 16698,
-      "kingSlugs": ["zeldamajorasmask"],
-      "aliases": ["majora's mask", "majoras mask", "mm"]
-    },
-    {
-      "name": "The Legend of Zelda",
-      "system": "NES",
-      "gameBananaId": 7700,
-      "aliases": ["legend of zelda", "legend of zelda the", "tloz", "zelda nes"]
-    },
-    {
-      "name": "Zelda II: The Adventure of Link",
-      "system": "NES",
-      "gameBananaId": 7915,
-      "aliases": ["zelda ii", "zelda 2", "adventure of link"]
-    },
-    {
-      "name": "Super Mario Bros.",
-      "system": "NES",
-      "gameBananaId": 6263,
-      "aliases": ["super mario bros", "smb1", "super mario brothers"]
-    },
-    {
-      "name": "Metroid",
-      "system": "NES",
-      "aliases": ["metroid nes"]
-    },
-    {
-      "name": "Super Metroid",
-      "system": "SNES",
-      "gameBananaId": 5947,
-      "aliases": ["super metroid"]
-    },
-    {
-      "name": "Chrono Trigger",
-      "system": "SNES",
-      "aliases": ["chrono trigger"]
-    },
-    {
-      "name": "Mario Kart 8 Deluxe",
-      "system": "SWITCH",
-      "titleId": "0100152000022000",
-      "gameBananaId": 6507,
-      "aliases": ["mk8d", "mario kart 8"]
-    },
-    {
-      "name": "Super Smash Bros. Ultimate",
-      "system": "SWITCH",
-      "titleId": "01006A800016E000",
-      "gameBananaId": 6498,
-      "aliases": ["ssbu", "smash ultimate"]
-    },
-    {
-      "name": "Donkey Kong Country Returns HD",
-      "system": "SWITCH",
-      "titleId": "01009D901BC56000",
-      "gameBananaId": 21757,
-      "aliases": ["dkc returns hd", "donkey kong country returns"]
-    },
-    {
-      "name": "Super Mario 3D World + Bowser's Fury",
-      "system": "SWITCH",
-      "titleId": "010028600EBDA000",
-      "gameBananaIds": [5872, 8482],
-      "aliases": ["super mario 3d world", "bowser's fury", "bowsers fury"]
-    },
-    {
-      "name": "Sonic Racing CrossWorlds",
-      "system": "SWITCH",
-      "titleId": "01006E001823C000",
-      "gameBananaId": 21640,
-      "aliases": ["sonic racing crossworlds", "sonic racing: crossworlds"]
-    },
-    {
-      "name": "New Super Mario Bros. U Deluxe",
-      "system": "SWITCH",
-      "titleId": "0100EA80032EA000",
-      "gameBananaId": 6886,
-      "aliases": ["nsmbud", "new super mario bros u deluxe"]
-    },
-    {
-      "name": "Super Mario Party Jamboree",
-      "system": "SWITCH",
-      "titleId": "0100965017338000",
-      "gameBananaId": 20512,
-      "aliases": ["mario party jamboree", "smpj"]
-    },
-    {
-      "name": "Mario Strikers Battle League",
-      "system": "SWITCH",
-      "titleId": "010019401051C000",
-      "gameBananaId": 16585,
-      "aliases": ["mario strikers", "mario strikers: battle league"]
-    },
-    {
-      "name": "Mario vs. Donkey Kong",
-      "system": "SWITCH",
-      "titleId": "0100B99019412000",
-      "gameBananaId": 19210,
-      "aliases": ["mario vs donkey kong"]
-    },
-    {
-      "name": "Super Mario Bros. Wonder",
-      "system": "SWITCH",
-      "titleId": "010015100B514000",
-      "gameBananaId": 18604,
-      "aliases": ["mario wonder", "smbw"]
-    }
-  ]
+  }
 }

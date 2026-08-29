@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Sesame.Services;
 using Sesame.Services.GameOptimizer;
 
 namespace Sesame;
@@ -36,6 +37,8 @@ public partial class LaunchersView : UserControl
         LaunchConfigStore.Current.LaunchersRoot = LaunchersBox.Text?.Trim() ?? "";
         LaunchConfigStore.Current.Flatpak = FlatpakBox.Text?.Trim() ?? "";
         LaunchConfigStore.Save();
+        LibraryPaths.Current.RomsRoot = LaunchConfigStore.Current.RomsRoot;
+        LibraryPaths.Save(syncLaunchers: false);
     }
 
     private void System_Changed(object sender, SelectionChangedEventArgs e)
