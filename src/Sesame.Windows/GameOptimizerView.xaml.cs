@@ -69,6 +69,8 @@ public partial class GameOptimizerView : UserControl
         OptimizerPicks.CurrentKey = CacheKey();
         var cached = OptimizerLibraryCache.Load(CacheKey(), CacheHost());
         if (cached.Count == 0) return;
+        if (_client is { IsConnected: true })
+            SteamGridArt.AttachAll(_client, cached);
         ApplyScanResults(cached, prefetch: true);
         HintText.Text = $"{_games.Count} games from this Deck cache. Scanning again in the background…";
         StatusChanged?.Invoke($"Artwork: {_games.Count} games (cache)");
@@ -546,8 +548,13 @@ public partial class GameOptimizerView : UserControl
     private async Task PrefetchCoversAsync()
     {
         var games = _games.ToList();
-        if (!OptimizerSettings.HasSteamGridDb && games.All(g => string.IsNullOrEmpty(g.SelectedGridUrl)))
-            return;
+        var needsCover = games.Any(g =>
+            g.Cover is null &&
+            (g.GridBytes is { Length: > 0 } ||
+             g.SteamAppId != 0 ||
+             !string.IsNullOrEmpty(g.SelectedGridUrl) ||
+             OptimizerSettings.HasSteamGridDb));
+        if (!needsCover) return;
         using var gate = new SemaphoreSlim(3);
         await Task.WhenAll(games.Select(async game =>
         {
@@ -576,6 +583,11 @@ public partial class GameOptimizerView : UserControl
         var query = string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery;
         byte[]? grid = game.GridBytes;
         byte[]? wide = game.WideBytes;
+        if (grid is null && game.SteamAppId != 0 && _client is { IsConnected: true })
+        {
+            try { grid = SteamGridArt.ReadPortrait(_client, game.SteamAppId); }
+            catch { /* cover is optioneel */ }
+        }
         if (grid is null && !string.IsNullOrEmpty(game.SelectedGridUrl))
             grid = await ArtworkClient.DownloadAsync(game.SelectedGridUrl, ct);
         if (wide is null && !string.IsNullOrEmpty(game.SelectedWideUrl))

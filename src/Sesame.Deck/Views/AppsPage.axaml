@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Sesame.Deck.Views.AppsPage">
+  <Grid>
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Background="#0B1218" Padding="8,6" BorderBrush="#1E4A58" BorderThickness="0,0,0,1">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Content="Scan apps" Click="Scan_Click"/>
+          <Button Classes="accent" Content="+ App" Click="Add_Click"/>
+          <Button Content="Choose launch" Click="Pick_Click"/>
+          <Button Content="Remove" Click="Remove_Click"/>
+          <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#8EB8C4"
+                     Text="Native Deck apps. Duplicates are merged."/>
+        </StackPanel>
+      </Border>
+      <ListBox x:Name="AppList">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid ColumnDefinitions="220,80,120,*,80,160" Margin="4,6">
+              <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+              <TextBlock Grid.Column="1" Text="{Binding KindText}" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="2" Text="{Binding TagsText}" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="3" Text="{Binding Target}" TextTrimming="CharacterEllipsis" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="4" Text="{Binding SteamText}"/>
+              <TextBlock Grid.Column="5" Text="{Binding Status}" Foreground="#8EB8C4"/>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+    <Border x:Name="BusyOverlay" IsVisible="False" Background="#CC05070A">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+        <ProgressBar IsIndeterminate="True" Width="280" Height="8"/>
+        <TextBlock x:Name="BusyText" Text="Reading installed apps…" FontSize="18" HorizontalAlignment="Center"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

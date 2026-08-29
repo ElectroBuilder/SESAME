@@ -23,20 +23,19 @@ public sealed class AppCatalog
 
     public AppCatalog()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Data", "catalog.json");
-        using var stream = File.OpenRead(path);
-        using var doc = JsonDocument.Parse(stream);
+        using var doc = OpenCatalog();
         var root = doc.RootElement;
 
-        Profiles = root.GetProperty("profiles").EnumerateArray()
-            .Select(p => new ConnectionProfile
+        Profiles = root.TryGetProperty("profiles", out var sessionProfiles) && sessionProfiles.ValueKind == JsonValueKind.Array
+            ? sessionProfiles.EnumerateArray().Select(p => new ConnectionProfile
             {
                 Id = p.GetProperty("id").GetString() ?? "",
                 Name = p.GetProperty("name").GetString() ?? "",
                 Host = p.GetProperty("host").GetString() ?? "",
-                Port = p.GetProperty("port").GetInt32(),
-                User = p.GetProperty("user").GetString() ?? "deck"
-            }).ToList();
+                Port = p.TryGetProperty("port", out var port) ? port.GetInt32() : 22,
+                User = p.TryGetProperty("user", out var user) ? user.GetString() ?? "deck" : "deck"
+            }).ToList()
+            : [];
 
         QuickAccess = root.GetProperty("quickAccess").EnumerateArray()
             .Select(p => new QuickPath
@@ -169,4 +168,18 @@ public sealed class AppCatalog
 
     private static Dictionary<string, string> ReadMap(JsonElement el) =>
         el.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString() ?? "", StringComparer.OrdinalIgnoreCase);
+
+    private static JsonDocument OpenCatalog()
+    {
+        var asm = typeof(AppCatalog).Assembly;
+        using var stream = asm.GetManifestResourceStream("Sesame.catalog.json");
+        if (stream is not null)
+            return JsonDocument.Parse(stream);
+
+        var path = Path.Combine(AppContext.BaseDirectory, "Data", "catalog.json");
+        if (File.Exists(path))
+            return JsonDocument.Parse(File.ReadAllText(path));
+
+        throw new InvalidOperationException("The game catalog is missing from this SESAME build.");
+    }
 }

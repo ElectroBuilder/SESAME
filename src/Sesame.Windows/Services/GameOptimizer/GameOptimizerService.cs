@@ -78,6 +78,7 @@ public static class GameOptimizerService
                 game.Status = string.IsNullOrEmpty(game.Target) ? "No emulator" : "New";
             if (string.IsNullOrEmpty(game.Target))
                 game.Note = "No launcher found for " + profile.Name;
+            SteamGridArt.Attach(client, game);
             games.Add(game);
         }
 
@@ -110,6 +111,7 @@ public static class GameOptimizerService
             else if (string.IsNullOrEmpty(extra.Status) || extra.Status == "New")
                 extra.Status = extra.IsManual ? "Manual" :
                     extra.LaunchChoices.Count > 1 ? "Multiple launches — pick one" : "New";
+            SteamGridArt.Attach(client, extra);
             games.Add(extra);
         }
 
@@ -142,6 +144,7 @@ public static class GameOptimizerService
             else if (string.IsNullOrEmpty(extra.Status) || extra.Status == "New")
                 extra.Status = extra.IsManual ? "Manual" :
                     extra.LaunchChoices.Count > 1 ? "Multiple launches — pick one" : "New";
+            SteamGridArt.Attach(client, extra);
         }
 
         return apps;

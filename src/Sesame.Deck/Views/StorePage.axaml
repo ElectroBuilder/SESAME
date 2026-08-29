@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Sesame.Deck.Views.StorePage">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#0B1218" Padding="8,6" BorderBrush="#1E4A58" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,180,110,150,Auto">
+        <TextBox x:Name="QueryBox" Watermark="Search packs" KeyDown="Query_KeyDown" Margin="0,0,8,0"/>
+        <ComboBox x:Name="GameBox" Grid.Column="1" Margin="0,0,8,0"/>
+        <ComboBox x:Name="KindBox" Grid.Column="2" Margin="0,0,8,0" SelectedIndex="0">
+          <ComboBoxItem Content="All"/>
+          <ComboBoxItem Content="Mods"/>
+          <ComboBoxItem Content="ROM hacks"/>
+          <ComboBoxItem Content="Texture packs"/>
+        </ComboBox>
+        <ComboBox x:Name="SourceBox" Grid.Column="3" Margin="0,0,8,0" SelectedIndex="0">
+          <ComboBoxItem Content="All sources"/>
+          <ComboBoxItem Content="GameBanana"/>
+          <ComboBoxItem Content="Emulation King"/>
+        </ComboBox>
+        <Button Grid.Column="4" Classes="accent" Content="Search" Click="Search_Click"/>
+      </Grid>
+    </Border>
+    <TextBlock x:Name="HintText" DockPanel.Dock="Bottom" Margin="12,6" Foreground="#8EB8C4"
+               Text="Same store as Windows: pick a game identity, then search. Download from the result list."/>
+    <ListBox x:Name="ResultList">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Margin="4,8">
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="16"/>
+            <TextBlock Foreground="#8EB8C4" Text="{Binding CardMeta}"/>
+            <TextBlock Foreground="#8EB8C4" Text="{Binding Summary}" TextWrapping="Wrap" MaxHeight="48"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>

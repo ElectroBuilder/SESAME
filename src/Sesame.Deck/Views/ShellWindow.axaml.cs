@@ -2,8 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Sesame.Deck.Input;
-using Sesame;
+using Sesame.Models;
 using Sesame.Services;
+using Sesame;
 
 namespace Sesame.Deck.Views;
 
@@ -12,11 +13,9 @@ public partial class ShellWindow : Window
     private readonly DeckSession _session = DeckSession.Current;
     private readonly bool _gameMode;
     private readonly GamepadPump _pad;
-    private readonly OptimizerPage _optimizer = new();
-    private readonly FilesPage _files = new();
-    private readonly SettingsPage _settings = new();
-    private Control? _current;
+    private readonly QuickAccessStore _pins = new();
     private int _tile;
+    private bool _tabsReady;
 
     public ShellWindow()
     {
@@ -31,41 +30,91 @@ public partial class ShellWindow : Window
         catch { /* ico is optioneel */ }
         DesktopRoot.IsVisible = !_gameMode;
         GameRoot.IsVisible = _gameMode;
+        HintBar.Text = _gameMode
+            ? "A confirm    B back    D-pad / stick navigate    L/R tabs"
+            : "Same as Windows: Files, Apps, Games, Artwork and Store. This machine is local — no SSH needed.";
         if (_gameMode)
         {
             WindowState = WindowState.FullScreen;
             Width = 1280;
             Height = 800;
-            HintBar.Text = "A confirm    B back    D-pad / stick navigate    L/R tabs    Start menu";
+            QuickPane.IsVisible = false;
+            GameBackBtn.IsVisible = false;
         }
-        else
-            HintBar.Text = "Mouse, keyboard or Steam Deck controls. Local or SSH.";
 
         _pad = new GamepadPump(OnPad);
         _session.Changed += RefreshStatus;
+        _pins.Load();
+        BuildQuickAccess();
+        WirePanels();
         Closed += (_, _) =>
         {
             _pad.Dispose();
             _session.Client.Dispose();
         };
-        if (!_gameMode)
-            ShowPage(_optimizer, "Artwork");
         Opened += async (_, _) =>
         {
             try
             {
                 await _session.EnsureConnectedAsync();
-                _optimizer.OnConnected();
-                _files.OnConnected();
+                AfterConnect();
             }
             catch (Exception ex)
             {
                 FooterStatus.Text = ex.Message;
             }
             RefreshStatus();
+            _tabsReady = true;
             if (_gameMode) FocusTile(0);
         };
         RefreshStatus();
+    }
+
+    private void WirePanels()
+    {
+        FilesPanel.PathChanged += path => FooterStatus.Text = path;
+        AppsPanel.StatusChanged += text => FooterStatus.Text = text;
+        AppsPanel.ManualChanged += ArtPanel.UpsertManual;
+        AppsPanel.ManualRemoved += ArtPanel.RemoveManual;
+        GamesPanel.StatusChanged += text => FooterStatus.Text = text;
+        GamesPanel.ManualChanged += ArtPanel.UpsertManual;
+        GamesPanel.ManualRemoved += ArtPanel.RemoveManual;
+        ArtPanel.StatusChanged += text => FooterStatus.Text = text;
+        ArtPanel.SetCompact(_gameMode);
+        StorePanel.SetGames(_session.Catalog.StoreGames, []);
+    }
+
+    private void AfterConnect()
+    {
+        FilesPanel.OnConnected();
+        AppsPanel.OnConnected();
+        GamesPanel.OnConnected();
+        ArtPanel.OnConnected();
+        StorePanel.SetGames(_session.Catalog.StoreGames, GamesPanel.Items.Select(g => g.Identity));
+        if (_gameMode)
+            ArtPanel.SetCompact(true);
+    }
+
+    private void BuildQuickAccess()
+    {
+        QuickList.ItemsSource = _pins.Combined(_session.Catalog.QuickAccess).ToList();
+    }
+
+    private void Quick_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_tabsReady) return;
+        if (QuickList.SelectedItem is not QuickPath path) return;
+        MainTabs.SelectedIndex = 0;
+        FilesPanel.OpenPath(path.Path);
+    }
+
+    private async void Tabs_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_tabsReady) return;
+        if (MainTabs.SelectedIndex == 1)
+            await AppsPanel.EnsureScannedAsync();
+        if (MainTabs.SelectedIndex == 2 && GamesPanel.Items.Count == 0)
+            await GamesPanel.ScanAsync();
     }
 
     private void RefreshStatus()
@@ -74,38 +123,58 @@ public partial class ShellWindow : Window
         GameStatus.Text = _session.Status + " · " + HostEnvironment.RuntimeLabel;
         FooterStatus.Text = _session.Status;
         LocalBtn.IsVisible = HostEnvironment.LocalAvailable;
+        RemoteBtn.IsVisible = true;
     }
 
-    private void ShowPage(Control page, string title)
+    private void OpenTab(int index, bool compactArt)
     {
-        _current = page;
-        GamePageTitle.Text = title;
-        if (_gameMode)
-        {
-            GameHome.IsVisible = false;
-            GamePage.IsVisible = true;
-            GameHost.Content = page;
-        }
-        else
-            DesktopHost.Content = page;
+        ArtPanel.SetCompact(compactArt);
+        MainTabs.SelectedIndex = index;
+        if (!_gameMode) return;
+        GameHome.IsVisible = false;
+        DesktopRoot.IsVisible = true;
+        GameBackBtn.IsVisible = true;
     }
 
     private void ShowHome()
     {
         if (!_gameMode) return;
-        GamePage.IsVisible = false;
+        DesktopRoot.IsVisible = false;
         GameHome.IsVisible = true;
+        GameBackBtn.IsVisible = false;
         FocusTile(_tile);
     }
 
-    private void NavOpt_Click(object? sender, RoutedEventArgs e) => ShowPage(_optimizer, "Artwork");
-    private void NavFiles_Click(object? sender, RoutedEventArgs e) => ShowPage(_files, "Files");
-    private void NavSettings_Click(object? sender, RoutedEventArgs e) => ShowPage(_settings, "Settings");
+    private void NavSettings_Click(object? sender, RoutedEventArgs e) => OpenTab(5, compactArt: false);
 
-    private void Tile0_Click(object? sender, RoutedEventArgs e) { _tile = 0; ShowPage(_optimizer, "Artwork"); }
-    private void Tile1_Click(object? sender, RoutedEventArgs e) { _tile = 1; ShowPage(_optimizer, "Bibliotheek"); }
-    private void Tile2_Click(object? sender, RoutedEventArgs e) { _tile = 2; ShowPage(_files, "Files"); }
-    private void Tile3_Click(object? sender, RoutedEventArgs e) { _tile = 3; ShowPage(_settings, "Settings"); }
+    private void Tile0_Click(object? sender, RoutedEventArgs e)
+    {
+        _tile = 0;
+        OpenTab(3, compactArt: true);
+        ArtPanel.OnConnected();
+    }
+
+    private async void Tile1_Click(object? sender, RoutedEventArgs e)
+    {
+        _tile = 1;
+        OpenTab(2, compactArt: false);
+        if (GamesPanel.Items.Count == 0)
+            await GamesPanel.ScanAsync();
+    }
+
+    private void Tile2_Click(object? sender, RoutedEventArgs e)
+    {
+        _tile = 2;
+        OpenTab(0, compactArt: false);
+        FilesPanel.OnConnected();
+    }
+
+    private void Tile3_Click(object? sender, RoutedEventArgs e)
+    {
+        _tile = 3;
+        OpenTab(5, compactArt: false);
+    }
+
     private void GameBack_Click(object? sender, RoutedEventArgs e) => ShowHome();
 
     private async void Local_Click(object? sender, RoutedEventArgs e)
@@ -113,8 +182,7 @@ public partial class ShellWindow : Window
         try
         {
             await _session.ConnectLocalAsync();
-            _optimizer.OnConnected();
-            _files.OnConnected();
+            AfterConnect();
         }
         catch (Exception ex)
         {
@@ -128,10 +196,7 @@ public partial class ShellWindow : Window
         var dlg = new RemoteDialog();
         await dlg.ShowDialog(this);
         if (dlg.Connected)
-        {
-            _optimizer.OnConnected();
-            _files.OnConnected();
-        }
+            AfterConnect();
         RefreshStatus();
     }
 
@@ -171,17 +236,19 @@ public partial class ShellWindow : Window
             return;
         }
 
-        if (action == PadAction.Back)
+        if (action == PadAction.Back && _gameMode && DesktopRoot.IsVisible)
         {
-            if (_gameMode && GamePage.IsVisible) ShowHome();
+            ShowHome();
             return;
         }
 
         if (action is PadAction.PrevTab or PadAction.NextTab)
         {
-            if (_current == _optimizer) ShowPage(_files, "Files");
-            else if (_current == _files) ShowPage(_settings, "Settings");
-            else ShowPage(_optimizer, "Artwork");
+            if (DesktopRoot.IsVisible)
+            {
+                var next = MainTabs.SelectedIndex + (action == PadAction.NextTab ? 1 : -1);
+                MainTabs.SelectedIndex = Math.Clamp(next, 0, Math.Max(0, MainTabs.ItemCount - 1));
+            }
         }
     }
 

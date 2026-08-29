@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
 using Sesame.Services;
 using Sesame.Services.GameOptimizer;
 
@@ -24,6 +26,20 @@ public partial class SettingsPage : UserControl
         if (value.Contains('•', StringComparison.Ordinal)) return;
         OptimizerSettings.SaveKey(value);
         KeyStatus.Text = OptimizerSettings.HasSteamGridDb ? "Key saved." : "Key cleared.";
+    }
+
+    private void Dark_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Application.Current is { } app)
+            app.RequestedThemeVariant = ThemeVariant.Dark;
+        HostInfo.Text = "Dark theme.";
+    }
+
+    private void Light_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Application.Current is { } app)
+            app.RequestedThemeVariant = ThemeVariant.Light;
+        HostInfo.Text = "Light theme. Chrome colors stay SESAME teal; content follows the system light variant.";
     }
 
     private void Desktop_Click(object? sender, RoutedEventArgs e)

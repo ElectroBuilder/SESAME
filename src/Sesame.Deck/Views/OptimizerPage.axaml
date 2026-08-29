@@ -2,35 +2,73 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Sesame.Deck.Views.OptimizerPage">
   <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
-    <StackPanel Orientation="Horizontal" Margin="16" Spacing="8">
-      <Button Classes="accent" Content="Scan" Click="Scan_Click"/>
-      <Button Classes="accent" Content="Apply artwork" Click="Apply_Click"/>
-      <Button Content="All on" Click="AllOn_Click"/>
-      <Button Content="All off" Click="AllOff_Click"/>
-    </StackPanel>
-    <ListBox x:Name="GameList" Grid.Row="1" Margin="12,0" SelectionMode="Single">
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <Grid ColumnDefinitions="Auto,Auto,*" Margin="4">
-            <CheckBox IsChecked="{Binding Selected}" VerticalAlignment="Center"/>
-            <Border Grid.Column="1" Width="40" Height="60" Margin="10,0" Background="#0B1218" ClipToBounds="True">
-              <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
-            </Border>
-            <StackPanel Grid.Column="2" VerticalAlignment="Center">
-              <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding SystemName}" Foreground="#8EB8C4" FontSize="13"/>
-              <TextBlock Text="{Binding SteamText}" Foreground="#8EB8C4" FontSize="12"/>
-            </StackPanel>
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-    <TextBlock x:Name="Hint" Grid.Row="2" Margin="16" TextWrapping="Wrap" Foreground="#8EB8C4"
-               Text="Scan ROMs on this machine or over SSH. Apply writes Steam shortcuts; do that in Desktop Mode."/>
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Background="#0B1218" Padding="8,6" BorderBrush="#1E4A58" BorderThickness="0,0,0,1">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Content="Scan" Click="Scan_Click"/>
+          <Button Classes="accent" Content="Apply artwork" Click="Apply_Click"/>
+          <Button Content="All on" Click="AllOn_Click"/>
+          <Button Content="All off" Click="AllOff_Click"/>
+          <Button Content="Choose launch" Click="Pick_Click"/>
+          <TextBlock x:Name="Hint" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#8EB8C4"
+                     Text="Covers come from Steam first, then SteamGridDB if a key is set."/>
+        </StackPanel>
+      </Border>
+      <ScrollViewer x:Name="TileHost" IsVisible="False">
+        <ItemsControl x:Name="TileList">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Width="140" Margin="10" Background="#0B1218" CornerRadius="10" Padding="8">
+                <StackPanel>
+                  <Border Width="120" Height="180" Background="#05070A" ClipToBounds="True" CornerRadius="6">
+                    <Panel>
+                      <TextBlock Text="NO ART" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Foreground="#3D6570" FontSize="11"/>
+                      <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                    </Panel>
+                  </Border>
+                  <CheckBox IsChecked="{Binding Selected}" Margin="0,8,0,0" Content="{Binding DisplayName}"/>
+                  <TextBlock Text="{Binding SystemName}" Foreground="#8EB8C4" FontSize="12"/>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <ListBox x:Name="GameList" SelectionMode="Single">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid ColumnDefinitions="Auto,48,*,140,70,140,70,120,140" Margin="4,6">
+              <CheckBox IsChecked="{Binding Selected}" VerticalAlignment="Center"/>
+              <Border Grid.Column="1" Width="36" Height="54" Margin="8,0" Background="#0B1218" ClipToBounds="True">
+                <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+              </Border>
+              <TextBlock Grid.Column="2" Text="{Binding DisplayName}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="3" Text="{Binding SystemName}" Foreground="#8EB8C4" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="4" Text="{Binding KindText}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="5" Text="{Binding TagsText}" Foreground="#8EB8C4" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="6" Text="{Binding SteamText}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="7" Text="{Binding ArtworkText}" Foreground="#8EB8C4" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="8" Text="{Binding Status}" Foreground="#8EB8C4" VerticalAlignment="Center"/>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+    <Border x:Name="BusyOverlay" IsVisible="False" Background="#CC05070A" ZIndex="20">
+      <Border Width="560" HorizontalAlignment="Center" VerticalAlignment="Center"
+              Background="#0B1218" BorderBrush="#00D9F5" BorderThickness="1.5" CornerRadius="14" Padding="28">
+        <StackPanel>
+          <TextBlock x:Name="BusyTitle" FontSize="22" FontWeight="SemiBold" Text="Working…"/>
+          <TextBlock x:Name="BusyDetail" FontSize="14" Foreground="#8EB8C4" Margin="0,10,0,0" TextWrapping="Wrap"/>
+          <ProgressBar x:Name="BusyBar" Height="14" Margin="0,18,0,0" IsIndeterminate="True"/>
+        </StackPanel>
+      </Border>
+    </Border>
   </Grid>
 </UserControl>

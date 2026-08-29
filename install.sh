@@ -64,6 +64,18 @@ payload_dir() {
   [[ -n "$dir" && -f "$dir/SESAME" && -s "$dir/SESAME" ]]
 }
 
+# User sessions, keys and caches must never ship next to the binary.
+sanitize_install() {
+  local d="${1:-}"
+  [[ -n "$d" && -d "$d" ]] || return 0
+  rm -rf "$d/secrets" "$d/optimizer-cache" "$d/art-cache" "$d/store-cache" \
+    "$d/Data" "$d/AppData" "$d/.local"
+  rm -f "$d/sessions.json" "$d/optimizer.json" "$d/optimizer-cache.json" \
+    "$d/optimizer-picks.json" "$d/launchers.json" "$d/quickaccess.json" \
+    "$d/manual-shortcuts.json" "$d/theme.txt" "$d/terminal.txt" "$d/crash.log" \
+    "$d/catalog.json"
+}
+
 http_get() {
   local url="$1" out="$2"
   if command -v curl >/dev/null 2>&1; then
@@ -217,6 +229,7 @@ install_payload() {
     die "Install produced an empty app folder (SESAME binary missing after copy)."
   }
   chmod +x "$stage/SESAME" || true
+  sanitize_install "$stage"
 
   if [[ -e "$DEST" || -L "$DEST" ]]; then
     rm -rf "$old"

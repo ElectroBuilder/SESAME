@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sesame.Deck.Views.PromptWindow"
+        Width="520" Height="280"
+        WindowStartupLocation="CenterOwner"
+        Background="#0B1218">
+  <DockPanel Margin="20">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button Content="Cancel" Click="Cancel_Click"/>
+      <Button Classes="accent" Content="Save" Click="Save_Click"/>
+    </StackPanel>
+    <StackPanel Spacing="8">
+      <TextBlock x:Name="HintText" TextWrapping="Wrap" Foreground="#8EB8C4"/>
+      <TextBlock Text="Name"/>
+      <TextBox x:Name="NameBox"/>
+      <TextBlock Text="Executable path on the Deck"/>
+      <TextBox x:Name="ExeBox" Watermark="/usr/bin/app or a .desktop Exec"/>
+    </StackPanel>
+  </DockPanel>
+</Window>

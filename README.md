@@ -49,6 +49,8 @@ Or from inside the repo: `git pull --ff-only && bash install.sh` (same as `bash 
 
 The installer downloads the prebuilt Linux release (`sesame-linux-x64.tar.gz`), or builds from source if the download is unavailable.
 
+Sessions, SSH keys and caches stay in `~/.local/share/sesame`. They are never copied into `~/Applications/SESAME`.
+
 ```
 SESAME --desktop      # windowed desktop UI
 SESAME --gamemode     # fullscreen controller UI

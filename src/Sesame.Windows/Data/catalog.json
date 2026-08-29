@@ -1,20 +1,4 @@
 {
-  "profiles": [
-    {
-      "id": "steamdeck-eth",
-      "name": "Steam Deck (Ethernet)",
-      "host": "",
-      "port": 22,
-      "user": "deck"
-    },
-    {
-      "id": "steamdeck-wifi",
-      "name": "Steam Deck (WiFi)",
-      "host": "",
-      "port": 22,
-      "user": "deck"
-    }
-  ],
   "quickAccess": [
     { "name": "Home", "path": "/home/deck", "group": "Steam Deck" },
     { "name": "Emulation", "path": "/home/deck/Emulation", "group": "Steam Deck" },

@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sesame.Deck.Views.PickLaunchWindow"
+        Title="Choose launch"
+        Width="640" Height="420"
+        WindowStartupLocation="CenterOwner"
+        Background="#0B1218">
+  <DockPanel Margin="20">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button Content="Cancel" Click="Cancel_Click"/>
+      <Button Classes="accent" Content="Use this launch" Click="Save_Click"/>
+    </StackPanel>
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="#8EB8C4" Margin="0,0,0,12"
+                 Text="This app was found more than once. Pick the shortcut SESAME should write to Steam."/>
+      <ListBox x:Name="ChoiceList"/>
+    </DockPanel>
+  </DockPanel>
+</Window>

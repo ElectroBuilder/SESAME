@@ -1,16 +1,45 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Sesame.Deck.Views.FilesPage">
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
-    <DockPanel Margin="12">
-      <Button Content="Up" Click="Up_Click" DockPanel.Dock="Left"/>
-      <Button Content="Refresh" Click="Refresh_Click" DockPanel.Dock="Left"/>
-      <TextBox x:Name="PathBox" Margin="8,0,0,0" KeyDown="Path_KeyDown"/>
-    </DockPanel>
-    <ListBox x:Name="FileList" Grid.Row="1" Margin="12,0,12,12" DoubleTapped="Open_Double"/>
-  </Grid>
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#0B1218" Padding="8,6" BorderBrush="#1E4A58" BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Button Content="Back" Click="Back_Click"/>
+        <Button Content="Up" Click="Up_Click"/>
+        <Button Content="Refresh" Click="Refresh_Click"/>
+        <TextBox x:Name="PathBox" Width="420" KeyDown="Path_KeyDown"/>
+        <Button Content="Go" Click="Go_Click"/>
+      </StackPanel>
+    </Border>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="56"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="90"/>
+        <ColumnDefinition Width="90"/>
+        <ColumnDefinition Width="180"/>
+      </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <TextBlock Grid.Column="1" Text="Name" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
+      <TextBlock Grid.Column="2" Text="Type" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
+      <TextBlock Grid.Column="3" Text="Size" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
+      <TextBlock Grid.Column="4" Text="Modified" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
+      <ListBox x:Name="FileList" Grid.Row="1" Grid.ColumnSpan="5" DoubleTapped="Open_Double">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid ColumnDefinitions="56,*,90,90,180">
+              <TextBlock Text="{Binding Glyph}" FontSize="16" VerticalAlignment="Center" Margin="8,4" Foreground="#00D9F5"/>
+              <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="2" Text="{Binding Kind}" VerticalAlignment="Center" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="3" Text="{Binding SizeText}" VerticalAlignment="Center" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="4" Text="{Binding LastWrite}" VerticalAlignment="Center" Foreground="#8EB8C4"/>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+  </DockPanel>
 </UserControl>

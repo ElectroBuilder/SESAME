@@ -11,6 +11,7 @@ public sealed class DeckSession
     public DeckClient Client { get; } = new();
     public AppCatalog Catalog { get; } = new();
     public ProfileStore Profiles { get; } = new();
+    public GameLibrary Library { get; } = new();
 
     public event Action? Changed;
 

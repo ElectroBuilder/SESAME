@@ -18,11 +18,11 @@
              Exclude="..\Sesame.Windows\Services\ThemeManager.cs;..\Sesame.Windows\Services\StoreImageCache.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="..\Sesame.Windows\Data\catalog.json" LogicalName="Sesame.catalog.json" />
     <EmbeddedResource Include="..\Sesame.Windows\Scripts\extra-scan.py" LogicalName="Sesame.extra-scan.py" />
     <EmbeddedResource Include="..\Sesame.Windows\Scripts\sesame-dolphin.sh" LogicalName="Sesame.sesame-dolphin.sh" />
     <EmbeddedResource Include="..\Sesame.Windows\Scripts\sesame-dolphin-cfg.py" LogicalName="Sesame.sesame-dolphin-cfg.py" />
     <EmbeddedResource Include="..\Sesame.Windows\Assets\Logos\*.png" LogicalName="Sesame.Assets.Logos.%(Filename)%(Extension)" />
-    <Content Include="..\Sesame.Windows\Data\catalog.json" Link="Data\catalog.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Sesame.Windows\Assets\Logos\*.png" Link="Assets\Logos\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
