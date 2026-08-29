@@ -4,12 +4,23 @@ namespace Sesame.Services.GameOptimizer;
 
 /// <summary>
 /// Steam Input for non-Steam shortcuts lives in localconfig.vdf (not shortcuts.vdf).
-/// Game Mode gyro on the Deck stays available when Steam Input is forced on.
+/// UseSteamControllerConfig: 0 = Forced Off, 2 = Forced On.
+/// Wii Joy-Cons need Off so Steam does not steal pads from joycond/cemuhook DSU.
 /// </summary>
 public static class SteamInputConfig
 {
+    /// <summary>Force Steam Input on (Deck gyro / virtual gamepad path).</summary>
     public static void ForceOn(DeckClient client, IReadOnlyList<string> configDirs,
-        IEnumerable<uint> appIds)
+        IEnumerable<uint> appIds) =>
+        Apply(client, configDirs, appIds, forcedOn: true);
+
+    /// <summary>Force Steam Input off (native HID / DSU Joy-Cons for Dolphin Wii).</summary>
+    public static void ForceOff(DeckClient client, IReadOnlyList<string> configDirs,
+        IEnumerable<uint> appIds) =>
+        Apply(client, configDirs, appIds, forcedOn: false);
+
+    private static void Apply(DeckClient client, IReadOnlyList<string> configDirs,
+        IEnumerable<uint> appIds, bool forcedOn)
     {
         var keys = appIds
             .Where(id => id != 0)
@@ -18,13 +29,15 @@ public static class SteamInputConfig
             .ToList();
         if (keys.Count == 0) return;
 
+        // argv[1] = "0" or "2", argv[2] = path, argv[3…] = app id keys
+        var mode = forcedOn ? "2" : "0";
         foreach (var config in configDirs)
         {
             var path = DeckClient.Combine(config, "localconfig.vdf");
             try
             {
                 if (!client.Exists(path)) continue;
-                var args = DeckClient.ShQuote(path) + " " +
+                var args = DeckClient.ShQuote(mode) + " " + DeckClient.ShQuote(path) + " " +
                            string.Join(" ", keys.Select(DeckClient.ShQuote));
                 client.Execute("python3 -c " + DeckClient.ShQuote(PatchPy) + " " + args, 20);
             }
@@ -37,11 +50,12 @@ public static class SteamInputConfig
 
     private const string PatchPy =
         "import re,sys\n" +
-        "path=sys.argv[1]\n" +
-        "keys=sys.argv[2:]\n" +
+        "mode=sys.argv[1]\n" +
+        "path=sys.argv[2]\n" +
+        "keys=sys.argv[3:]\n" +
         "text=open(path,'r',encoding='utf-8',errors='ignore').read()\n" +
         "orig=text\n" +
-        "flag='\"UseSteamControllerConfig\"\\t\\t\"2\"'\n" +
+        "flag='\"UseSteamControllerConfig\"\\t\\t\"%s\"'%mode\n" +
         "def patch_one(text,key):\n" +
         "    m=re.search(r'\"%s\"\\s*\\{'%re.escape(key),text)\n" +
         "    if m:\n" +

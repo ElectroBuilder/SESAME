@@ -42,6 +42,8 @@ case "$ROM" in
     # Start Joy-Con motion DSU before patching Dolphin (guide: joycond-cemuhook).
     if [ -f "$HERE/sesame-joycon-dsu.sh" ]; then
       bash "$HERE/sesame-joycon-dsu.sh" >/dev/null 2>&1 || true
+      # Give cemuhook a moment to publish pads before Dolphin cfg / launch.
+      sleep 1.5
     fi
     ;;
   *)

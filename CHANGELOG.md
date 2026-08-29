@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.10 — 2026-08-29
+
+- Wii Joy-Cons via joycond-cemuhook: DSU pads use the real names (`Nintendo Switch Right/Left Joy-Con`), DualShock-style button aliases (Cross/Circle/…), and UDP **26761** (port file for Dolphin; Deck gyro stays on 26760).
+- Optimize forces **Steam Input Off** on Dolphin shortcuts so Steam no longer steals Joy-Cons from cemuhook.
+- Wrapper waits briefly after starting cemuhook before patching Dolphin config.
+
 ## 0.6.9 — 2026-08-29
 
 - Settings → Emulators: **Install Joy-Con motion…** — shows risks, lets you view `install-joycond.sh`, then runs the full SteamOS install (headers, joycond, cemuhook) with your Deck sudo password over SSH.

@@ -8,17 +8,26 @@ Default Joy-Con layout (single player — always):
 Wiimote 2–4 stay OFF unless SESAME_WII_MULTI=1.
 
 Motion (reliable): joycond-cemuhook DSU on UDP 26761 (started by sesame-joycon-dsu.sh).
+Default cemuhook port is 26760 — SESAME forces 26761 so SteamDeckGyroDSU can keep 26760.
+DSU pad names (from joycond-cemuhook): "Nintendo Switch Right Joy-Con" / "… Left Joy-Con".
 Fallback: SteamDeckGyroDSU / Deck IMU on 26760.
 Aiming without a sensor bar uses Dolphin IMUIR (gyro → pointer).
 Home on the Right Joy-Con recenters the pointer when it drifts.
 
 Guide: https://system-maid.neocities.org/post/joycond-cemuhook/
+Wiki: https://github.com/joaorb64/joycond-cemuhook/wiki
 """
 from __future__ import annotations
 
 import os
 import pathlib
 import re
+
+# joycond-cemuhook publishes these exact names over DSU (not "Joy-Con (R)").
+DSU_RIGHT = "Nintendo Switch Right Joy-Con"
+DSU_LEFT = "Nintendo Switch Left Joy-Con"
+DSU_RIGHT_ALT = "Joy-Con (R)"
+DSU_LEFT_ALT = "Joy-Con (L)"
 
 DECK_IMU = {
     "IMUAccelerometer/Up": "`SteamDeck/0/Steam Deck:Accel Up`|`DSUClient/0/steamdeckgyro:Accel Up`|`Accel Up`",
@@ -171,26 +180,33 @@ def classify(pool):
 
 
 def wiimote_buttons(right_dev):
-    """Right Joy-Con held as Wiimote (Nintendo face layout)."""
+    """Right Joy-Con held as Wiimote (Nintendo face layout).
+
+    DSU from joycond-cemuhook uses DualShock-style names (Cross/Circle/…).
+    SDL / Switch names (East/South/A/B) stay as fallbacks.
+    """
     def b(*controls):
         return "|".join(ref(right_dev, c) for c in controls)
 
     return {
-        # Switch: A=East, B=South, X=North, Y=West
-        "Buttons/A": b("Button East", "Button A", "EAST"),
-        "Buttons/B": b("Button South", "Button B", "SOUTH", "Button ZR", "Trigger R"),
-        "Buttons/1": b("Button North", "Button X", "NORTH"),
-        "Buttons/2": b("Button West", "Button Y", "WEST"),
-        "Buttons/-": b("Button Minus", "Button Capture", "SELECT"),
-        "Buttons/+": b("Button Plus", "START"),
-        "Buttons/Home": b("Button Home", "Button Guide", "MODE"),
+        # Switch A=East=Circle; B=South=Cross; X=North=Triangle; Y=West=Square
+        "Buttons/A": b("Button East", "Button Circle", "Button A", "EAST"),
+        "Buttons/B": b(
+            "Button South", "Button Cross", "Button B", "SOUTH",
+            "Button ZR", "Button R2", "Trigger R",
+        ),
+        "Buttons/1": b("Button North", "Button Triangle", "Button X", "NORTH"),
+        "Buttons/2": b("Button West", "Button Square", "Button Y", "WEST"),
+        "Buttons/-": b("Button Minus", "Button Capture", "Button Share", "SELECT"),
+        "Buttons/+": b("Button Plus", "Button Options", "START"),
+        "Buttons/Home": b("Button Home", "Button Guide", "Button PS", "MODE"),
         "D-Pad/Up": b("Pad N", "Hat 0 N", "Left Y-", "Axis 1-"),
         "D-Pad/Down": b("Pad S", "Hat 0 S", "Left Y+", "Axis 1+"),
         "D-Pad/Left": b("Pad W", "Hat 0 W", "Left X-", "Axis 0-"),
         "D-Pad/Right": b("Pad E", "Hat 0 E", "Left X+", "Axis 0+"),
-        "Shake/X": b("Button SL", "Button SR", "Shoulder R", "TR"),
-        "Shake/Y": b("Button SL", "Button SR", "Shoulder R", "TR"),
-        "Shake/Z": b("Button SL", "Button SR", "Shoulder R", "TR"),
+        "Shake/X": b("Button SL", "Button SR", "Button R1", "Shoulder R", "TR"),
+        "Shake/Y": b("Button SL", "Button SR", "Button R1", "Shoulder R", "TR"),
+        "Shake/Z": b("Button SL", "Button SR", "Button R1", "Shoulder R", "TR"),
     }
 
 
@@ -199,8 +215,12 @@ def nunchuk_on(left_dev):
         return "|".join(ref(left_dev, c) for c in controls)
 
     keys = {
-        "Nunchuk/Buttons/C": b("Button SL", "Button L", "Shoulder L", "TL"),
-        "Nunchuk/Buttons/Z": b("Button ZL", "Trigger L", "Full Axis 2+", "Axis 2+"),
+        "Nunchuk/Buttons/C": b(
+            "Button SL", "Button L", "Button L1", "Shoulder L", "TL",
+        ),
+        "Nunchuk/Buttons/Z": b(
+            "Button ZL", "Button L2", "Trigger L", "Full Axis 2+", "Axis 2+",
+        ),
         "Nunchuk/Stick/Up": b("Left Y-", "Axis 1-"),
         "Nunchuk/Stick/Down": b("Left Y+", "Axis 1+"),
         "Nunchuk/Stick/Left": b("Left X-", "Axis 0-"),
@@ -209,9 +229,10 @@ def nunchuk_on(left_dev):
     for key, axis in NUNCHUK_ACCEL:
         keys[key] = "|".join(
             [
-                "`DSUClient/0/Joy-Con (L):%s`" % axis,
-                "`DSUClient/1/Joy-Con (L):%s`" % axis,
-                "`DSUClient/0/Nintendo Switch Left Joy-Con:%s`" % axis,
+                "`DSUClient/0/%s:%s`" % (DSU_LEFT, axis),
+                "`DSUClient/1/%s:%s`" % (DSU_LEFT, axis),
+                "`DSUClient/0/%s:%s`" % (DSU_LEFT_ALT, axis),
+                "`DSUClient/1/%s:%s`" % (DSU_LEFT_ALT, axis),
                 ref(left_dev, axis),
                 "`%s`" % axis,
             ]
@@ -224,10 +245,10 @@ def imu_from_right(right_dev):
     out = {}
     for key, axis in IMU_AXES:
         parts = [
-            "`DSUClient/0/Joy-Con (R):%s`" % axis,
-            "`DSUClient/1/Joy-Con (R):%s`" % axis,
-            "`DSUClient/0/Nintendo Switch Right Joy-Con:%s`" % axis,
-            "`DSUClient/1/Nintendo Switch Right Joy-Con:%s`" % axis,
+            "`DSUClient/0/%s:%s`" % (DSU_RIGHT, axis),
+            "`DSUClient/1/%s:%s`" % (DSU_RIGHT, axis),
+            "`DSUClient/0/%s:%s`" % (DSU_RIGHT_ALT, axis),
+            "`DSUClient/1/%s:%s`" % (DSU_RIGHT_ALT, axis),
             ref(right_dev, axis),
             "`SteamDeck/0/Steam Deck:%s`" % axis,
             "`DSUClient/0/steamdeckgyro:%s`" % axis,
@@ -245,10 +266,24 @@ def dsu_status():
         return ""
 
 
+def dsu_port():
+    env = os.environ.get("SESAME_JOYCON_DSU_PORT", "").strip()
+    if env.isdigit():
+        return env
+    path = pathlib.Path(os.path.expanduser("~")) / ".local/share/sesame/joycon-dsu.port"
+    try:
+        p = path.read_text(encoding="utf-8").strip()
+        if p.isdigit():
+            return p
+    except Exception:
+        pass
+    return "26761"
+
+
 def primary_devices(right_name, left_name):
-    """Prefer DSU Joy-Con pads when cemuhook status is ok."""
+    """Prefer DSU Joy-Con pads when cemuhook status is ok (correct cemuhook names)."""
     if dsu_status() == "ok":
-        return "DSUClient/0/Joy-Con (R)", "DSUClient/0/Joy-Con (L)"
+        return "DSUClient/0/%s" % DSU_RIGHT, "DSUClient/0/%s" % DSU_LEFT
     return sdl(right_name), sdl(left_name)
 
 
@@ -419,19 +454,20 @@ def patch_dolphin_ini(path, wiimote_count):
 
 
 def enable_dsu(path):
-    """Dolphin Alternate Input Sources: Joy-Con DSU first, Deck gyro second."""
+    """Dolphin Alternate Input Sources: Joy-Con DSU (actual port) + Deck gyro."""
     cur = path.read_text(errors="ignore") if path.exists() else ""
     if not cur.strip():
         cur = "[Server]\n"
+    port = dsu_port()
     cur = set_key(cur, "Server", "Enabled", "True")
-    # Rewrite so older SESAME builds that only had steamdeckgyro are corrected.
     cur = set_key(cur, "Server", "Server1Name", "joycond")
     cur = set_key(cur, "Server", "Server1IP", "127.0.0.1")
-    cur = set_key(cur, "Server", "Server1Port", os.environ.get("SESAME_JOYCON_DSU_PORT", "26761"))
+    cur = set_key(cur, "Server", "Server1Port", port)
     cur = set_key(cur, "Server", "Server2Name", "steamdeckgyro")
     cur = set_key(cur, "Server", "Server2IP", "127.0.0.1")
     cur = set_key(cur, "Server", "Server2Port", "26760")
     path.write_text(cur)
+    log("DSUClient.ini joycond port=%s status=%s" % (port, dsu_status()))
 
 
 def write_profile(path, wiimote_body):

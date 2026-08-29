@@ -313,14 +313,16 @@ public static class GameOptimizerService
         if (leftover > 0)
             report.Errors.Add(leftover + " oude script-shortcuts konden niet worden vervangen.");
 
+        // Wii Joy-Cons need Steam Input Off so Steam does not steal pads from cemuhook DSU.
+        // GC uses the same Off setting for consistency (native HID / no virtual gamepad).
         var dolphinIds = written
             .Where(s => DolphinInput.IsBound(s.Exe) || DolphinInput.IsBound(s.LaunchOptions))
             .Select(s => s.AppId)
             .ToList();
         if (dolphinIds.Count > 0)
         {
-            Report(progress, "Steam Input", "Enable gyro for Wii/GameCube…", 92);
-            SteamInputConfig.ForceOn(client, configs, dolphinIds);
+            Report(progress, "Steam Input", "Disable Steam Input for Dolphin (Joy-Con DSU)…", 92);
+            SteamInputConfig.ForceOff(client, configs, dolphinIds);
         }
 
         Report(progress, "Update collections", "Set Steam tabs…", 94);

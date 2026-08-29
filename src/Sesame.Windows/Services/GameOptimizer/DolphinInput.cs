@@ -244,66 +244,68 @@ public static class DolphinInput
         client.WriteText(path, text);
     }
 
+    // joycond-cemuhook DSU pad names (not "Joy-Con (R)/(L)").
+    private const string DsuRight = "DSUClient/0/Nintendo Switch Right Joy-Con";
+    private const string DsuLeft = "DSUClient/0/Nintendo Switch Left Joy-Con";
+    private const string SdlRight = "SDL/0/Nintendo Switch Right Joy-Con";
+    private const string SdlLeft = "SDL/0/Nintendo Switch Left Joy-Con";
+
     private static string JoyConNunchukProfile()
     {
-        const string right = "SDL/0/Nintendo Switch Right Joy-Con";
-        const string left = "SDL/0/Nintendo Switch Left Joy-Con";
-        const string dsuR = "DSUClient/0/Joy-Con (R)";
-        const string dsuL = "DSUClient/0/Joy-Con (L)";
+        // DualShock-style names from cemuhook first, then SDL/Switch aliases.
         return
             "[Profile]\n" +
-            "Device = " + dsuR + "\n" +
+            "Device = " + DsuRight + "\n" +
             "Source = 1\n" +
             "Extension = Nunchuk\n" +
             "Options/Sideways Wiimote = False\n" +
-            "Buttons/A = `" + dsuR + ":Button East`|`" + right + ":Button East`|`Button A`|EAST\n" +
-            "Buttons/B = `" + dsuR + ":Button South`|`" + right + ":Button South`|`Button B`|SOUTH\n" +
-            "Buttons/1 = `" + dsuR + ":Button North`|`" + right + ":Button North`|`Button X`|NORTH\n" +
-            "Buttons/2 = `" + dsuR + ":Button West`|`" + right + ":Button West`|`Button Y`|WEST\n" +
-            "Buttons/- = `" + dsuR + ":Button Minus`|`" + right + ":Button Minus`|SELECT\n" +
-            "Buttons/+ = `" + dsuR + ":Button Plus`|`" + right + ":Button Plus`|START\n" +
-            "Buttons/Home = `" + dsuR + ":Button Home`|`" + right + ":Button Home`|MODE\n" +
-            "D-Pad/Up = `" + dsuR + ":Pad N`|`" + right + ":Left Y-`\n" +
-            "D-Pad/Down = `" + dsuR + ":Pad S`|`" + right + ":Left Y+`\n" +
-            "D-Pad/Left = `" + dsuR + ":Pad W`|`" + right + ":Left X-`\n" +
-            "D-Pad/Right = `" + dsuR + ":Pad E`|`" + right + ":Left X+`\n" +
-            "Shake/X = `" + dsuR + ":Button SL`|`" + right + ":Button SR`\n" +
-            "Shake/Y = `" + dsuR + ":Button SL`|`" + right + ":Button SR`\n" +
-            "Shake/Z = `" + dsuR + ":Button SL`|`" + right + ":Button SR`\n" +
-            "Nunchuk/Buttons/C = `" + dsuL + ":Button SL`|`" + left + ":Button SL`|TL\n" +
-            "Nunchuk/Buttons/Z = `" + dsuL + ":Button ZL`|`" + left + ":Button ZL`|`Full Axis 2+`\n" +
-            "Nunchuk/Stick/Up = `" + dsuL + ":Left Y-`|`" + left + ":Left Y-`\n" +
-            "Nunchuk/Stick/Down = `" + dsuL + ":Left Y+`|`" + left + ":Left Y+`\n" +
-            "Nunchuk/Stick/Left = `" + dsuL + ":Left X-`|`" + left + ":Left X-`\n" +
-            "Nunchuk/Stick/Right = `" + dsuL + ":Left X+`|`" + left + ":Left X+`\n" +
-            JoyConImu(dsuR) +
+            "Buttons/A = `" + DsuRight + ":Button Circle`|`" + DsuRight + ":Button East`|`" + SdlRight + ":Button East`|`Button A`|EAST\n" +
+            "Buttons/B = `" + DsuRight + ":Button Cross`|`" + DsuRight + ":Button South`|`" + SdlRight + ":Button South`|`Button B`|SOUTH|`" + DsuRight + ":Button R2`\n" +
+            "Buttons/1 = `" + DsuRight + ":Button Triangle`|`" + DsuRight + ":Button North`|`" + SdlRight + ":Button North`|`Button X`|NORTH\n" +
+            "Buttons/2 = `" + DsuRight + ":Button Square`|`" + DsuRight + ":Button West`|`" + SdlRight + ":Button West`|`Button Y`|WEST\n" +
+            "Buttons/- = `" + DsuRight + ":Button Share`|`" + DsuRight + ":Button Minus`|`" + SdlRight + ":Button Minus`|SELECT\n" +
+            "Buttons/+ = `" + DsuRight + ":Button Options`|`" + DsuRight + ":Button Plus`|`" + SdlRight + ":Button Plus`|START\n" +
+            "Buttons/Home = `" + DsuRight + ":Button PS`|`" + DsuRight + ":Button Home`|`" + SdlRight + ":Button Home`|MODE\n" +
+            "D-Pad/Up = `" + DsuRight + ":Pad N`|`" + SdlRight + ":Left Y-`\n" +
+            "D-Pad/Down = `" + DsuRight + ":Pad S`|`" + SdlRight + ":Left Y+`\n" +
+            "D-Pad/Left = `" + DsuRight + ":Pad W`|`" + SdlRight + ":Left X-`\n" +
+            "D-Pad/Right = `" + DsuRight + ":Pad E`|`" + SdlRight + ":Left X+`\n" +
+            "Shake/X = `" + DsuRight + ":Button R1`|`" + DsuRight + ":Button SL`|`" + SdlRight + ":Button SR`\n" +
+            "Shake/Y = `" + DsuRight + ":Button R1`|`" + DsuRight + ":Button SL`|`" + SdlRight + ":Button SR`\n" +
+            "Shake/Z = `" + DsuRight + ":Button R1`|`" + DsuRight + ":Button SL`|`" + SdlRight + ":Button SR`\n" +
+            "Nunchuk/Buttons/C = `" + DsuLeft + ":Button L1`|`" + DsuLeft + ":Button SL`|`" + SdlLeft + ":Button SL`|TL\n" +
+            "Nunchuk/Buttons/Z = `" + DsuLeft + ":Button L2`|`" + DsuLeft + ":Button ZL`|`" + SdlLeft + ":Button ZL`|`Full Axis 2+`\n" +
+            "Nunchuk/Stick/Up = `" + DsuLeft + ":Left Y-`|`" + SdlLeft + ":Left Y-`\n" +
+            "Nunchuk/Stick/Down = `" + DsuLeft + ":Left Y+`|`" + SdlLeft + ":Left Y+`\n" +
+            "Nunchuk/Stick/Left = `" + DsuLeft + ":Left X-`|`" + SdlLeft + ":Left X-`\n" +
+            "Nunchuk/Stick/Right = `" + DsuLeft + ":Left X+`|`" + SdlLeft + ":Left X+`\n" +
+            JoyConImu(DsuRight) +
             "IMUIR/Enabled = True\n" +
             "IMUIR/Total Yaw = 16\n" +
-            "IMUIR/Recenter = `Button Home`|MODE\n" +
+            "IMUIR/Recenter = `Button Home`|`Button PS`|MODE\n" +
             "IR/Auto-Hide = False\n" +
             "Rumble/Motor = Strong\n";
     }
 
     private static string JoyConRemoteProfile()
     {
-        const string pad = "SDL/0/Nintendo Switch Right Joy-Con";
         return
             "[Profile]\n" +
-            "Device = " + pad + "\n" +
+            "Device = " + DsuRight + "\n" +
             "Source = 1\n" +
             "Extension = None\n" +
             "Options/Sideways Wiimote = True\n" +
-            "Buttons/A = `" + pad + ":Button A`\n" +
-            "Buttons/B = `" + pad + ":Button B`\n" +
-            "Buttons/1 = `" + pad + ":Button X`\n" +
-            "Buttons/2 = `" + pad + ":Button Y`\n" +
-            "Buttons/- = `" + pad + ":Button Minus`\n" +
-            "Buttons/+ = `" + pad + ":Button Plus`\n" +
-            "Buttons/Home = `" + pad + ":Button Home`\n" +
-            JoyConImu(pad) +
+            "Buttons/A = `" + DsuRight + ":Button Circle`|`" + DsuRight + ":Button East`|`" + SdlRight + ":Button A`\n" +
+            "Buttons/B = `" + DsuRight + ":Button Cross`|`" + DsuRight + ":Button South`|`" + SdlRight + ":Button B`\n" +
+            "Buttons/1 = `" + DsuRight + ":Button Triangle`|`" + DsuRight + ":Button North`|`" + SdlRight + ":Button X`\n" +
+            "Buttons/2 = `" + DsuRight + ":Button Square`|`" + DsuRight + ":Button West`|`" + SdlRight + ":Button Y`\n" +
+            "Buttons/- = `" + DsuRight + ":Button Share`|`" + DsuRight + ":Button Minus`|`" + SdlRight + ":Button Minus`\n" +
+            "Buttons/+ = `" + DsuRight + ":Button Options`|`" + DsuRight + ":Button Plus`|`" + SdlRight + ":Button Plus`\n" +
+            "Buttons/Home = `" + DsuRight + ":Button PS`|`" + DsuRight + ":Button Home`|`" + SdlRight + ":Button Home`\n" +
+            JoyConImu(DsuRight) +
             "IMUIR/Enabled = True\n" +
             "IMUIR/Total Yaw = 16\n" +
-            "IMUIR/Recenter = `" + pad + ":Button Home`\n" +
+            "IMUIR/Recenter = `" + DsuRight + ":Button Home`|`" + DsuRight + ":Button PS`\n" +
             "Rumble/Motor = Strong\n";
     }
 
@@ -327,9 +329,10 @@ public static class DolphinInput
                  })
         {
             sb.Append(key).Append(" = ")
+                .Append("`DSUClient/0/Nintendo Switch Right Joy-Con:").Append(axis).Append("`|")
+                .Append("`DSUClient/1/Nintendo Switch Right Joy-Con:").Append(axis).Append("`|")
                 .Append("`DSUClient/0/Joy-Con (R):").Append(axis).Append("`|")
                 .Append("`DSUClient/1/Joy-Con (R):").Append(axis).Append("`|")
-                .Append("`DSUClient/0/Nintendo Switch Right Joy-Con:").Append(axis).Append("`|")
                 .Append('`').Append(device).Append(':').Append(axis).Append("`|")
                 .Append("`SteamDeck/0/Steam Deck:").Append(axis).Append("`|")
                 .Append("`DSUClient/0/steamdeckgyro:").Append(axis).Append("`|")
