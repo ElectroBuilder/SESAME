@@ -171,25 +171,26 @@ def classify(pool):
 
 
 def wiimote_buttons(right_dev):
-    """All Wiimote face buttons forced onto the Right Joy-Con device."""
+    """Right Joy-Con held as Wiimote (Nintendo face layout)."""
     def b(*controls):
         return "|".join(ref(right_dev, c) for c in controls)
 
     return {
-        "Buttons/A": b("Button A", "Button S", "SOUTH", "EAST"),
-        "Buttons/B": b("Button B", "Button ZR", "Trigger R", "Button E", "EAST"),
-        "Buttons/1": b("Button X", "Button N", "NORTH"),
-        "Buttons/2": b("Button Y", "Button W", "WEST"),
-        "Buttons/-": b("Button Minus", "Button Capture", "Button Back", "SELECT"),
-        "Buttons/+": b("Button Plus", "Button Start", "START"),
+        # Switch: A=East, B=South, X=North, Y=West
+        "Buttons/A": b("Button East", "Button A", "EAST"),
+        "Buttons/B": b("Button South", "Button B", "SOUTH", "Button ZR", "Trigger R"),
+        "Buttons/1": b("Button North", "Button X", "NORTH"),
+        "Buttons/2": b("Button West", "Button Y", "WEST"),
+        "Buttons/-": b("Button Minus", "Button Capture", "SELECT"),
+        "Buttons/+": b("Button Plus", "START"),
         "Buttons/Home": b("Button Home", "Button Guide", "MODE"),
-        "D-Pad/Up": b("Pad N", "Hat 0 N", "Axis 7-", "Left Y-"),
-        "D-Pad/Down": b("Pad S", "Hat 0 S", "Axis 7+", "Left Y+"),
-        "D-Pad/Left": b("Pad W", "Hat 0 W", "Axis 6-", "Left X-"),
-        "D-Pad/Right": b("Pad E", "Hat 0 E", "Axis 6+", "Left X+"),
-        "Shake/X": b("Button SL", "Button SR", "Shoulder L", "TL"),
-        "Shake/Y": b("Button SL", "Button SR", "Shoulder L", "TL"),
-        "Shake/Z": b("Button SL", "Button SR", "Shoulder L", "TL"),
+        "D-Pad/Up": b("Pad N", "Hat 0 N", "Left Y-", "Axis 1-"),
+        "D-Pad/Down": b("Pad S", "Hat 0 S", "Left Y+", "Axis 1+"),
+        "D-Pad/Left": b("Pad W", "Hat 0 W", "Left X-", "Axis 0-"),
+        "D-Pad/Right": b("Pad E", "Hat 0 E", "Left X+", "Axis 0+"),
+        "Shake/X": b("Button SL", "Button SR", "Shoulder R", "TR"),
+        "Shake/Y": b("Button SL", "Button SR", "Shoulder R", "TR"),
+        "Shake/Z": b("Button SL", "Button SR", "Shoulder R", "TR"),
     }
 
 
@@ -198,7 +199,7 @@ def nunchuk_on(left_dev):
         return "|".join(ref(left_dev, c) for c in controls)
 
     keys = {
-        "Nunchuk/Buttons/C": b("Button L", "Button SL", "Shoulder L", "TL"),
+        "Nunchuk/Buttons/C": b("Button SL", "Button L", "Shoulder L", "TL"),
         "Nunchuk/Buttons/Z": b("Button ZL", "Trigger L", "Full Axis 2+", "Axis 2+"),
         "Nunchuk/Stick/Up": b("Left Y-", "Axis 1-"),
         "Nunchuk/Stick/Down": b("Left Y+", "Axis 1+"),
@@ -208,10 +209,9 @@ def nunchuk_on(left_dev):
     for key, axis in NUNCHUK_ACCEL:
         keys[key] = "|".join(
             [
-                "`DSUClient/0/Nintendo Switch Left Joy-Con:%s`" % axis,
-                "`DSUClient/1/Nintendo Switch Left Joy-Con:%s`" % axis,
                 "`DSUClient/0/Joy-Con (L):%s`" % axis,
                 "`DSUClient/1/Joy-Con (L):%s`" % axis,
+                "`DSUClient/0/Nintendo Switch Left Joy-Con:%s`" % axis,
                 ref(left_dev, axis),
                 "`%s`" % axis,
             ]
@@ -220,17 +220,14 @@ def nunchuk_on(left_dev):
 
 
 def imu_from_right(right_dev):
-    """Wiimote MotionPlus: Joy-Con DSU first, then SDL Right, then Deck fallback."""
+    """Wiimote MotionPlus: Joy-Con DSU first, then SDL Right. Deck only last resort."""
     out = {}
     for key, axis in IMU_AXES:
         parts = [
-            "`DSUClient/0/Nintendo Switch Right Joy-Con:%s`" % axis,
-            "`DSUClient/1/Nintendo Switch Right Joy-Con:%s`" % axis,
             "`DSUClient/0/Joy-Con (R):%s`" % axis,
             "`DSUClient/1/Joy-Con (R):%s`" % axis,
-            "`DSUClient/0/Nintendo Switch Combined Joy-Cons:%s`" % axis,
-            "`DSUClient/0/:%s`" % axis,
-            "`DSUClient/1/:%s`" % axis,
+            "`DSUClient/0/Nintendo Switch Right Joy-Con:%s`" % axis,
+            "`DSUClient/1/Nintendo Switch Right Joy-Con:%s`" % axis,
             ref(right_dev, axis),
             "`SteamDeck/0/Steam Deck:%s`" % axis,
             "`DSUClient/0/steamdeckgyro:%s`" % axis,
@@ -238,6 +235,21 @@ def imu_from_right(right_dev):
         ]
         out[key] = "|".join(parts)
     return out
+
+
+def dsu_status():
+    path = pathlib.Path(os.path.expanduser("~")) / ".local/share/sesame/joycon-dsu.status"
+    try:
+        return path.read_text(encoding="utf-8").strip().lower()
+    except Exception:
+        return ""
+
+
+def primary_devices(right_name, left_name):
+    """Prefer DSU Joy-Con pads when cemuhook status is ok."""
+    if dsu_status() == "ok":
+        return "DSUClient/0/Joy-Con (R)", "DSUClient/0/Joy-Con (L)"
+    return sdl(right_name), sdl(left_name)
 
 
 def section_span(text, section):
@@ -282,27 +294,37 @@ def write_section(keys):
 
 
 def build_pair(right_name, left_name):
-    right = sdl(right_name)
-    left = sdl(left_name)
+    right, left = primary_devices(right_name, left_name)
+    # Also keep SDL fallbacks in button expressions via dual device refs when on DSU.
+    right_sdl = sdl(right_name)
+    left_sdl = sdl(left_name)
     keys = {
         "Device": right,
         "Source": "1",
         "Extension": "Nunchuk",
         "Options/Sideways Wiimote": "False",
-        # Gyro pointer replaces the sensor bar. Lower Total Yaw = less twitchy.
         "IMUIR/Enabled": "True",
-        "IMUIR/Recenter": ref(right, "Button Home")
-        + "|"
-        + ref(right, "Button Guide")
-        + "|`Button Home`|MODE",
+        "IMUIR/Recenter": "`Button Home`|`Button Guide`|MODE",
         "IMUIR/Total Yaw": "16",
         "IR/Auto-Hide": "False",
         "Rumble/Motor": "Strong",
     }
-    keys.update(wiimote_buttons(right))
-    keys.update(imu_from_right(right))
-    keys.update(nunchuk_on(left))
-    # Do NOT bind mouse Cursor to IR — that made aiming feel broken next to IMUIR.
+    # Merge DSU + SDL button sources so either path works.
+    wb = wiimote_buttons(right)
+    if right.startswith("DSUClient"):
+        wb2 = wiimote_buttons(right_sdl)
+        for k, v in wb2.items():
+            wb[k] = wb[k] + "|" + v
+    keys.update(wb)
+    keys.update(imu_from_right(right if right.startswith("DSUClient") else right_sdl))
+    nk = nunchuk_on(left)
+    if left.startswith("DSUClient"):
+        nk2 = nunchuk_on(left_sdl)
+        for k, v in nk2.items():
+            if k.startswith("Nunchuk/Buttons") or k.startswith("Nunchuk/Stick"):
+                nk[k] = nk[k] + "|" + v
+    keys.update(nk)
+    log("build_pair device=%s nunchuk=%s status=%s" % (right, left, dsu_status()))
     return "[Wiimote1]\n" + write_section(keys)
 
 

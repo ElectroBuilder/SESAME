@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.6 — 2026-08-29
+
+- Joy-Con DSU: SESAME no longer tells you to `systemctl enable joycond` when the unit is missing (SteamOS does not ship it). Optimize deploys `~/.local/share/sesame/install-joycond.sh` for a real one-time Desktop Mode install (build + `sudo make install` + enable + cemuhook). Status stays `need-install` until `systemctl status joycond` would succeed.
+- Optimize Wii hint is short (bullets + one install command) on Windows and Deck. Wiimote + Nunchuk button map prefers Joy-Con DSU pads when cemuhook is up.
+
 ## 0.6.5 — 2026-08-29
 
 - Category masks no longer stack: SESAME strips existing platform bars before applying a fresh one (fixes 2–3× Nintendo Switch / GameCube labels after re-Optimize).

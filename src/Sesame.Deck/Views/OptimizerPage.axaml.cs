@@ -160,10 +160,13 @@ public partial class OptimizerPage : UserControl
         var owner = TopLevel.GetTopLevel(this) as Window;
         if (owner is not null)
         {
-            var count = _games.Count(g => g.Selected);
-            var ok = await ConfirmWindow.Ask(owner, "Optimize",
-                "Write Steam shortcuts, artwork and collections for " + count +
-                " selected title(s)? Steam may pause briefly while SESAME writes.");
+            var selected = _games.Where(g => g.Selected).ToList();
+            var count = selected.Count;
+            var msg = "Write Steam shortcuts, artwork and collections for " + count +
+                " selected title(s)? Steam may pause briefly while SESAME writes.";
+            if (selected.Any(DolphinInput.UsesDolphin))
+                msg += "\n\n" + DolphinInput.DutchGyroHint;
+            var ok = await ConfirmWindow.Ask(owner, "Optimize", msg);
             if (!ok) return;
         }
 

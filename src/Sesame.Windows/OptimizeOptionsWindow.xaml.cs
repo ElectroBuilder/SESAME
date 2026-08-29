@@ -24,9 +24,9 @@ public partial class OptimizeOptionsWindow : Window
         MaskBox.IsChecked = useMasks;
         SteamNote.Text = steamNote;
         GyroNote.Text = gyroNote ?? "";
-        GyroNote.Visibility = string.IsNullOrWhiteSpace(gyroNote)
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        var showGyro = !string.IsNullOrWhiteSpace(gyroNote);
+        GyroNote.Visibility = showGyro ? Visibility.Visible : Visibility.Collapsed;
+        GyroBox.Visibility = showGyro ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void Start_Click(object sender, RoutedEventArgs e)

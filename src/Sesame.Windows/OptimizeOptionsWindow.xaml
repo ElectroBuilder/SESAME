@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource Bg}"
         Foreground="{DynamicResource Text}">
-    <StackPanel Margin="20" Width="520">
+    <StackPanel Margin="20" Width="560">
         <TextBlock FontWeight="SemiBold" FontSize="15" Text="Options before it starts"/>
         <TextBlock x:Name="CountText" Foreground="{DynamicResource Muted}" Margin="0,6,0,14" TextWrapping="Wrap"/>
         <CheckBox x:Name="OverwriteBox" Content="Update existing shortcuts" Margin="0,0,0,8"/>
@@ -16,9 +16,13 @@
                   ToolTip="Replace existing Steam covers. Unchanged files are skipped."/>
         <CheckBox x:Name="MaskBox" Content="Use category masks"
                   ToolTip="Master switch. Per platform (Hydra off by default) you set masks in Settings → Covers."/>
-        <TextBlock x:Name="GyroNote" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,12,0,0"
-                   Visibility="Collapsed"/>
-        <TextBlock x:Name="SteamNote" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,16,0,0"/>
+        <Border x:Name="GyroBox" Margin="0,14,0,0" Padding="12,10"
+                Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource Border}"
+                BorderThickness="1" CornerRadius="8" Visibility="Collapsed">
+            <TextBlock x:Name="GyroNote" TextWrapping="Wrap" LineHeight="20"
+                       Foreground="{DynamicResource Text}" FontSize="12.5"/>
+        </Border>
+        <TextBlock x:Name="SteamNote" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,14,0,0"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="Cancel" IsCancel="True" Click="Cancel_Click"/>
             <Button Content="Start" Style="{StaticResource AccentButton}" IsDefault="True"

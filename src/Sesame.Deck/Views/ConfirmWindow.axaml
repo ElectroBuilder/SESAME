@@ -1,15 +1,17 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Sesame.Deck.Views.ConfirmWindow"
-        Width="480" Height="220"
+        Width="520" MinHeight="200" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource Bg}"
         Foreground="{DynamicResource Text}">
   <DockPanel Margin="20">
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
       <Button Content="No" Click="No_Click"/>
       <Button Classes="accent" Content="Yes" Click="Yes_Click"/>
     </StackPanel>
-    <TextBlock x:Name="MessageText" TextWrapping="Wrap"/>
+    <ScrollViewer MaxHeight="360" HorizontalScrollBarVisibility="Disabled">
+      <TextBlock x:Name="MessageText" TextWrapping="Wrap" LineHeight="20"/>
+    </ScrollViewer>
   </DockPanel>
 </Window>

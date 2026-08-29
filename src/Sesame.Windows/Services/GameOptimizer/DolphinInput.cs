@@ -9,16 +9,16 @@ public static class DolphinInput
     public const string LegacyWrapperName = "vssh-dolphin.sh";
     public const string CfgName = "sesame-dolphin-cfg.py";
     public const string JoyConDsuName = "sesame-joycon-dsu.sh";
+    public const string InstallJoyCondName = "sesame-install-joycond.sh";
     public const string ProfileName = "SESAME-gyro";
 
     public const string DutchGyroHint =
-        "Wii Joy-Con: pair Left+Right over Bluetooth, press SL+SR on each so they stay separate. " +
-        "Steam Input for both Joy-Cons = Off (only on the Wii shortcut — leave Eden alone). " +
-        "SESAME maps Right → one Wiimote (gyro) and Left → Nunchuk; Wiimote 2–4 stay off. " +
-        "Motion needs joycond + joycond-cemuhook (DSU on 26761), separate from SteamDeckGyroDSU. " +
-        "On Steam Deck there is no pip3/joycond package: SESAME tries ensurepip + pip --user and builds joycond into ~/.local when you launch a Wii game. " +
-        "If motion is still missing, open ~/.local/share/sesame/joycon-dsu.log — first build may need cmake/make/libevdev once. " +
-        "Aiming uses gyro (IMUIR); press Home on the Right Joy-Con to recenter. Re-Optimize Wii games after updating SESAME.";
+        "Wii Joy-Cons:\n" +
+        "• Pair L+R, press SL+SR on each · Steam Input Off on this shortcut\n" +
+        "• Right = Wiimote (gyro) · Left = Nunchuk · Home recenters\n\n" +
+        "Joy-Con motion is not on SteamOS by default. Once in Desktop Mode:\n" +
+        "  bash ~/.local/share/sesame/install-joycond.sh\n" +
+        "Then re-Optimize and launch via SESAME.";
 
     public static string WrapperPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, WrapperName);
@@ -28,6 +28,9 @@ public static class DolphinInput
 
     public static string JoyConDsuPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, JoyConDsuName);
+
+    public static string InstallJoyCondPath =>
+        DeckClient.Combine("/home/deck/.local/share/sesame", "install-joycond.sh");
 
     private static readonly string[] ConfigDirs =
     [
@@ -120,28 +123,24 @@ public static class DolphinInput
         client.WriteText(JoyConDsuPath, LoadScript("Sesame.sesame-joycon-dsu.sh"));
         try
         {
+            client.EnsureDirectory("/home/deck/.local/share/sesame");
+            client.WriteText(InstallJoyCondPath, LoadScript("Sesame.sesame-install-joycond.sh"));
             client.Execute(
                 "chmod +x " + DeckClient.ShQuote(WrapperPath) +
                 " " + DeckClient.ShQuote(JoyConDsuPath) +
+                " " + DeckClient.ShQuote(InstallJoyCondPath) +
                 " ; sed -i 's/\\r$//' " + DeckClient.ShQuote(WrapperPath) +
                 " " + DeckClient.ShQuote(CfgPath) +
                 " " + DeckClient.ShQuote(JoyConDsuPath) +
-                " ; (python3 -m pip install --user --upgrade " +
-                "'git+https://github.com/joaorb64/joycond-cemuhook' " +
-                ">/dev/null 2>&1 || true)", 90);
+                " " + DeckClient.ShQuote(InstallJoyCondPath) +
+                " ; bash " + DeckClient.ShQuote(JoyConDsuPath) +
+                " >/dev/null 2>&1 || true" +
+                " ; python3 " + DeckClient.ShQuote(CfgPath) +
+                " >/dev/null 2>&1 || true", 120);
         }
         catch
         {
-            /* Steam kan /bin/bash als fallback gebruiken; pip is optioneel */
-        }
-
-        try
-        {
-            client.Execute("bash " + DeckClient.ShQuote(JoyConDsuPath) + " >/dev/null 2>&1 || true", 20);
-        }
-        catch
-        {
-            /* DSU start bij Optimize is best-effort; Wii launch probeert opnieuw */
+            /* scripts are best-effort until the next Wii launch */
         }
     }
 
@@ -244,36 +243,38 @@ public static class DolphinInput
     {
         const string right = "SDL/0/Nintendo Switch Right Joy-Con";
         const string left = "SDL/0/Nintendo Switch Left Joy-Con";
+        const string dsuR = "DSUClient/0/Joy-Con (R)";
+        const string dsuL = "DSUClient/0/Joy-Con (L)";
         return
             "[Profile]\n" +
-            "Device = " + right + "\n" +
+            "Device = " + dsuR + "\n" +
             "Source = 1\n" +
             "Extension = Nunchuk\n" +
             "Options/Sideways Wiimote = False\n" +
-            "Buttons/A = `" + right + ":Button A`|`" + right + ":Button S`\n" +
-            "Buttons/B = `" + right + ":Button B`|`" + right + ":Button ZR`\n" +
-            "Buttons/1 = `" + right + ":Button X`\n" +
-            "Buttons/2 = `" + right + ":Button Y`\n" +
-            "Buttons/- = `" + right + ":Button Minus`\n" +
-            "Buttons/+ = `" + right + ":Button Plus`\n" +
-            "Buttons/Home = `" + right + ":Button Home`\n" +
-            "D-Pad/Up = `" + right + ":Pad N`\n" +
-            "D-Pad/Down = `" + right + ":Pad S`\n" +
-            "D-Pad/Left = `" + right + ":Pad W`\n" +
-            "D-Pad/Right = `" + right + ":Pad E`\n" +
-            "Shake/X = `" + right + ":Button SL`\n" +
-            "Shake/Y = `" + right + ":Button SL`\n" +
-            "Shake/Z = `" + right + ":Button SL`\n" +
-            "Nunchuk/Buttons/C = `" + left + ":Button L`|`" + left + ":Button SL`\n" +
-            "Nunchuk/Buttons/Z = `" + left + ":Button ZL`|`" + left + ":Trigger L`\n" +
-            "Nunchuk/Stick/Up = `" + left + ":Left Y-`\n" +
-            "Nunchuk/Stick/Down = `" + left + ":Left Y+`\n" +
-            "Nunchuk/Stick/Left = `" + left + ":Left X-`\n" +
-            "Nunchuk/Stick/Right = `" + left + ":Left X+`\n" +
-            JoyConImu(right) +
+            "Buttons/A = `" + dsuR + ":Button East`|`" + right + ":Button East`|`Button A`|EAST\n" +
+            "Buttons/B = `" + dsuR + ":Button South`|`" + right + ":Button South`|`Button B`|SOUTH\n" +
+            "Buttons/1 = `" + dsuR + ":Button North`|`" + right + ":Button North`|`Button X`|NORTH\n" +
+            "Buttons/2 = `" + dsuR + ":Button West`|`" + right + ":Button West`|`Button Y`|WEST\n" +
+            "Buttons/- = `" + dsuR + ":Button Minus`|`" + right + ":Button Minus`|SELECT\n" +
+            "Buttons/+ = `" + dsuR + ":Button Plus`|`" + right + ":Button Plus`|START\n" +
+            "Buttons/Home = `" + dsuR + ":Button Home`|`" + right + ":Button Home`|MODE\n" +
+            "D-Pad/Up = `" + dsuR + ":Pad N`|`" + right + ":Left Y-`\n" +
+            "D-Pad/Down = `" + dsuR + ":Pad S`|`" + right + ":Left Y+`\n" +
+            "D-Pad/Left = `" + dsuR + ":Pad W`|`" + right + ":Left X-`\n" +
+            "D-Pad/Right = `" + dsuR + ":Pad E`|`" + right + ":Left X+`\n" +
+            "Shake/X = `" + dsuR + ":Button SL`|`" + right + ":Button SR`\n" +
+            "Shake/Y = `" + dsuR + ":Button SL`|`" + right + ":Button SR`\n" +
+            "Shake/Z = `" + dsuR + ":Button SL`|`" + right + ":Button SR`\n" +
+            "Nunchuk/Buttons/C = `" + dsuL + ":Button SL`|`" + left + ":Button SL`|TL\n" +
+            "Nunchuk/Buttons/Z = `" + dsuL + ":Button ZL`|`" + left + ":Button ZL`|`Full Axis 2+`\n" +
+            "Nunchuk/Stick/Up = `" + dsuL + ":Left Y-`|`" + left + ":Left Y-`\n" +
+            "Nunchuk/Stick/Down = `" + dsuL + ":Left Y+`|`" + left + ":Left Y+`\n" +
+            "Nunchuk/Stick/Left = `" + dsuL + ":Left X-`|`" + left + ":Left X-`\n" +
+            "Nunchuk/Stick/Right = `" + dsuL + ":Left X+`|`" + left + ":Left X+`\n" +
+            JoyConImu(dsuR) +
             "IMUIR/Enabled = True\n" +
             "IMUIR/Total Yaw = 16\n" +
-            "IMUIR/Recenter = `" + right + ":Button Home`|MODE\n" +
+            "IMUIR/Recenter = `Button Home`|MODE\n" +
             "IR/Auto-Hide = False\n" +
             "Rumble/Motor = Strong\n";
     }
@@ -321,9 +322,9 @@ public static class DolphinInput
                  })
         {
             sb.Append(key).Append(" = ")
-                .Append("`DSUClient/0/Nintendo Switch Right Joy-Con:").Append(axis).Append("`|")
-                .Append("`DSUClient/1/Nintendo Switch Right Joy-Con:").Append(axis).Append("`|")
                 .Append("`DSUClient/0/Joy-Con (R):").Append(axis).Append("`|")
+                .Append("`DSUClient/1/Joy-Con (R):").Append(axis).Append("`|")
+                .Append("`DSUClient/0/Nintendo Switch Right Joy-Con:").Append(axis).Append("`|")
                 .Append('`').Append(device).Append(':').Append(axis).Append("`|")
                 .Append("`SteamDeck/0/Steam Deck:").Append(axis).Append("`|")
                 .Append("`DSUClient/0/steamdeckgyro:").Append(axis).Append("`|")
