@@ -40,7 +40,7 @@ public static class OptimizerPicks
         if (!TryFind(game, out var pick) || pick is null)
             return;
         game.Selected = pick.Selected;
-        if (!string.IsNullOrWhiteSpace(pick.DisplayName))
+        if (!string.IsNullOrWhiteSpace(pick.DisplayName) && AllowRename(game, pick.DisplayName))
             game.DisplayName = pick.DisplayName;
         if (!string.IsNullOrWhiteSpace(pick.SearchQuery))
             game.SearchQuery = pick.SearchQuery;
@@ -76,7 +76,7 @@ public static class OptimizerPicks
         var pick = new OptimizerPick
         {
             Host = CurrentKey,
-            RomPath = game.RomPath,
+            RomPath = game.IsRom ? game.RomPath : "",
             PickKey = key,
             Selected = game.Selected,
             DisplayName = game.DisplayName,
@@ -95,7 +95,8 @@ public static class OptimizerPicks
         };
         if (!string.IsNullOrWhiteSpace(key))
             _map[key] = pick;
-        if (!string.IsNullOrWhiteSpace(game.RomPath))
+        // Flatpak (and similar) apps share one exe path — never index non-ROMs by RomPath.
+        if (game.IsRom && !string.IsNullOrWhiteSpace(game.RomPath))
             _map[Key(game.RomPath)] = pick;
         if (save) Save();
     }
@@ -113,9 +114,23 @@ public static class OptimizerPicks
         var key = ExtraShortcuts.KeyOf(game);
         if (!string.IsNullOrWhiteSpace(key) && _map.TryGetValue(key, out pick))
             return true;
-        if (_map.TryGetValue(Key(game.RomPath), out pick))
+        if (game.IsRom && _map.TryGetValue(Key(game.RomPath), out pick))
             return true;
-        return _map.TryGetValue(Key(game.SystemId + "|" + game.FileName), out pick);
+        return game.IsRom && _map.TryGetValue(Key(game.SystemId + "|" + game.FileName), out pick);
+    }
+
+    /// <summary>
+    /// Old picks indexed every Flatpak app under /usr/bin/flatpak, so Firefox/Kodi/Lutris
+    /// inherited Stremio's saved name. Ignore a rename that points at a different known app.
+    /// </summary>
+    private static bool AllowRename(OptimizerGame game, string proposed)
+    {
+        if (game.ShortcutKind != ShortcutKind.App) return true;
+        if (!DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var current))
+            return true;
+        if (!DeckApps.TryMatch(proposed, proposed, "", out var fromPick))
+            return true;
+        return string.Equals(current.Id, fromPick.Id, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool HostAllowsLaunch(OptimizerPick pick) =>

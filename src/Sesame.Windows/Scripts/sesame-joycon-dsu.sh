@@ -84,7 +84,7 @@ install_cemuhook() {
     return 1
   }
   log "pip install joycond-cemuhook --user"
-  python3 -m pip install --user --upgrade \
+  python3 -m pip install --user --upgrade --break-system-packages \
     "git+https://github.com/joaorb64/joycond-cemuhook" >>"$LOG" 2>&1 || return 1
 }
 

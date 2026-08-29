@@ -9,11 +9,53 @@ public partial class LaunchersView : UserControl
 {
     private bool _loading;
     private SystemLaunchConfig? _selected;
+    private DeckClient? _client;
 
     public LaunchersView()
     {
         InitializeComponent();
         Reload();
+    }
+
+    public void Attach(DeckClient? client)
+    {
+        _client = client;
+        RefreshJoyCondStatus();
+    }
+
+    public void RefreshJoyCondStatus()
+    {
+        if (JoyCondStatus is null) return;
+        if (_client is not { IsConnected: true })
+        {
+            JoyCondStatus.Text = "Connect to the Deck to check or install.";
+            return;
+        }
+
+        try
+        {
+            var st = JoyCondInstall.Query(_client);
+            JoyCondStatus.Text =
+                "Status: joycond " + (st.JoyCondActive ? "active" : st.ActiveRaw) +
+                ", cemuhook " + (st.CemuhookOk ? "OK" : "not ready");
+        }
+        catch (Exception ex)
+        {
+            JoyCondStatus.Text = ex.Message;
+        }
+    }
+
+    private void JoyCondInstall_Click(object sender, RoutedEventArgs e)
+    {
+        if (_client is not { IsConnected: true })
+        {
+            MessageBox.Show(Window.GetWindow(this), "Connect to the Steam Deck first.", "Joy-Con install");
+            return;
+        }
+
+        var win = new JoyCondInstallWindow(_client) { Owner = Window.GetWindow(this) };
+        win.ShowDialog();
+        RefreshJoyCondStatus();
     }
 
     public void Reload()

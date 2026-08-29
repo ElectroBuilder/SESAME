@@ -14,6 +14,44 @@ public partial class LaunchersPage : UserControl
     {
         InitializeComponent();
         Reload();
+        RefreshJoyCondStatus();
+    }
+
+    public void RefreshJoyCondStatus()
+    {
+        if (JoyCondStatus is null) return;
+        if (!DeckSession.Current.Connected)
+        {
+            JoyCondStatus.Text = "Connect to check or install.";
+            return;
+        }
+
+        try
+        {
+            var st = JoyCondInstall.Query(DeckSession.Current.Client);
+            JoyCondStatus.Text =
+                "Status: joycond " + (st.JoyCondActive ? "active" : st.ActiveRaw) +
+                ", cemuhook " + (st.CemuhookOk ? "OK" : "not ready");
+        }
+        catch (Exception ex)
+        {
+            JoyCondStatus.Text = ex.Message;
+        }
+    }
+
+    private async void JoyCondInstall_Click(object? sender, RoutedEventArgs e)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return;
+        if (!DeckSession.Current.Connected)
+        {
+            await ConfirmWindow.Ask(owner, "Joy-Con install", "Connect first.");
+            return;
+        }
+
+        var win = new JoyCondInstallWindow();
+        await win.ShowDialog(owner);
+        RefreshJoyCondStatus();
     }
 
     public void Reload()

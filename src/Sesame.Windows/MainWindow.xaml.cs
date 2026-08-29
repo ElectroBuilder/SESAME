@@ -116,7 +116,7 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var win = new SettingsWindow { Owner = this };
+        var win = new SettingsWindow(_client) { Owner = this };
         win.ShowDialog();
         OptimizerPanel.OnSettingsClosed(win.KeyChanged, win.LaunchersChanged);
     }

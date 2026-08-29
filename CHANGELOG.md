@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.9 — 2026-08-29
+
+- Settings → Emulators: **Install Joy-Con motion…** — shows risks, lets you view `install-joycond.sh`, then runs the full SteamOS install (headers, joycond, cemuhook) with your Deck sudo password over SSH.
+- Joy-Con install script hardened for SteamOS: restore glibc/linux/libevdev/libudev headers from Arch packages, build joycond, enable service, install cemuhook with pacman Python deps (`--no-deps` pip) so cairo/PyGObject does not rebuild from source.
+- Optimize no longer renames Firefox/Kodi/Lutris to Stremio: Flatpak apps share `/usr/bin/flatpak`, so picks are keyed per app (not by that shared path).
+- Hydra / Lutris / other Windows shortcuts get UMU Proton (or GE-Proton / Proton Experimental) again — CompatToolMapping now uses signed Steam shortcut IDs.
+
 ## 0.6.8 — 2026-08-29
 
 - SSH connect feels snappy again: home folder lists before MAC/layout work; SSH+SFTP connect in parallel; auto-try uses a 5s timeout per dead session; known MAC skips the slow learn scripts.

@@ -7,6 +7,23 @@
         <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
                    Text="{}Target is the important field. Default: {flatpak} {emulator} {core} &quot;{rom}&quot;. For RetroArch, {emulator} = run org.libretro.RetroArch -L and {core} is the full core path. {roms} is the ROM folder, {rom} the ROM file."/>
 
+        <Border DockPanel.Dock="Top" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Border}"
+                BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button Content="Install Joy-Con motion…" Click="JoyCondInstall_Click"
+                            Style="{StaticResource AccentButton}"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Text="Dolphin · Joy-Con motion" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
+                               Text="One-time Deck install of joycond + cemuhook for Wii Joy-Con gyro. Shows risks, lets you read the script, then runs it with your sudo password."/>
+                    <TextBlock x:Name="JoyCondStatus" TextWrapping="Wrap" Margin="0,8,0,0"
+                               Foreground="{DynamicResource Muted}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,12,0,0">
             <Button Content="Restore defaults" Click="Reset_Click"/>
         </StackPanel>

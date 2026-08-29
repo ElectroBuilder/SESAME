@@ -11,7 +11,7 @@ public partial class SettingsWindow : Window
 {
     private bool _loading;
 
-    public SettingsWindow()
+    public SettingsWindow(DeckClient? client = null)
     {
         InitializeComponent();
         _loading = true;
@@ -24,6 +24,7 @@ public partial class SettingsWindow : Window
         BindMasks();
         RefreshKeyStatus();
         BindLibrary();
+        Launchers.Attach(client);
         UpdateVersion.Text = "Installed: " + AppVersion.Label;
         InstallUpdateBtn.IsEnabled = false;
         _loading = false;

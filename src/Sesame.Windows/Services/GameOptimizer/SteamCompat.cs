@@ -26,7 +26,12 @@ public static class SteamCompat
         var path = ConfigPath(client);
         if (string.IsNullOrEmpty(path)) return;
 
-        var keys = ids.Select(id => id.ToString(CultureInfo.InvariantCulture)).ToList();
+        // Shortcut appids always have the high bit set; Steam stores them as signed ints
+        // in CompatToolMapping (same as Steam Input / collections). Unsigned keys miss.
+        var keys = ids
+            .Select(id => unchecked((int)id).ToString(CultureInfo.InvariantCulture))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
         try
         {
             var args = DeckClient.ShQuote(path) + " " + DeckClient.ShQuote(tool) + " " +

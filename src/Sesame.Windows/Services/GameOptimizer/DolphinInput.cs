@@ -16,9 +16,8 @@ public static class DolphinInput
         "Wii Joy-Cons:\n" +
         "• Pair L+R, press SL+SR on each · Steam Input Off on this shortcut\n" +
         "• Right = Wiimote (gyro) · Left = Nunchuk · Home recenters\n\n" +
-        "Joy-Con motion is not on SteamOS by default. After updating SESAME, Optimize once, then in Desktop Mode:\n" +
-        "  bash ~/.local/share/sesame/install-joycond.sh\n" +
-        "(Needs sudo once. Script trusts pacman keys automatically; uses pip cmake/ninja if pacman fails.)\n" +
+        "Install once via Settings → Emulators → Install Joy-Con motion…\n" +
+        "(or Desktop Mode: bash ~/.local/share/sesame/install-joycond.sh)\n" +
         "Then re-Optimize and launch via SESAME.";
 
     public static string WrapperPath =>
