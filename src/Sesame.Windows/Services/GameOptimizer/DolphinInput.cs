@@ -12,15 +12,13 @@ public static class DolphinInput
     public const string ProfileName = "SESAME-gyro";
 
     public const string DutchGyroHint =
-        "Wii Joy-Con: pair Left+Right over Bluetooth, press SL+SR on each so they stay separate (not combined). " +
-        "Steam Input for both Joy-Cons = Off. " +
-        "SESAME maps Right → one Wiimote (gyro) and Left → Nunchuk on that same remote; Wiimote 2–4 stay off. " +
-        "Motion needs a Joy-Con DSU server (joycond-cemuhook) — not only SteamDeckGyroDSU. " +
-        "SESAME starts joycond-cemuhook on port 26761 when you launch a Wii game, and points Dolphin DSUClient at it. " +
-        "One-time on the Deck if motion is still missing: install joycond (sudo systemctl enable --now joycond) and " +
-        "pip3 install --user git+https://github.com/joaorb64/joycond-cemuhook — see system-maid joycond-cemuhook guide. " +
-        "Aiming uses gyro (IMUIR), not a sensor bar; press Home on the Right Joy-Con to recenter. " +
-        "Re-Optimize Wii games after updating SESAME.";
+        "Wii Joy-Con: pair Left+Right over Bluetooth, press SL+SR on each so they stay separate. " +
+        "Steam Input for both Joy-Cons = Off (only on the Wii shortcut — leave Eden alone). " +
+        "SESAME maps Right → one Wiimote (gyro) and Left → Nunchuk; Wiimote 2–4 stay off. " +
+        "Motion needs joycond + joycond-cemuhook (DSU on 26761), separate from SteamDeckGyroDSU. " +
+        "On Steam Deck there is no pip3/joycond package: SESAME tries ensurepip + pip --user and builds joycond into ~/.local when you launch a Wii game. " +
+        "If motion is still missing, open ~/.local/share/sesame/joycon-dsu.log — first build may need cmake/make/libevdev once. " +
+        "Aiming uses gyro (IMUIR); press Home on the Right Joy-Con to recenter. Re-Optimize Wii games after updating SESAME.";
 
     public static string WrapperPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, WrapperName);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.5 — 2026-08-29
+
+- Category masks no longer stack: SESAME strips existing platform bars before applying a fresh one (fixes 2–3× Nintendo Switch / GameCube labels after re-Optimize).
+- Optimize checkbox selection and artwork picks persist for apps and games across scan/reconnect on Windows and Deck (PickKey + Selected in optimizer-picks).
+- Steam Deck Joy-Con DSU: no pip3/pacman joycond required in the hint path — SESAME uses ensurepip, `python3 -m pip --user`, and builds joycond into `~/.local` when possible. Log: `~/.local/share/sesame/joycon-dsu.log`.
+
 ## 0.6.4 — 2026-08-29
 
 - Wii Joy-Cons: always one Wiimote + Nunchuk (Right = remote/gyro, Left = Nunchuk); Wiimote 2–4 stay off.

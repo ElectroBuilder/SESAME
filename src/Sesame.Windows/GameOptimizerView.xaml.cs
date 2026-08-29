@@ -218,10 +218,12 @@ public partial class GameOptimizerView : UserControl
             SystemFilter.SelectedIndex = 0;
         foreach (var game in games)
         {
+            OptimizerPicks.Apply(game);
             if (previousByKey.TryGetValue(ExtraShortcuts.KeyOf(game), out var olds))
             {
                 ExtraShortcuts.UnionChoices(game, olds);
                 var old = olds[0];
+                // In-session checkbox wins over disk when both exist.
                 game.Selected = old.Selected;
                 CopyPreview(old, game);
             }
@@ -911,7 +913,11 @@ public partial class GameOptimizerView : UserControl
     private void Game_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(OptimizerGame.Selected) or nameof(OptimizerGame.DisplayName))
+        {
+            if (sender is OptimizerGame game)
+                OptimizerPicks.Remember(game);
             Persist();
+        }
     }
 
     private void Remember(OptimizerGame game)
@@ -920,7 +926,11 @@ public partial class GameOptimizerView : UserControl
         Persist();
     }
 
-    private void Persist() => OptimizerLibraryCache.Save(CacheKey(), CacheHost(), _games);
+    private void Persist()
+    {
+        OptimizerPicks.RememberAll(_games);
+        OptimizerLibraryCache.Save(CacheKey(), CacheHost(), _games);
+    }
 
     private void ClearGames()
     {

@@ -38,6 +38,7 @@ public partial class OptimizerPage : UserControl
         if (!session.Connected) return;
         var id = session.Client.ActiveProfile?.Id ?? "local";
         var host = session.Client.ActiveProfile?.Host ?? "local";
+        OptimizerPicks.CurrentKey = host;
         var cached = OptimizerLibraryCache.Load(id, host);
         if (cached.Count == 0)
         {
@@ -106,6 +107,7 @@ public partial class OptimizerPage : UserControl
                     if (overlay) ShowBusy(p.Title, p.Detail);
                     else StatusChanged?.Invoke(p.Detail);
                 }));
+            OptimizerPicks.CurrentKey = session.Client.ActiveProfile?.Host ?? "local";
             var games = await Task.Run(() =>
             {
                 var found = GameOptimizerService.Scan(session.Client, session.Catalog, progress);
@@ -208,11 +210,13 @@ public partial class OptimizerPage : UserControl
     private void AllOn_Click(object? sender, RoutedEventArgs e)
     {
         foreach (var g in _games) g.Selected = true;
+        Persist();
     }
 
     private void AllOff_Click(object? sender, RoutedEventArgs e)
     {
         foreach (var g in _games) g.Selected = false;
+        Persist();
     }
 
     private void Replace(IReadOnlyList<OptimizerGame> games)
@@ -220,6 +224,7 @@ public partial class OptimizerPage : UserControl
         _games.Clear();
         foreach (var game in games)
         {
+            OptimizerPicks.Apply(game);
             DeckCovers.ApplyBytes(game);
             _games.Add(game);
         }
@@ -228,6 +233,7 @@ public partial class OptimizerPage : UserControl
     private void Persist()
     {
         var session = DeckSession.Current;
+        OptimizerPicks.RememberAll(_games);
         OptimizerLibraryCache.Save(
             session.Client.ActiveProfile?.Id ?? "local",
             session.Client.ActiveProfile?.Host ?? "local",

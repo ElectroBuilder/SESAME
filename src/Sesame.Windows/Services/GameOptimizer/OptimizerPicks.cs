@@ -9,6 +9,8 @@ public sealed class OptimizerPick
 {
     public string Host { get; set; } = "";
     public string RomPath { get; set; } = "";
+    public string PickKey { get; set; } = "";
+    public bool Selected { get; set; } = true;
     public string DisplayName { get; set; } = "";
     public string SearchQuery { get; set; } = "";
     public int? SteamGridDbId { get; set; }
@@ -37,6 +39,7 @@ public static class OptimizerPicks
         EnsureLoaded();
         if (!TryFind(game, out var pick) || pick is null)
             return;
+        game.Selected = pick.Selected;
         if (!string.IsNullOrWhiteSpace(pick.DisplayName))
             game.DisplayName = pick.DisplayName;
         if (!string.IsNullOrWhiteSpace(pick.SearchQuery))
@@ -64,14 +67,18 @@ public static class OptimizerPicks
         }
     }
 
-    public static void Remember(OptimizerGame game)
+    public static void Remember(OptimizerGame game, bool save = true)
     {
-        if (string.IsNullOrWhiteSpace(game.RomPath)) return;
         EnsureLoaded();
+        var key = ExtraShortcuts.KeyOf(game);
+        if (string.IsNullOrWhiteSpace(key) && string.IsNullOrWhiteSpace(game.RomPath))
+            return;
         var pick = new OptimizerPick
         {
             Host = CurrentKey,
             RomPath = game.RomPath,
+            PickKey = key,
+            Selected = game.Selected,
             DisplayName = game.DisplayName,
             SearchQuery = game.SearchQuery,
             SteamGridDbId = game.SteamGridDbId,
@@ -86,18 +93,28 @@ public static class OptimizerPicks
             StartDir = game.StartDir,
             LaunchOptions = game.LaunchOptions
         };
-        _map[Key(game.RomPath)] = pick;
+        if (!string.IsNullOrWhiteSpace(key))
+            _map[key] = pick;
+        if (!string.IsNullOrWhiteSpace(game.RomPath))
+            _map[Key(game.RomPath)] = pick;
+        if (save) Save();
+    }
+
+    public static void RememberAll(IEnumerable<OptimizerGame> games)
+    {
+        foreach (var game in games)
+            Remember(game, save: false);
         Save();
     }
 
     private static bool TryFind(OptimizerGame game, out OptimizerPick? pick)
     {
         pick = null;
-        if (_map.TryGetValue(Key(game.RomPath), out var byPath))
-        {
-            pick = byPath;
+        var key = ExtraShortcuts.KeyOf(game);
+        if (!string.IsNullOrWhiteSpace(key) && _map.TryGetValue(key, out pick))
             return true;
-        }
+        if (_map.TryGetValue(Key(game.RomPath), out pick))
+            return true;
         return _map.TryGetValue(Key(game.SystemId + "|" + game.FileName), out pick);
     }
 
@@ -118,9 +135,18 @@ public static class OptimizerPicks
             var list = JsonSerializer.Deserialize<List<OptimizerPick>>(File.ReadAllText(path), Json);
             if (list is null) return;
             _map = list
-                .Where(p => !string.IsNullOrWhiteSpace(p.RomPath))
-                .GroupBy(p => Key(p.RomPath), StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
+                .Where(p => !string.IsNullOrWhiteSpace(p.RomPath) || !string.IsNullOrWhiteSpace(p.PickKey))
+                .SelectMany(p =>
+                {
+                    var entries = new List<KeyValuePair<string, OptimizerPick>>();
+                    if (!string.IsNullOrWhiteSpace(p.PickKey))
+                        entries.Add(new(p.PickKey, p));
+                    if (!string.IsNullOrWhiteSpace(p.RomPath))
+                        entries.Add(new(Key(p.RomPath), p));
+                    return entries;
+                })
+                .GroupBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase);
         }
         catch
         {

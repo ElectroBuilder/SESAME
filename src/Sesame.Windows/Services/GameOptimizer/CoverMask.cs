@@ -32,6 +32,10 @@ public static class CoverMask
     public static byte[] Apply(byte[]? source, int width, int height, SystemProfile system,
         bool romHack = false, bool translation = false)
     {
+        // Steam/previous Optimize may already have SESAME bars baked in — strip them
+        // so we never stack 2–3 platform labels on top of each other.
+        source = StripSesameBars(source);
+
         if (!OptimizerSettings.UseMaskFor(system.Id))
             return FitOnly(source, width, height, MaskTheme.For(system.Id).Backdrop);
 
@@ -102,6 +106,111 @@ public static class CoverMask
         canvas.SaveAsPng(ms);
         return ms.ToArray();
     }
+
+    /// <summary>
+    /// Remove stacked SESAME category bars (solid top strip + 5px accent line) so
+    /// re-Optimize / Steam round-trips never draw Nintendo Switch / GameCube twice.
+    /// </summary>
+    public static byte[]? StripSesameBars(byte[]? source)
+    {
+        if (source is not { Length: > 0 }) return source;
+        try
+        {
+            using var img = Image.Load<Rgba32>(source);
+            var changed = false;
+            for (var pass = 0; pass < 6; pass++)
+            {
+                var bar = DetectTopBarHeight(img);
+                if (bar <= 0) break;
+                var bottom = DetectBottomBarHeight(img);
+                var keepH = img.Height - bar - bottom;
+                if (keepH < img.Height / 3) break;
+                img.Mutate(c => c.Crop(new Rectangle(0, bar, img.Width, keepH)));
+                changed = true;
+            }
+            if (!changed) return source;
+            using var ms = new MemoryStream();
+            img.SaveAsPng(ms);
+            return ms.ToArray();
+        }
+        catch
+        {
+            return source;
+        }
+    }
+
+    private static int DetectTopBarHeight(Image<Rgba32> img)
+    {
+        // SESAME bar is ~14% portrait / ~22% landscape, with a 5px accent under it.
+        var guess = Math.Max(48, (int)Math.Round(img.Height * (img.Height > img.Width ? 0.14 : 0.22)));
+        for (var barH = guess + 24; barH >= 40; barH--)
+        {
+            if (barH + 5 >= img.Height) continue;
+            if (!RowMostlyUniform(img, 2, barH - 8, 0.82f)) continue;
+            if (!RowLooksLikeAccent(img, barH - 5, barH)) continue;
+            // Cover below the bar should look different from the bar fill.
+            if (RowMostlyUniform(img, barH + 8, Math.Min(img.Height - 1, barH + 40), 0.82f) &&
+                SameBandColor(img, 4, barH / 2, barH + 16))
+                continue;
+            return barH;
+        }
+        return 0;
+    }
+
+    private static int DetectBottomBarHeight(Image<Rgba32> img)
+    {
+        var guess = Math.Max(48, (int)Math.Round(img.Height * (img.Height > img.Width ? 0.14 : 0.22)));
+        var start = img.Height - guess - 8;
+        if (start < img.Height / 2) return 0;
+        if (!RowMostlyUniform(img, start + 8, img.Height - 4, 0.80f)) return 0;
+        return Math.Min(guess + 8, img.Height / 4);
+    }
+
+    private static bool RowMostlyUniform(Image<Rgba32> img, int y0, int y1, float minRatio)
+    {
+        y0 = Math.Clamp(y0, 0, img.Height - 1);
+        y1 = Math.Clamp(y1, y0, img.Height - 1);
+        var mid = img[img.Width / 2, (y0 + y1) / 2];
+        var ok = 0;
+        var n = 0;
+        for (var y = y0; y <= y1; y += 2)
+        for (var x = 0; x < img.Width; x += 4)
+        {
+            n++;
+            var p = img[x, y];
+            if (Near(p, mid, 28)) ok++;
+        }
+        return n > 0 && ok / (float)n >= minRatio;
+    }
+
+    private static bool RowLooksLikeAccent(Image<Rgba32> img, int y0, int y1)
+    {
+        y0 = Math.Clamp(y0, 0, img.Height - 1);
+        y1 = Math.Clamp(y1, y0, img.Height - 1);
+        var barSample = img[img.Width / 2, Math.Max(0, y0 - 8)];
+        var accentOk = 0;
+        var n = 0;
+        for (var y = y0; y <= y1; y++)
+        for (var x = 0; x < img.Width; x += 3)
+        {
+            n++;
+            var p = img[x, y];
+            // Accent stripe differs from the bar fill (red/teal/etc.).
+            if (!Near(p, barSample, 36) && p.A > 200) accentOk++;
+        }
+        return n > 0 && accentOk / (float)n >= 0.45f;
+    }
+
+    private static bool SameBandColor(Image<Rgba32> img, int yA, int yB, int yC)
+    {
+        var a = img[img.Width / 2, Math.Clamp(yA, 0, img.Height - 1)];
+        var b = img[img.Width / 2, Math.Clamp(yB, 0, img.Height - 1)];
+        var c = img[img.Width / 2, Math.Clamp(yC, 0, img.Height - 1)];
+        return Near(a, b, 30) && Near(b, c, 30);
+    }
+
+    private static bool Near(Rgba32 a, Rgba32 b, int tol) =>
+        Math.Abs(a.R - b.R) <= tol && Math.Abs(a.G - b.G) <= tol && Math.Abs(a.B - b.B) <= tol;
 
     private static void TryDrawCover(Image<Rgba32> canvas, byte[] source, Rectangle? slot = null)
     {
