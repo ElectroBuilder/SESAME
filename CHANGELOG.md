@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.8 — 2026-08-29
+
+- SSH connect feels snappy again: home folder lists before MAC/layout work; SSH+SFTP connect in parallel; auto-try uses a 5s timeout per dead session; known MAC skips the slow learn scripts.
+- Library folders are created with one `mkdir -p` instead of many SFTP calls that blocked the file list.
+- Joy-Con install: trust pacman keys noninteractively (fixes the AF1D2199EF0A3CCF abort), build with pip Ninja when `make` is missing, clearer errors when gcc/libevdev are still blocked.
+
 ## 0.6.7 — 2026-08-29
 
 - Windows SSH connect no longer freezes the UI: MAC/WoL learning and shell resize run off the UI thread; Optimize cache loads in the background.

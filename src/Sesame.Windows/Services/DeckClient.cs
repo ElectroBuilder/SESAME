@@ -42,7 +42,7 @@ public sealed class DeckClient : IDisposable
 
     public event Action<string>? ShellOutput;
 
-    public void Connect(ConnectionProfile profile)
+    public void Connect(ConnectionProfile profile, int timeoutSeconds = 12)
     {
         if (profile.IsLocal || string.Equals(profile.Host, "local", StringComparison.OrdinalIgnoreCase))
         {
@@ -53,7 +53,7 @@ public sealed class DeckClient : IDisposable
         lock (_gate)
         {
             DisconnectLocked();
-            OpenLocked(profile);
+            OpenLocked(profile, timeoutSeconds);
         }
     }
 
@@ -592,17 +592,38 @@ public sealed class DeckClient : IDisposable
         OpenLocked(profile);
     }
 
-    private void OpenLocked(ConnectionProfile profile)
+    private void OpenLocked(ConnectionProfile profile, int timeoutSeconds = 12)
     {
         CloseClients();
         _kind = Kind.Ssh;
 
-        var ssh = new SshClient(CreateInfo(profile));
-        var sftp = new SftpClient(CreateInfo(profile));
+        timeoutSeconds = Math.Clamp(timeoutSeconds, 3, 60);
+        var ssh = new SshClient(CreateInfo(profile, timeoutSeconds));
+        var sftp = new SftpClient(CreateInfo(profile, timeoutSeconds));
         ssh.KeepAliveInterval = TimeSpan.FromSeconds(20);
         sftp.KeepAliveInterval = TimeSpan.FromSeconds(20);
-        ssh.Connect();
-        sftp.Connect();
+
+        // Parallel TCP/auth — sequential connect nearly doubled wait on dead hosts.
+        Exception? sshEx = null;
+        Exception? sftpEx = null;
+        var sshTask = Task.Run(() =>
+        {
+            try { ssh.Connect(); }
+            catch (Exception ex) { sshEx = ex; }
+        });
+        var sftpTask = Task.Run(() =>
+        {
+            try { sftp.Connect(); }
+            catch (Exception ex) { sftpEx = ex; }
+        });
+        Task.WaitAll(sshTask, sftpTask);
+        if (sshEx is not null || sftpEx is not null)
+        {
+            try { ssh.Dispose(); } catch { /* ignore */ }
+            try { sftp.Dispose(); } catch { /* ignore */ }
+            throw sshEx ?? sftpEx!;
+        }
+
         _ssh = ssh;
         _sftp = sftp;
         ActiveProfile = profile;
@@ -616,7 +637,7 @@ public sealed class DeckClient : IDisposable
         }
     }
 
-    private static ConnectionInfo CreateInfo(ConnectionProfile profile)
+    private static ConnectionInfo CreateInfo(ConnectionProfile profile, int timeoutSeconds = 12)
     {
         var methods = new List<AuthenticationMethod>();
         try
@@ -641,7 +662,7 @@ public sealed class DeckClient : IDisposable
 
         return new ConnectionInfo(profile.Host, profile.Port, profile.User, methods.ToArray())
         {
-            Timeout = TimeSpan.FromSeconds(12)
+            Timeout = TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds, 3, 60))
         };
     }
 

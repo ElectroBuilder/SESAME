@@ -27,7 +27,9 @@ need_sudo() {
 
 have_cmake() { command -v cmake >/dev/null 2>&1; }
 have_make() { command -v make >/dev/null 2>&1; }
+have_ninja() { command -v ninja >/dev/null 2>&1; }
 have_git() { command -v git >/dev/null 2>&1; }
+have_cc() { command -v gcc >/dev/null 2>&1 || command -v cc >/dev/null 2>&1; }
 
 ensure_pip() {
   python3 -m ensurepip --user 2>>"$LOG" || true
@@ -38,6 +40,7 @@ ensure_pip() {
 }
 
 ensure_cmake() {
+  export PATH="$HOME/.local/bin:$PATH"
   if have_cmake; then
     log "cmake: $(command -v cmake)"
     return 0
@@ -46,49 +49,75 @@ ensure_cmake() {
   ensure_pip
   python3 -m pip install --user --upgrade cmake ninja >>"$LOG" 2>&1 || true
   export PATH="$HOME/.local/bin:$PATH"
-  # pip cmake often lands as ~/.local/bin/cmake
   if have_cmake; then
     log "cmake via pip: $(command -v cmake)"
     return 0
   fi
-  log "ERROR: still no cmake. Install Desktop Mode build tools or: python3 -m pip install --user cmake"
+  log "ERROR: still no cmake. Try: python3 -m pip install --user cmake"
   return 1
+}
+
+ensure_ninja() {
+  export PATH="$HOME/.local/bin:$PATH"
+  if have_ninja; then return 0; fi
+  ensure_pip
+  python3 -m pip install --user --upgrade ninja >>"$LOG" 2>&1 || true
+  export PATH="$HOME/.local/bin:$PATH"
+  have_ninja
+}
+
+trust_pacman_keys() {
+  # The previous failure was interactive "Import PGP key AF1D2199EF0A3CCF?" then abort.
+  sudo pacman-key --init 2>>"$LOG" || true
+  sudo pacman-key --populate archlinux 2>>"$LOG" || true
+  sudo pacman-key --populate holo 2>>"$LOG" || true
+  # Lukas Fleischer (and refresh keyring packages when possible)
+  for key in AF1D2199EF0A3CCF 3E80319D7E3D1BD6; do
+    sudo pacman-key --recv-keys "$key" 2>>"$LOG" || \
+      sudo pacman-key --recv-keys --keyserver keyserver.ubuntu.com "$key" 2>>"$LOG" || true
+    sudo pacman-key --lsign-key "$key" 2>>"$LOG" || true
+  done
+  set +e
+  yes | sudo pacman -S --needed --noconfirm archlinux-keyring 2>>"$LOG"
+  yes | sudo pacman -S --needed --noconfirm holo-keyring 2>>"$LOG"
+  set -e
 }
 
 install_deps() {
   log "Installing build deps (best-effort, noninteractive on SteamOS)…"
   sudo steamos-readonly disable 2>>"$LOG" || true
 
-  # Avoid interactive "Import PGP key … ?" prompts that abort pacman.
   if command -v pacman >/dev/null 2>&1; then
-    sudo pacman-key --init 2>>"$LOG" || true
-    sudo pacman-key --populate archlinux holo 2>>"$LOG" || true
-    # Common Arch packager key that blocked the previous run
-    sudo pacman-key --recv-keys AF1D2199EF0A3CCF 2>>"$LOG" || true
-    sudo pacman-key --lsign-key AF1D2199EF0A3CCF 2>>"$LOG" || true
-    # --noconfirm + yes pipe; ignore total failure and fall back to pip cmake
+    trust_pacman_keys
     set +e
+    # --noconfirm answers PGP import prompts; yes pipe covers residual prompts
     yes | sudo pacman -S --needed --noconfirm \
-      base-devel cmake libevdev git python python-pip 2>>"$LOG"
+      base-devel cmake ninja libevdev git python python-pip 2>>"$LOG"
     pacman_rc=$?
     set -e
     if [ "$pacman_rc" -ne 0 ]; then
-      log "pacman deps incomplete (exit $pacman_rc) — will try pip cmake / existing tools"
+      log "pacman deps incomplete (exit $pacman_rc) — will try pip cmake/ninja + existing tools"
+    else
+      log "pacman deps OK"
     fi
   fi
 
-  # libevdev headers help joycond build; soft fail if missing
   if [ ! -f /usr/include/libevdev-1.0/libevdev/libevdev.h ] && \
      [ ! -f /usr/include/libevdev/libevdev.h ]; then
-    log "WARN: libevdev headers not found — joycond build may fail until pacman -S libevdev succeeds"
+    log "WARN: libevdev headers missing — joycond will not compile until: sudo pacman -S libevdev"
+  fi
+  if ! have_cc; then
+    log "WARN: no gcc/cc — need base-devel. Fix pacman keys, then re-run this script."
   fi
 }
 
 build_joycond() {
   ensure_cmake || exit 1
-  if ! have_make; then
-    log "ERROR: make not found. Run in Desktop Mode and install base-devel, or retry after pacman works."
-    echo "need-make" >"$STATUS"
+  if ! have_cc; then
+    log "ERROR: no C compiler (gcc). Pacman keyring blocked base-devel."
+    log "Fix: Desktop Mode → sudo pacman-key --lsign-key AF1D2199EF0A3CCF"
+    log "Then: sudo pacman -S --needed --noconfirm base-devel libevdev"
+    echo "need-compiler" >"$STATUS"
     exit 1
   fi
   if ! have_git; then
@@ -109,10 +138,24 @@ build_joycond() {
   mkdir -p build
   cd build
   log "Building joycond…"
-  cmake ..
-  make -j"$(nproc 2>/dev/null || echo 2)"
-  log "Installing joycond (binary + udev + systemd unit)…"
-  sudo make install
+
+  # Prefer Ninja from pip when make/base-devel did not install.
+  if ensure_ninja; then
+    cmake -G Ninja ..
+    ninja
+    log "Installing joycond (binary + udev + systemd unit)…"
+    sudo ninja install
+  elif have_make; then
+    cmake ..
+    make -j"$(nproc 2>/dev/null || echo 2)"
+    log "Installing joycond (binary + udev + systemd unit)…"
+    sudo make install
+  else
+    log "ERROR: neither ninja nor make available after pip fallback"
+    echo "need-make" >"$STATUS"
+    exit 1
+  fi
+
   sudo udevadm control --reload-rules 2>>"$LOG" || true
   sudo udevadm trigger 2>>"$LOG" || true
 }
@@ -122,7 +165,7 @@ start_joycond() {
      [ ! -f /etc/systemd/system/joycond.service ] && \
      [ ! -f /lib/systemd/system/joycond.service ] && \
      [ ! -f /usr/local/lib/systemd/system/joycond.service ]; then
-    log "ERROR: joycond.service still missing after make install"
+    log "ERROR: joycond.service still missing after install"
     echo "need-install" >"$STATUS"
     exit 1
   fi

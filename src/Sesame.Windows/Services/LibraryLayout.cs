@@ -19,7 +19,22 @@ public static class LibraryLayout
 
     public static void Ensure(DeckClient client, AppCatalog catalog)
     {
-        foreach (var path in FolderPaths(catalog))
+        var paths = FolderPaths(catalog);
+        if (paths.Count == 0) return;
+
+        // One SSH round-trip instead of dozens of SFTP mkdir calls (was blocking UI list).
+        try
+        {
+            var quoted = string.Join(" ", paths.Select(DeckClient.ShQuote));
+            client.Execute("mkdir -p " + quoted + " 2>/dev/null || true", 25);
+            return;
+        }
+        catch
+        {
+            // fall through to per-folder SFTP
+        }
+
+        foreach (var path in paths)
         {
             try { client.EnsureDirectory(path); }
             catch { /* folder layout is best-effort */ }

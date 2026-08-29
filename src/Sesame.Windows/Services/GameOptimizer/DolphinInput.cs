@@ -18,7 +18,7 @@ public static class DolphinInput
         "• Right = Wiimote (gyro) · Left = Nunchuk · Home recenters\n\n" +
         "Joy-Con motion is not on SteamOS by default. After updating SESAME, Optimize once, then in Desktop Mode:\n" +
         "  bash ~/.local/share/sesame/install-joycond.sh\n" +
-        "(Needs sudo once. If pacman asks about keys, the script answers noninteractively and can install cmake via pip.)\n" +
+        "(Needs sudo once. Script trusts pacman keys automatically; uses pip cmake/ninja if pacman fails.)\n" +
         "Then re-Optimize and launch via SESAME.";
 
     public static string WrapperPath =>

@@ -105,7 +105,8 @@ public partial class MainWindow : Window
         {
             FooterText.Text = "Trying " + profile.Name + " (" + profile.Host + ")…";
             ProfileBox.SelectedItem = _targets.FirstOrDefault(t => t.Id == profile.Id) ?? ProfileBox.SelectedItem;
-            await ConnectToAsync(profile, quiet: true, trySiblings: false);
+            // Short timeout so dead sessions fail fast while walking the list.
+            await ConnectToAsync(profile, quiet: true, trySiblings: false, connectTimeoutSeconds: 5);
             if (_client.IsConnected) return;
         }
 
@@ -250,7 +251,11 @@ public partial class MainWindow : Window
         await ConnectToAsync(selected);
     }
 
-    private async Task ConnectToAsync(ConnectionProfile selected, bool quiet = false, bool trySiblings = true)
+    private async Task ConnectToAsync(
+        ConnectionProfile selected,
+        bool quiet = false,
+        bool trySiblings = true,
+        int connectTimeoutSeconds = 12)
     {
         if (_busy) return;
         var chosen = selected.Clone();
@@ -269,7 +274,7 @@ public partial class MainWindow : Window
             if (chosen.IsLocal)
                 await Task.Run(() => _client.ConnectLocal());
             else
-                await Task.Run(() => ConnectOrWake(chosen, fallback));
+                await Task.Run(() => ConnectOrWake(chosen, fallback, connectTimeoutSeconds));
         }
         catch (Exception ex)
         {
@@ -299,19 +304,21 @@ public partial class MainWindow : Window
         TermHint.Text = "  ·  click in the window and type  ·  Enter runs  ·  Ctrl+C stops";
         FooterText.Text = "Connected — opening folders…";
 
-        // Keep SSH follow-up off the UI thread (RememberMac used to freeze for ~12–24s).
+        // List home first so the UI unlocks; MAC/layout must NOT hold the SSH gate beforehand.
+        var home = _client.Home;
+        var gen = ++_navGen;
+        await NavigateAsync(home, push: false, gen);
+
         var cols = _termCols;
         var rows = _termRows;
         _ = Task.Run(() =>
         {
             try { _client.ResizeShell(cols, rows); } catch { /* shell size is optional */ }
-            try { RememberMac(); } catch { /* MAC learn is optional */ }
             try { LibraryLayout.Ensure(_client, _catalog); }
             catch { /* folders are created on first scan if this fails */ }
+            try { RememberMac(); } catch { /* MAC learn is optional */ }
         });
 
-        Navigate(_client.Home, push: false, showFilesTab: false);
-        // Cache load can be heavy — do not block the connect handshake.
         _ = Dispatcher.BeginInvoke(() =>
         {
             OptimizerPanel.OnConnected();
@@ -320,15 +327,15 @@ public partial class MainWindow : Window
         }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
-    private void ConnectOrWake(ConnectionProfile chosen, List<ConnectionProfile> fallback)
+    private void ConnectOrWake(ConnectionProfile chosen, List<ConnectionProfile> fallback, int timeoutSeconds = 12)
     {
         Exception? last = null;
-        if (TryConnectOrWake(chosen, out last)) return;
+        if (TryConnectOrWake(chosen, timeoutSeconds, out last)) return;
         if (last is not null && !LooksLikeNetworkFailure(last))
             throw last;
         foreach (var other in fallback)
         {
-            if (TryConnectOrWake(other, out last)) return;
+            if (TryConnectOrWake(other, timeoutSeconds, out last)) return;
             if (last is not null && !LooksLikeNetworkFailure(last))
                 throw last;
         }
@@ -336,13 +343,13 @@ public partial class MainWindow : Window
             "No SSH connection to the Steam Deck. Check host, port and key. If the Deck is asleep, fill in the MAC address under Sessions…");
     }
 
-    private bool TryConnectOrWake(ConnectionProfile profile, out Exception? error)
+    private bool TryConnectOrWake(ConnectionProfile profile, int timeoutSeconds, out Exception? error)
     {
         error = null;
-        Dispatcher.Invoke(() => FooterText.Text = "Connecting to " + profile.Host + "…");
+        Dispatcher.BeginInvoke(() => FooterText.Text = "Connecting to " + profile.Host + "…");
         try
         {
-            _client.Connect(profile);
+            _client.Connect(profile, timeoutSeconds);
             return true;
         }
         catch (Exception ex) when (!LooksLikeNetworkFailure(ex))
@@ -358,7 +365,7 @@ public partial class MainWindow : Window
         var mac = WakeOnLan.ResolveMac(profile);
         if (mac is null) return false;
 
-        Dispatcher.Invoke(() => FooterText.Text = "No SSH reply — waking the Deck…");
+        Dispatcher.BeginInvoke(() => FooterText.Text = "No SSH reply — waking the Deck…");
         try { WakeOnLan.Send(mac, profile.Host); }
         catch { return false; }
 
@@ -366,10 +373,10 @@ public partial class MainWindow : Window
         {
             if (i > 0) Thread.Sleep(1000);
             var n = i + 1;
-            Dispatcher.Invoke(() => FooterText.Text = "Reconnecting… (" + n + ")");
+            Dispatcher.BeginInvoke(() => FooterText.Text = "Reconnecting… (" + n + ")");
             try
             {
-                _client.Connect(profile);
+                _client.Connect(profile, timeoutSeconds);
                 return true;
             }
             catch (Exception ex)
@@ -406,10 +413,14 @@ public partial class MainWindow : Window
 
     private void RememberMac()
     {
-        if (_client.IsLocal) return;
+        if (_client.IsLocal || _client.ActiveProfile is null) return;
+        // Already known — skip the slow remote scripts that used to block folder listing.
+        if (!string.IsNullOrWhiteSpace(_client.ActiveProfile.MacAddress) &&
+            WakeOnLan.TryParseMac(_client.ActiveProfile.MacAddress, out _))
+            return;
         try
         {
-            var listing = _client.Execute(WakeOnLan.LearnMacScript(), 12);
+            var listing = _client.Execute(WakeOnLan.LearnMacScript(), 8);
             var mac = WakeOnLan.PickMac(listing);
             if (string.IsNullOrEmpty(mac) || _client.ActiveProfile is null) return;
             _client.ActiveProfile.MacAddress = mac;
@@ -421,7 +432,7 @@ public partial class MainWindow : Window
                 stored.MacAddress = mac;
                 _profiles.Save();
             }
-            try { _client.Execute(WakeOnLan.EnableWowlanScript(), 12); }
+            try { _client.Execute(WakeOnLan.EnableWowlanScript(), 6); }
             catch { /* WoL inschakelen is best-effort */ }
         }
         catch
