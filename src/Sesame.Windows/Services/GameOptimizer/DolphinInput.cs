@@ -14,9 +14,9 @@ public static class DolphinInput
 
     public const string DutchGyroHint =
         "Wii Joy-Cons:\n" +
-        "• Pair each with SL+SR (not L+R Combined) · Steam Input Off\n" +
-        "• Right DSU = Wiimote · Left DSU = Nunchuk · ignore Combined in the list\n" +
-        "• Home recenters · re-Optimize after update\n\n" +
+        "• Combine with L+R (one player) · Steam Input Off · Home recenters\n" +
+        "• Combined = Wiimote + Nunchuk · Right IMU for motion (cemuhook -r)\n" +
+        "• Prefer Combined over separate SL+SR · re-Optimize after update\n\n" +
         "Install once via Settings → Emulators → Install Joy-Con motion…\n" +
         "(or Desktop Mode: bash ~/.local/share/sesame/install-joycond.sh)\n" +
         "Then re-Optimize and launch via SESAME.";
@@ -97,7 +97,7 @@ public static class DolphinInput
                     JoyConRemoteProfile());
                 client.WriteText(DeckClient.Combine(dir, "Profiles/GCPad/" + ProfileName + ".ini"),
                     GcProfile("SDL/0/Steam Virtual Gamepad"));
-                // Full overwrite: DSU Right Wiimote + DSU Left Nunchuk; never Combined leftovers.
+                // Full overwrite: Combined Joy-Cons Wiimote+Nunchuk (runtime cfg may refine).
                 client.WriteText(DeckClient.Combine(dir, "WiimoteNew.ini"), JoyConWiimoteIni());
                 EnsureGcPad(client, DeckClient.Combine(dir, "GCPadNew.ini"));
                 EnsureDsu(client, DeckClient.Combine(dir, "DSUClient.ini"));
@@ -266,9 +266,10 @@ public static class DolphinInput
         client.WriteText(path, text);
     }
 
-    // joycond-cemuhook DSU pad names only (no SDL Combined / pair OR-ed in).
-    private const string DsuRight = "DSUClient/0/Nintendo Switch Right Joy-Con";
-    private const string DsuLeft = "DSUClient/0/Nintendo Switch Left Joy-Con";
+    // Preferred: Combined Joy-Cons (L+R). Runtime sesame-dolphin-cfg.py refines from live pads.
+    // Dolphin can cross-bind Left while Device=Right via `LeftDevice:control`, but Combined is simpler.
+    private const string DsuCombined = "DSUClient/0/Nintendo Switch Combined Joy-Cons";
+    private const string SdlCombined = "SDL/0/Nintendo Switch Combined Joy-Cons";
 
     private static string JoyConWiimoteIni() =>
         JoyConNunchukProfile().Replace("[Profile]\n", "[Wiimote1]\n", StringComparison.Ordinal) +
@@ -277,60 +278,64 @@ public static class DolphinInput
 
     private static string JoyConNunchukProfile()
     {
-        // DualShock-style names from cemuhook — DSU Right Wiimote + DSU Left Nunchuk only.
+        // Template uses SDL Combined so Optimize never ships a disconnected DSU Device.
+        // Launch-time cfg switches to DSU Combined when status=ok with pads.
+        var d = SdlCombined;
         return
             "[Profile]\n" +
-            "Device = " + DsuRight + "\n" +
+            "Device = " + d + "\n" +
             "Source = 1\n" +
             "Extension = Nunchuk\n" +
             "Options/Sideways Wiimote = False\n" +
-            "Buttons/A = `" + DsuRight + ":Button Circle`|`" + DsuRight + ":Button East`\n" +
-            "Buttons/B = `" + DsuRight + ":Button Cross`|`" + DsuRight + ":Button South`|`" + DsuRight + ":Button R2`\n" +
-            "Buttons/1 = `" + DsuRight + ":Button Triangle`|`" + DsuRight + ":Button North`\n" +
-            "Buttons/2 = `" + DsuRight + ":Button Square`|`" + DsuRight + ":Button West`\n" +
-            "Buttons/- = `" + DsuRight + ":Button Share`|`" + DsuRight + ":Button Minus`\n" +
-            "Buttons/+ = `" + DsuRight + ":Button Options`|`" + DsuRight + ":Button Plus`\n" +
-            "Buttons/Home = `" + DsuRight + ":Button PS`|`" + DsuRight + ":Button Home`\n" +
-            "D-Pad/Up = `" + DsuRight + ":Pad N`\n" +
-            "D-Pad/Down = `" + DsuRight + ":Pad S`\n" +
-            "D-Pad/Left = `" + DsuRight + ":Pad W`\n" +
-            "D-Pad/Right = `" + DsuRight + ":Pad E`\n" +
-            "Shake/X = `" + DsuRight + ":Button R1`|`" + DsuRight + ":Button SL`\n" +
-            "Shake/Y = `" + DsuRight + ":Button R1`|`" + DsuRight + ":Button SL`\n" +
-            "Shake/Z = `" + DsuRight + ":Button R1`|`" + DsuRight + ":Button SL`\n" +
-            "Nunchuk/Buttons/C = `" + DsuLeft + ":Button L1`|`" + DsuLeft + ":Button SL`\n" +
-            "Nunchuk/Buttons/Z = `" + DsuLeft + ":Button L2`|`" + DsuLeft + ":Button ZL`\n" +
-            "Nunchuk/Stick/Up = `" + DsuLeft + ":Left Y-`\n" +
-            "Nunchuk/Stick/Down = `" + DsuLeft + ":Left Y+`\n" +
-            "Nunchuk/Stick/Left = `" + DsuLeft + ":Left X-`\n" +
-            "Nunchuk/Stick/Right = `" + DsuLeft + ":Left X+`\n" +
-            JoyConImu(DsuRight) +
+            "Buttons/A = `" + d + ":Button East`|`" + d + ":Button Circle`|`" + d + ":Button A`\n" +
+            "Buttons/B = `" + d + ":Button South`|`" + d + ":Button Cross`|`" + d + ":Button R2`\n" +
+            "Buttons/1 = `" + d + ":Button North`|`" + d + ":Button Triangle`\n" +
+            "Buttons/2 = `" + d + ":Button West`|`" + d + ":Button Square`\n" +
+            "Buttons/- = `" + d + ":Button Minus`|`" + d + ":Button Share`\n" +
+            "Buttons/+ = `" + d + ":Button Plus`|`" + d + ":Button Options`\n" +
+            "Buttons/Home = `" + d + ":Button Home`|`" + d + ":Button Guide`|`" + d + ":Button PS`\n" +
+            "D-Pad/Up = `" + d + ":Pad N`\n" +
+            "D-Pad/Down = `" + d + ":Pad S`\n" +
+            "D-Pad/Left = `" + d + ":Pad W`\n" +
+            "D-Pad/Right = `" + d + ":Pad E`\n" +
+            "Shake/X = `" + d + ":Button R1`|`" + d + ":Button SL`\n" +
+            "Shake/Y = `" + d + ":Button R1`|`" + d + ":Button SL`\n" +
+            "Shake/Z = `" + d + ":Button R1`|`" + d + ":Button SL`\n" +
+            "Nunchuk/Buttons/C = `" + d + ":Button L1`|`" + d + ":Button SL`|`" + d + ":Shoulder L`\n" +
+            "Nunchuk/Buttons/Z = `" + d + ":Button L2`|`" + d + ":Button ZL`|`" + d + ":Trigger L`\n" +
+            "Nunchuk/Stick/Up = `" + d + ":Left Y-`\n" +
+            "Nunchuk/Stick/Down = `" + d + ":Left Y+`\n" +
+            "Nunchuk/Stick/Left = `" + d + ":Left X-`\n" +
+            "Nunchuk/Stick/Right = `" + d + ":Left X+`\n" +
+            JoyConImu(d) +
             "IMUIR/Enabled = True\n" +
             "IMUIR/Total Yaw = 16\n" +
-            "IMUIR/Recenter = `" + DsuRight + ":Button PS`|`" + DsuRight + ":Button Home`\n" +
+            "IMUIR/Recenter = `" + d + ":Button Home`|`" + d + ":Button Guide`|`" + d + ":Button PS`\n" +
             "IR/Auto-Hide = False\n" +
             "Rumble/Motor = Strong\n";
     }
 
     private static string JoyConRemoteProfile()
     {
+        // Sideways remote fallback still prefers Combined; Right-only if needed at runtime.
+        var d = SdlCombined;
         return
             "[Profile]\n" +
-            "Device = " + DsuRight + "\n" +
+            "Device = " + d + "\n" +
             "Source = 1\n" +
             "Extension = None\n" +
             "Options/Sideways Wiimote = True\n" +
-            "Buttons/A = `" + DsuRight + ":Button Circle`|`" + DsuRight + ":Button East`\n" +
-            "Buttons/B = `" + DsuRight + ":Button Cross`|`" + DsuRight + ":Button South`\n" +
-            "Buttons/1 = `" + DsuRight + ":Button Triangle`|`" + DsuRight + ":Button North`\n" +
-            "Buttons/2 = `" + DsuRight + ":Button Square`|`" + DsuRight + ":Button West`\n" +
-            "Buttons/- = `" + DsuRight + ":Button Share`|`" + DsuRight + ":Button Minus`\n" +
-            "Buttons/+ = `" + DsuRight + ":Button Options`|`" + DsuRight + ":Button Plus`\n" +
-            "Buttons/Home = `" + DsuRight + ":Button PS`|`" + DsuRight + ":Button Home`\n" +
-            JoyConImu(DsuRight) +
+            "Buttons/A = `" + d + ":Button East`|`" + d + ":Button Circle`\n" +
+            "Buttons/B = `" + d + ":Button South`|`" + d + ":Button Cross`\n" +
+            "Buttons/1 = `" + d + ":Button North`|`" + d + ":Button Triangle`\n" +
+            "Buttons/2 = `" + d + ":Button West`|`" + d + ":Button Square`\n" +
+            "Buttons/- = `" + d + ":Button Minus`|`" + d + ":Button Share`\n" +
+            "Buttons/+ = `" + d + ":Button Plus`|`" + d + ":Button Options`\n" +
+            "Buttons/Home = `" + d + ":Button Home`|`" + d + ":Button Guide`\n" +
+            JoyConImu(d) +
             "IMUIR/Enabled = True\n" +
             "IMUIR/Total Yaw = 16\n" +
-            "IMUIR/Recenter = `" + DsuRight + ":Button Home`|`" + DsuRight + ":Button PS`\n" +
+            "IMUIR/Recenter = `" + d + ":Button Home`|`" + d + ":Button Guide`\n" +
             "Rumble/Motor = Strong\n";
     }
 
@@ -353,8 +358,11 @@ public static class DolphinInput
                      ("IMUGyroscope/Yaw Right", "Gyro Yaw Right"),
                  })
         {
-            // DSU Right only — no SDL Combined / Deck OR that makes "many controllers" feel active.
-            sb.Append(key).Append(" = `").Append(device).Append(':').Append(axis).Append("`\n");
+            // Combined IMU (+ optional DSU Combined OR when live cfg runs with status=ok).
+            sb.Append(key).Append(" = `").Append(device).Append(':').Append(axis).Append("`");
+            if (!device.StartsWith("DSUClient/", StringComparison.Ordinal))
+                sb.Append("|`").Append(DsuCombined).Append(':').Append(axis).Append("`");
+            sb.Append('\n');
         }
         return sb.ToString();
     }

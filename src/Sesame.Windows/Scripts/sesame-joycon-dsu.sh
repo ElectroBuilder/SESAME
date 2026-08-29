@@ -4,9 +4,11 @@
 # so Deck gyro and Joy-Cons do not fight. Dolphin DSUClient.ini is pointed here by
 # sesame-dolphin-cfg.py.
 #
-# Device names from joycond-cemuhook (must match Dolphin DSUClient):
-#   Nintendo Switch Right Joy-Con / Nintendo Switch Left Joy-Con
-# Pair each Joy-Con with SL+SR (not L+R combined). Steam Input Off on the Wii shortcut.
+# Preferred pairing for single-player Wiimote+Nunchuk (Wii Sports, etc.):
+#   Press L+R together → "Nintendo Switch Combined Joy-Cons" (one Steam player).
+#   cemuhook is started with -r/--right-only so the Right IMU drives Combined motion.
+# Separate SL+SR L/R still works as a fallback (Wiimote=Right, Nunchuk=Left).
+# Steam Input Off on the Wii shortcut.
 
 export HOME="${HOME:-/home/deck}"
 PORT="${SESAME_JOYCON_DSU_PORT:-26761}"
@@ -25,6 +27,17 @@ set_port() { echo "$1" >"$PORTFILE"; }
 
 joycond_ready() {
   systemctl is-active --quiet joycond 2>/dev/null
+}
+
+ensure_hid_nintendo() {
+  # Soft: only load if not already present — avoids Bluetooth churn on every launch.
+  if lsmod 2>/dev/null | grep -q '^hid_nintendo'; then
+    return 0
+  fi
+  if [ -d /sys/module/hid_nintendo ]; then
+    return 0
+  fi
+  modprobe hid_nintendo 2>/dev/null || true
 }
 
 port_listening() {
@@ -104,65 +117,94 @@ install_cemuhook() {
   python3 -m pip install --user --upgrade --break-system-packages termcolor >>"$LOG" 2>&1 || true
 }
 
-# Count only separate Left/Right — Combined/pair does not count as "ready".
-joycon_evdev_count() {
-  python3 - <<'PY' 2>/dev/null || echo 0
+# Pad inventory: echoes "total|combined|left|right|summary"
+joycon_inventory() {
+  python3 - <<'PY' 2>/dev/null || echo "0|0|0|0|none"
 import evdev
-left=("Nintendo Switch Left Joy-Con","Joy-Con (L)")
-right=("Nintendo Switch Right Joy-Con","Joy-Con (R)")
-n=0
+left_names=("Nintendo Switch Left Joy-Con","Joy-Con (L)")
+right_names=("Nintendo Switch Right Joy-Con","Joy-Con (R)")
+combined=left=right=0
+parts=[]
 for path in evdev.list_devices():
     try:
         d=evdev.InputDevice(path)
     except Exception:
         continue
     name=d.name or ""
-    if any(name.startswith(x) or name==x for x in left+right):
-        n+=1
-print(n)
-PY
-}
-
-joycon_combined_names() {
-  python3 - <<'PY' 2>/dev/null || true
-import evdev
-hits=[]
-for path in evdev.list_devices():
-    try:
-        d=evdev.InputDevice(path)
-    except Exception:
-        continue
-    name=(d.name or "")
     low=name.lower()
+    if "imu" in low:
+        continue
     if ("combined" in low and ("joy" in low or "switch" in low)) or "joycon-pair" in low or "joy-con pair" in low:
-        hits.append(name)
-print("\n".join(hits))
+        combined+=1; parts.append("C:"+name); continue
+    if any(name.startswith(x) or name==x for x in left_names) or (
+        (("(l)" in low or " left" in low or low.endswith(" left joy-con")) and "joy" in low)
+    ):
+        left+=1; parts.append("L:"+name); continue
+    if any(name.startswith(x) or name==x for x in right_names) or (
+        (("(r)" in low or " right" in low or low.endswith(" right joy-con")) and "joy" in low)
+    ):
+        right+=1; parts.append("R:"+name); continue
+total=combined+left+right
+summary="; ".join(parts) if parts else "none"
+print("%d|%d|%d|%d|%s" % (total, combined, left, right, summary))
 PY
 }
 
-warn_combined() {
-  local hits
-  hits=$(joycon_combined_names)
-  if [ -n "$hits" ]; then
-    log "WARN: Combined/pair Joy-Con device(s) detected:"
-    while IFS= read -r line; do
-      [ -n "$line" ] && log "  - $line"
-    done <<<"$hits"
-    log "Re-pair each Joy-Con with SL+SR separately (not L+R). SESAME wires only DSU L+R;"
-    log "Combined may still appear in Dolphin's dropdown but will not be used as Wiimote Device."
+joycon_pad_count() {
+  local inv total
+  inv=$(joycon_inventory)
+  total="${inv%%|*}"
+  echo "${total:-0}"
+}
+
+mark_status_from_health() {
+  local pid_ok=0
+  local pads
+  pads=$(joycon_pad_count)
+  if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+    pid_ok=1
+  elif [ -n "$(cemuhook_pids)" ]; then
+    pid_ok=1
   fi
+  if [ "$pid_ok" = "1" ] && [ "${pads:-0}" -gt 0 ] 2>/dev/null; then
+    set_status "ok"
+    set_port "$PORT"
+    log "status=ok pads=$pads port=$PORT"
+    return 0
+  fi
+  if [ "$pid_ok" = "1" ]; then
+    set_status "no-pads"
+    set_port "$PORT"
+    log "status=no-pads (cemuhook alive but zero Combined/L/R pads) — Dolphin will not hardcode DSU Device"
+    return 1
+  fi
+  set_status "cemuhook-failed"
+  log "status=cemuhook-failed"
+  return 1
+}
+
+cemuhook_healthy_on_port() {
+  # Already listening on our port + has pads → keep it (no kill/restart).
+  local pads
+  if ! port_listening "$PORT"; then
+    return 1
+  fi
+  if [ -z "$(cemuhook_pids)" ]; then
+    return 1
+  fi
+  pads=$(joycon_pad_count)
+  [ "${pads:-0}" -gt 0 ] 2>/dev/null
 }
 
 start_cemuhook() {
   local bin="$1"
-  stop_cemuhook
-  modprobe hid_nintendo 2>/dev/null || true
+  ensure_hid_nintendo
 
-  # Always bind 26761 — never default 26760 (SteamDeckGyroDSU).
+  # -r / --right-only: Right Joy-Con IMU as motion for Combined (official path).
   if [ "$bin" = "python3-module" ]; then
-    nohup python3 -m joycond_cemuhook -ip 127.0.0.1 -p "$PORT" >>"$LOG" 2>&1 &
+    nohup python3 -m joycond_cemuhook -ip 127.0.0.1 -p "$PORT" -r >>"$LOG" 2>&1 &
   else
-    nohup "$bin" -ip 127.0.0.1 -p "$PORT" >>"$LOG" 2>&1 &
+    nohup "$bin" -ip 127.0.0.1 -p "$PORT" -r >>"$LOG" 2>&1 &
   fi
   echo $! >"$PIDFILE"
   sleep 1.2
@@ -175,12 +217,12 @@ start_cemuhook() {
     log "WARN: UDP $PORT not detected yet (cemuhook still starting?)"
   fi
   set_port "$PORT"
-  log "cemuhook listening intent=$PORT pid=$(cat "$PIDFILE") joycons=$(joycon_evdev_count)"
+  log "cemuhook started port=$PORT pid=$(cat "$PIDFILE") -r (right IMU)"
   return 0
 }
 
 main() {
-  modprobe hid_nintendo 2>/dev/null || true
+  ensure_hid_nintendo
 
   if ! joycond_ready; then
     log "joycond.service not active"
@@ -189,17 +231,22 @@ main() {
     exit 0
   fi
 
-  warn_combined
-
-  local count
-  count=$(joycon_evdev_count)
-  if [ "$count" = "0" ]; then
-    log "No separate Left/Right Joy-Con evdev devices — pair with SL+SR each (not L+R / Combined)"
-  else
-    log "Found $count separate Left/Right Joy-Con device(s) (Combined excluded from count)"
+  local inv total combined left right summary
+  inv=$(joycon_inventory)
+  total=$(echo "$inv" | cut -d'|' -f1)
+  combined=$(echo "$inv" | cut -d'|' -f2)
+  left=$(echo "$inv" | cut -d'|' -f3)
+  right=$(echo "$inv" | cut -d'|' -f4)
+  summary=$(echo "$inv" | cut -d'|' -f5-)
+  log "evdev Joy-Con pads: total=$total combined=$combined left=$left right=$right ($summary)"
+  if [ "${combined:-0}" -gt 0 ] 2>/dev/null; then
+    log "Preferred mode: Combined (L+R) — one player, Wiimote+Nunchuk on one Device"
+  elif [ "${left:-0}" -gt 0 ] 2>/dev/null && [ "${right:-0}" -gt 0 ] 2>/dev/null; then
+    log "Mode: separate L+R (press L+R to combine for simpler Wiimote+Nunchuk)"
+  elif [ "${total:-0}" = "0" ]; then
+    log "No Combined/L/R Joy-Con pads — pair BT, then L+R (Combined) or SL+SR each"
   fi
 
-  # Restart if already running so we always own 26761 (not 26760).
   local bin=""
   bin=$(find_cemuhook) || true
   if [ -z "$bin" ]; then
@@ -212,8 +259,20 @@ main() {
     exit 0
   fi
 
+  if cemuhook_healthy_on_port; then
+    log "cemuhook already healthy on $PORT — not restarting"
+    mark_status_from_health || true
+    exit 0
+  fi
+
+  # Wrong port / dead / no pads while process hung → soft restart once.
+  if [ -n "$(cemuhook_pids)" ]; then
+    log "cemuhook present but not healthy on $PORT — restarting once"
+    stop_cemuhook
+  fi
+
   if start_cemuhook "$bin"; then
-    set_status "ok"
+    mark_status_from_health || true
   else
     set_status "cemuhook-failed"
   fi

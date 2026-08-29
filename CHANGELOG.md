@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.11 — 2026-08-29
+
+- Wii Joy-Cons: **Combined-first** (press L+R) for single-player Wiimote+Nunchuk — one Device, one Steam player; cemuhook starts with `-r` (Right IMU). Separate L/R still works as fallback (cross-bind).
+- Fix disconnected DSU: `joycon-dsu.status=ok` only when cemuhook is alive **and** at least one Combined/L/R pad exists; never hardcode a DSU Device without that. Buttons fall back to SDL Combined when DSU is missing.
+- Softer cemuhook restarts (keep healthy listener on 26761; skip `modprobe` if already loaded) to reduce Bluetooth flakiness after Optimize.
+
 ## 0.6.10 — 2026-08-29
 
 - Wii Joy-Cons: when cemuhook DSU is up, Wiimote1 is **DSU-only** — Right = Wiimote, Left = Nunchuk on that same remote. No SDL Combined/pair OR-ed into bindings; Combined/joycon-pair is ignored as Device (may still appear in Dolphin’s dropdown — ignore it).

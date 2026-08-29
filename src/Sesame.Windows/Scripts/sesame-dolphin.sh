@@ -36,8 +36,9 @@ DOL="$HOME/Emulation/tools/launchers/dolphin.sh"
 DOL2="$HOME/Emulation/tools/launchers/dolphin-emu.sh"
 case "$ROM" in
   */roms/wii/*|*/wii/*)
-    # Separate L/R Joy-Cons so SESAME can map Wiimote + Nunchuk.
-    export SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS="${SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS:-0}"
+    # Encourage Combined Joy-Cons (press L+R) for one-player Wiimote+Nunchuk.
+    # Official path: Combined + cemuhook -r (Right IMU). Separate SL+SR still works.
+    export SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS="${SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS:-1}"
     set -- "$WII" "$DOL" "$DOL2" "$GC"
     # Start Joy-Con motion DSU before patching Dolphin (guide: joycond-cemuhook).
     if [ -f "$HERE/sesame-joycon-dsu.sh" ]; then

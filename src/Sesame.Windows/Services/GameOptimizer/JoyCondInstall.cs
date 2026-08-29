@@ -14,7 +14,7 @@ public static class JoyCondInstall
         "• Installs a system-wide joycond daemon and udev rules (may change how Steam sees Joy-Cons)\n" +
         "• Needs your Deck sudo password once\n" +
         "• Can take several minutes and needs internet on the Deck\n\n" +
-        "After install: pair Joy-Cons, press SL+SR on each, turn Steam Input Off on the Wii shortcut, " +
+        "After install: pair Joy-Cons, press L+R to Combined (one player), turn Steam Input Off on the Wii shortcut, " +
         "Optimize Wii games, and launch via SESAME.";
 
     public static string ScriptText() => Load("Sesame.sesame-install-joycond.sh");

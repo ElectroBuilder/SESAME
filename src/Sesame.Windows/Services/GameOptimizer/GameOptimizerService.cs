@@ -366,7 +366,7 @@ public static class GameOptimizerService
                          (stripped > 0 ? $", {stripped} oude scripts vervangen" : "") +
                          (string.IsNullOrEmpty(collectionError) ? "" : ", collections partly failed") +
                          (dolphinIds.Count > 0
-                             ? ". Wii Joy-Con: Right=Wiimote Left=Nunchuk + DSU motion. See the Optimize hint."
+                             ? ". Wii Joy-Con: Combined (L+R) = Wiimote+Nunchuk + Right motion. See the Optimize hint."
                              : "") +
                          (restoreGameMode
                              ? " Game Mode wordt weer gestart."

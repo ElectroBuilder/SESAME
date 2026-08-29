@@ -108,7 +108,7 @@ public partial class JoyCondInstallWindow : Window
             SudoBox.Text = "";
             RefreshStatus();
             await ConfirmWindow.Ask(this, "Joy-Con install",
-                "Install finished. Pair Joy-Cons (SL+SR), Steam Input Off on Wii, Optimize, launch via SESAME.");
+                "Install finished. Pair Joy-Cons (L+R Combined), Steam Input Off on Wii, Optimize, launch via SESAME.");
         }
         catch (Exception ex)
         {
