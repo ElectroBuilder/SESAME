@@ -150,6 +150,10 @@ public sealed class GameEntry
     public bool HasTextures { get; set; }
     public bool IsRomHack { get; set; }
     public bool IsTranslation { get; set; }
+    public bool IsManual { get; set; }
+    public string ManualId { get; set; } = "";
+    public string KindOverride { get; set; } = "";
+    public string TagOverride { get; set; } = "";
     public string? InnerFileName { get; set; }
     public StoreGame Identity { get; set; } = StoreGame.All;
     public string TitleIdText => TitleId ?? "—";
@@ -164,7 +168,18 @@ public sealed class GameEntry
         }
     }
     public string KindText =>
-        IsTranslation ? "Translation" : IsRomHack ? "ROM-hack" : "—";
+        !string.IsNullOrEmpty(KindOverride) ? KindOverride : "Rom";
+    public string TagsText
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(TagOverride)) return TagOverride;
+            var tags = new List<string>();
+            if (IsRomHack) tags.Add("Hack");
+            if (IsTranslation) tags.Add("Translation");
+            return tags.Count == 0 ? "—" : string.Join(", ", tags);
+        }
+    }
 }
 
 public sealed class StoreGame

@@ -13,6 +13,7 @@ public static class SteamTabGrouping
     public static string TabName(OptimizerGame game)
     {
         if (game.ShortcutKind == ShortcutKind.Hydra) return "Hydra";
+        if (game.ShortcutKind == ShortcutKind.Game) return "Games";
         if (game.ShortcutKind == ShortcutKind.App) return "Apps";
         return OptimizerSettings.SteamTabScheme switch
         {

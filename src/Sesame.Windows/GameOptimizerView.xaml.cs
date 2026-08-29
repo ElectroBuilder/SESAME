@@ -36,8 +36,13 @@ public partial class GameOptimizerView : UserControl
         _view = (ListCollectionView)CollectionViewSource.GetDefaultView(_games);
         _view.Filter = FilterGame;
         GameList.ItemsSource = _view;
+        ListColumns.Attach(GameList, _view, properties: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["FPS"] = nameof(OptimizerGame.Fps)
+        });
         SystemFilter.Items.Add("All systems");
         SystemFilter.SelectedIndex = 0;
+        SearchBox.TextChanged += (_, _) => _view.Refresh();
         _loadingMask = true;
         MaskBox.IsChecked = OptimizerSettings.UseMasks;
         _loadingMask = false;
@@ -66,7 +71,7 @@ public partial class GameOptimizerView : UserControl
         if (cached.Count == 0) return;
         ApplyScanResults(cached, prefetch: true);
         HintText.Text = $"{_games.Count} games from this Deck cache. Scanning again in the background…";
-        StatusChanged?.Invoke($"Game Optimizer: {_games.Count} games (cache)");
+        StatusChanged?.Invoke($"Artwork: {_games.Count} games (cache)");
     }
 
     public void StartBackgroundScan()
@@ -117,22 +122,29 @@ public partial class GameOptimizerView : UserControl
         _scanCts?.Cancel();
         var cts = new CancellationTokenSource();
         _scanCts = cts;
-        HintText.Text = "Scanning in the background…";
-        StatusChanged?.Invoke("Game Optimizer: scanning…");
+        ShowProgress(new OptimizeProgress
+        {
+            Title = "Scanning library",
+            Detail = "Reading ROMs, Hydra games and apps on the Deck…",
+            Indeterminate = true
+        });
+        HintText.Text = "Scanning library…";
+        StatusChanged?.Invoke("Artwork: scanning…");
         try
         {
             var catalog = _catalog;
             var client = _client;
             var scanKey = CacheKey();
             OptimizerPicks.CurrentKey = scanKey;
-            var games = await Task.Run(() => GameOptimizerService.Scan(client, catalog), cts.Token);
+            var progress = new Progress<OptimizeProgress>(p => Dispatcher.Invoke(() => ShowProgress(p)));
+            var games = await Task.Run(() => GameOptimizerService.Scan(client, catalog, progress), cts.Token);
             if (cts.IsCancellationRequested) return;
             if (!string.Equals(CacheKey(), scanKey, StringComparison.OrdinalIgnoreCase)) return;
             ApplyScanResults(games, prefetch: true);
             Persist();
             var ready = games.Count(g => !string.IsNullOrEmpty(g.Target));
             HintText.Text = $"{games.Count} games found, {ready} with emulator. Changes are saved.";
-            StatusChanged?.Invoke($"Game Optimizer: {games.Count} games");
+            StatusChanged?.Invoke($"Artwork: {games.Count} games");
         }
         catch (OperationCanceledException)
         {
@@ -141,18 +153,27 @@ public partial class GameOptimizerView : UserControl
         catch (Exception ex)
         {
             HintText.Text = "Scan failed: " + ex.Message;
-            StatusChanged?.Invoke("Game Optimizer: scan failed");
+            StatusChanged?.Invoke("Artwork: scan failed");
         }
         finally
         {
-            _scanning = false;
+            if (ReferenceEquals(_scanCts, cts))
+            {
+                _scanning = false;
+                HideProgress();
+            }
         }
     }
 
     private void ApplyScanResults(IReadOnlyList<OptimizerGame> games, bool prefetch)
     {
-        var previous = _games.ToDictionary(g => g.RomPath, StringComparer.OrdinalIgnoreCase);
-        var selectedPath = (GameList.SelectedItem as OptimizerGame)?.RomPath;
+        var previous = _games.ToList();
+        var previousByKey = previous
+            .GroupBy(ExtraShortcuts.KeyOf, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        var selectedKey = GameList.SelectedItem is OptimizerGame selected
+            ? ExtraShortcuts.KeyOf(selected)
+            : "";
         var filter = SystemFilter.SelectedItem as string;
         foreach (var old in _games)
             old.PropertyChanged -= Game_PropertyChanged;
@@ -167,8 +188,10 @@ public partial class GameOptimizerView : UserControl
             SystemFilter.SelectedIndex = 0;
         foreach (var game in games)
         {
-            if (previous.TryGetValue(game.RomPath, out var old))
+            if (previousByKey.TryGetValue(ExtraShortcuts.KeyOf(game), out var olds))
             {
+                ExtraShortcuts.UnionChoices(game, olds);
+                var old = olds[0];
                 game.Selected = old.Selected;
                 CopyPreview(old, game);
             }
@@ -176,10 +199,10 @@ public partial class GameOptimizerView : UserControl
             _games.Add(game);
         }
         _view.Refresh();
-        if (selectedPath is not null)
+        if (selectedKey.Length > 0)
         {
             var match = _games.FirstOrDefault(g =>
-                string.Equals(g.RomPath, selectedPath, StringComparison.OrdinalIgnoreCase));
+                string.Equals(ExtraShortcuts.KeyOf(g), selectedKey, StringComparison.OrdinalIgnoreCase));
             if (match is not null) GameList.SelectedItem = match;
             else if (_games.Count > 0) GameList.SelectedIndex = 0;
         }
@@ -214,12 +237,12 @@ public partial class GameOptimizerView : UserControl
         var selected = _games.Where(g => g.Selected).ToList();
         if (selected.Count == 0)
         {
-            MessageBox.Show("Select at least one game.", "Game Optimizer");
+            MessageBox.Show("Select at least one game.", "Artwork");
             return;
         }
         if (_client is not { IsConnected: true })
         {
-            MessageBox.Show("Connect to the Steam Deck first.", "Game Optimizer");
+            MessageBox.Show("Connect to the Steam Deck first.", "Artwork");
             return;
         }
 
@@ -278,13 +301,13 @@ public partial class GameOptimizerView : UserControl
     {
         if (_client is not { IsConnected: true } || _catalog is null)
         {
-            MessageBox.Show("Connect to the Steam Deck first.", "Game Optimizer");
+            MessageBox.Show("Connect to the Steam Deck first.", "Artwork");
             return;
         }
         if (_busy) return;
         if (!_games.Any(g => g.Selected))
         {
-            MessageBox.Show("Select at least one game.", "Game Optimizer");
+            MessageBox.Show("Select at least one game.", "Artwork");
             return;
         }
 
@@ -317,7 +340,7 @@ public partial class GameOptimizerView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Game Optimizer");
+            MessageBox.Show(ex.Message, "Artwork");
         }
         finally
         {
@@ -325,7 +348,7 @@ public partial class GameOptimizerView : UserControl
             HideProgress();
         }
         if (report is { Errors.Count: > 0 })
-            MessageBox.Show(string.Join(Environment.NewLine, report.Errors.Take(8)), "Game Optimizer");
+            MessageBox.Show(string.Join(Environment.NewLine, report.Errors.Take(8)), "Artwork");
     }
 
     private void ShowProgress(OptimizeProgress p)
@@ -376,6 +399,66 @@ public partial class GameOptimizerView : UserControl
         return $"About {Math.Max(10, Math.Ceiling(remain.TotalSeconds / 5) * 5)} s left";
     }
 
+    public void UpsertManual(OptimizerGame game)
+    {
+        var key = ExtraShortcuts.KeyOf(game);
+        var existing = _games.FirstOrDefault(g =>
+            string.Equals(ExtraShortcuts.KeyOf(g), key, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            ExtraShortcuts.UnionChoices(game, [existing]);
+            game.Selected = existing.Selected;
+            CopyPreview(existing, game);
+            existing.PropertyChanged -= Game_PropertyChanged;
+            var i = _games.IndexOf(existing);
+            game.PropertyChanged += Game_PropertyChanged;
+            _games[i] = game;
+        }
+        else
+        {
+            game.PropertyChanged += Game_PropertyChanged;
+            _games.Add(game);
+            if (!SystemFilter.Items.Contains(game.SystemName))
+                SystemFilter.Items.Add(game.SystemName);
+        }
+        Persist();
+        _view.Refresh();
+    }
+
+    public void RemoveManual(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return;
+        var hit = _games.FirstOrDefault(g => g.ManualId == id);
+        if (hit is null) return;
+        hit.PropertyChanged -= Game_PropertyChanged;
+        _games.Remove(hit);
+        Persist();
+        _view.Refresh();
+    }
+
+    private void PickLaunch_Click(object sender, RoutedEventArgs e)
+    {
+        if (GameList.SelectedItem is not OptimizerGame game)
+        {
+            MessageBox.Show(Window.GetWindow(this), "Select a row first.", "Choose launch");
+            return;
+        }
+
+        if (game.LaunchChoices.Count == 0)
+            game.LaunchChoices.Add(new LaunchChoice
+            {
+                Exe = game.Target,
+                StartDir = game.StartDir,
+                Options = game.LaunchOptions,
+                RomPath = game.RomPath
+            });
+        var win = new PickLaunchWindow(game) { Owner = Window.GetWindow(this) };
+        if (win.ShowDialog() != true || win.Chosen is null) return;
+        ExtraShortcuts.ApplyLaunch(game, win.Chosen);
+        Persist();
+        ShowGame(game);
+    }
+
     private void Filter_Changed(object sender, SelectionChangedEventArgs e) => _view.Refresh();
 
     private void Search_KeyDown(object sender, KeyEventArgs e)
@@ -394,7 +477,9 @@ public partial class GameOptimizerView : UserControl
         if (string.IsNullOrEmpty(q)) return true;
         return game.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
                game.FileName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-               game.SystemName.Contains(q, StringComparison.OrdinalIgnoreCase);
+               game.SystemName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+               game.KindText.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+               game.TagsText.Contains(q, StringComparison.OrdinalIgnoreCase);
     }
 
     private void Game_Changed(object sender, SelectionChangedEventArgs e) =>

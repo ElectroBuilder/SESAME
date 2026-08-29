@@ -15,7 +15,15 @@ SESAME is unofficial and is not affiliated with Valve, Nintendo, or any other ga
 
 ## Steam Deck
 
-In Desktop Mode, no sudo:
+Desktop Mode, no sudo. SESAME installs to `~/Applications/SESAME`. You do not need to delete that folder to update.
+
+### First install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ElectroBuilder/SESAME/main/install.sh | bash
+```
+
+Or from a git clone:
 
 ```bash
 git clone https://github.com/ElectroBuilder/SESAME.git
@@ -23,7 +31,23 @@ cd SESAME
 bash install.sh
 ```
 
-That installs SESAME to `~/Applications/SESAME` and adds a desktop entry. The script downloads a prebuilt Linux build when one is available, or builds from source.
+### Update
+
+Same as first install — the script overwrites `~/Applications/SESAME` in place:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ElectroBuilder/SESAME/main/install.sh | bash
+```
+
+If you already cloned the repo:
+
+```bash
+git -C SESAME pull --ff-only && bash SESAME/install.sh
+```
+
+Or from inside the repo: `git pull --ff-only && bash install.sh` (same as `bash install.sh --update`).
+
+The installer downloads the prebuilt Linux release (`sesame-linux-x64.tar.gz`), or builds from source if the download is unavailable.
 
 ```
 SESAME --desktop      # windowed desktop UI

@@ -83,11 +83,19 @@ public static class GameOptimizerService
 
         progress?.Report(new OptimizeProgress
         {
-            Title = "Hydra en apps",
+            Title = "Hydra and apps",
             Detail = "Looking for Hydra games and native apps…",
             Indeterminate = true
         });
-        foreach (var extra in ExtraShortcuts.Scan(client, steam))
+        var extraProgress = progress is null
+            ? null
+            : new Progress<string>(detail => progress.Report(new OptimizeProgress
+            {
+                Title = "Hydra and apps",
+                Detail = detail,
+                Indeterminate = true
+            }));
+        foreach (var extra in ExtraShortcuts.Scan(client, steam, ExtraScanMode.All, extraProgress))
         {
             var existing = extra.SteamAppId != 0
                 ? steam.FirstOrDefault(s => s.AppId == extra.SteamAppId)
@@ -99,8 +107,9 @@ public static class GameOptimizerService
                 extra.SteamAppId = extra.InSteam ? existing.AppId : extra.SteamAppId;
                 extra.Status = extra.InSteam ? "In Steam" : "In Steam (extern)";
             }
-            else
-                extra.Status = "New";
+            else if (string.IsNullOrEmpty(extra.Status) || extra.Status == "New")
+                extra.Status = extra.IsManual ? "Manual" :
+                    extra.LaunchChoices.Count > 1 ? "Multiple launches — pick one" : "New";
             games.Add(extra);
         }
 
@@ -108,6 +117,34 @@ public static class GameOptimizerService
             .OrderBy(g => g.SystemName)
             .ThenBy(g => g.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    public static IReadOnlyList<OptimizerGame> ScanNativeApps(DeckClient client,
+        IProgress<string>? progress = null)
+    {
+        progress?.Report("Reading Steam shortcuts…");
+        var steam = LoadSteamIndex(client);
+        var apps = ExtraShortcuts.Scan(client, steam, ExtraScanMode.Apps, progress)
+            .Where(g => g.ShortcutKind == ShortcutKind.App)
+            .ToList();
+        foreach (var extra in apps)
+        {
+            var existing = extra.SteamAppId != 0
+                ? steam.FirstOrDefault(s => s.AppId == extra.SteamAppId)
+                : SteamShortcuts.FindOwnedByRom(steam, extra.RomPath)
+                  ?? SteamShortcuts.FindByRom(steam, extra.RomPath);
+            if (existing is not null)
+            {
+                extra.InSteam = SteamShortcuts.IsOwned(existing);
+                extra.SteamAppId = extra.InSteam ? existing.AppId : extra.SteamAppId;
+                extra.Status = extra.InSteam ? "In Steam" : "In Steam (external)";
+            }
+            else if (string.IsNullOrEmpty(extra.Status) || extra.Status == "New")
+                extra.Status = extra.IsManual ? "Manual" :
+                    extra.LaunchChoices.Count > 1 ? "Multiple launches — pick one" : "New";
+        }
+
+        return apps;
     }
 
     public static async Task<OptimizeReport> ApplyAsync(DeckClient client, AppCatalog catalog,

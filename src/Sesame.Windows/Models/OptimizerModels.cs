@@ -1,3 +1,4 @@
+using System.IO;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -52,8 +53,13 @@ public sealed class OptimizerGame : INotifyPropertyChanged
     public bool IsRomHack { get; set; }
     public bool IsTranslation { get; set; }
     public bool LaunchLocked { get; set; }
+    public bool IsManual { get; set; }
+    public string ManualId { get; set; } = "";
     public ShortcutKind ShortcutKind { get; set; } = ShortcutKind.Rom;
     public bool IsRom => ShortcutKind == ShortcutKind.Rom;
+    public List<LaunchChoice> LaunchChoices { get; set; } = new();
+    public string ChosenLaunch { get; set; } = "";
+    public bool HasLaunchChoices => LaunchChoices.Count > 1;
     public int? SteamGridDbId { get; set; }
     public string? SelectedGridUrl { get; set; }
     public string? SelectedWideUrl { get; set; }
@@ -71,10 +77,24 @@ public sealed class OptimizerGame : INotifyPropertyChanged
     public List<ArtworkChoice> ArtworkChoices { get; } = new();
     public string KindText => ShortcutKind switch
     {
-        ShortcutKind.Hydra => "Hydra",
         ShortcutKind.App => "App",
-        _ => IsTranslation ? "Translation" : IsRomHack ? "ROM-hack" : "—"
+        ShortcutKind.Rom => "Rom",
+        _ => "Game"
     };
+
+    public string TagsText
+    {
+        get
+        {
+            if (ShortcutKind == ShortcutKind.App) return "—";
+            if (ShortcutKind == ShortcutKind.Hydra) return "Hydra";
+            if (ShortcutKind == ShortcutKind.Game) return IsManual ? "Manual" : "—";
+            var tags = new List<string>();
+            if (IsRomHack) tags.Add("Hack");
+            if (IsTranslation) tags.Add("Translation");
+            return tags.Count == 0 ? "—" : string.Join(", ", tags);
+        }
+    }
 
     public string SteamText => InSteam ? "yes" : "no";
     public string ArtworkText => HasArtwork ? ArtworkSource : "missing";
@@ -100,7 +120,32 @@ public enum ShortcutKind
 {
     Rom,
     Hydra,
-    App
+    App,
+    Game
+}
+
+public sealed class LaunchChoice
+{
+    public string Exe { get; set; } = "";
+    public string StartDir { get; set; } = "";
+    public string Options { get; set; } = "";
+    public string RomPath { get; set; } = "";
+    public string Key => KeyOf(Exe, Options);
+    public string Label
+    {
+        get
+        {
+            var path = (RomPath.Length > 0 ? RomPath : Exe).Trim('"');
+            var name = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(name)) name = path;
+            var opts = Options.Trim();
+            if (opts.Length > 48) opts = opts[..45] + "…";
+            return string.IsNullOrEmpty(opts) ? name : name + "  ·  " + opts;
+        }
+    }
+
+    public static string KeyOf(string exe, string options) =>
+        ((exe ?? "").Trim() + "|" + (options ?? "").Trim()).ToLowerInvariant();
 }
 
 public sealed class ArtworkChoice : INotifyPropertyChanged

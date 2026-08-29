@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using Renci.SshNet.Common;
 using Sesame.Models;
 using Sesame.Services;
+using Sesame.Services.GameOptimizer;
 
 namespace Sesame;
 
@@ -41,6 +42,13 @@ public partial class MainWindow : Window
         VersionText.Text = AppVersion.Label;
         FileList.ItemsSource = Files;
         GameList.ItemsSource = Games;
+        ListColumns.Attach(FileList, Files, properties: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Name"] = nameof(RemoteItem.Label),
+            ["Size"] = nameof(RemoteItem.Size),
+            ["Modified"] = nameof(RemoteItem.LastWrite)
+        });
+        ListColumns.Attach(GameList, Games);
         _profiles.Load(_catalog.Profiles);
         _pins.Load();
         RebuildTargets();
@@ -50,6 +58,10 @@ public partial class MainWindow : Window
         StorePanel.SetGames(_catalog.StoreGames, []);
         OptimizerPanel.Attach(_client, _catalog);
         OptimizerPanel.StatusChanged += text => FooterText.Text = text;
+        AppsPanel.Attach(_client);
+        AppsPanel.StatusChanged += text => FooterText.Text = text;
+        AppsPanel.ManualChanged += OptimizerPanel.UpsertManual;
+        AppsPanel.ManualRemoved += OptimizerPanel.RemoveManual;
         StorePanel.InstallRequested += EnqueueStoreInstall;
         StorePanel.DeleteRequested += hit => _ = DeletePackAsync(hit);
         StorePanel.ToggleRequested += (hit, enabled) => _ = TogglePackAsync(hit, enabled);
@@ -240,13 +252,14 @@ public partial class MainWindow : Window
         var p = _client.ActiveProfile!;
         StatusText.Text = _client.IsLocal
             ? "Local on this Steam Deck"
-            : $"Verbonden met {p.Name} ({p.Host})";
+            : $"Connected to {p.Name} ({p.Host})";
         StatusText.Foreground = (Brush)FindResource("Ok");
         _client.ResizeShell(_termCols, _termRows);
         TermHint.Text = "  ·  click in the window and type  ·  Enter runs  ·  Ctrl+C stops";
         Navigate(_client.Home, push: false);
         await ScanSilent();
         OptimizerPanel.OnConnected();
+        AppsPanel.OnConnected();
     }
 
     private void ConnectOrWake(ConnectionProfile chosen, List<ConnectionProfile> fallback)
@@ -362,6 +375,7 @@ public partial class MainWindow : Window
     private void Disconnect_Click(object sender, RoutedEventArgs e)
     {
         OptimizerPanel.CancelBackgroundScan();
+        AppsPanel.Clear();
         _client.Disconnect();
         Files.Clear();
         Games.Clear();
@@ -448,8 +462,9 @@ public partial class MainWindow : Window
 
         if (e.Key == Key.F5)
         {
-            if (MainTabs.SelectedIndex == 1) ScanGames_Click(sender, e);
-            else if (MainTabs.SelectedIndex == 2) OptimizerPanel.StartBackgroundScan();
+            if (MainTabs.SelectedIndex == 2) ScanGames_Click(sender, e);
+            else if (MainTabs.SelectedIndex == 3) OptimizerPanel.StartBackgroundScan();
+            else if (MainTabs.SelectedIndex == 1) _ = AppsPanel.ScanAsync();
             else Refresh_Click(sender, e);
             e.Handled = true;
         }
@@ -661,9 +676,46 @@ public partial class MainWindow : Window
             OpenGameFolder(g.TexturePath, create: true);
     }
 
+    private void MainTabs_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (MainTabs.SelectedIndex == 1)
+            _ = AppsPanel.EnsureScannedAsync();
+    }
+
+    private void AddGame_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_client.IsConnected)
+        {
+            MessageBox.Show(this, "Connect to the Steam Deck first.", "Add game");
+            return;
+        }
+
+        var win = new ManualEntryWindow("Game", _client.IsLocal) { Owner = this };
+        if (win.ShowDialog() != true) return;
+        ManualShortcutStore.Upsert(win.Result);
+        var game = ManualShortcutStore.ToGame(win.Result);
+        var entry = ManualShortcutStore.ToLibraryEntry(win.Result);
+        if (!Games.Any(g => string.Equals(g.RomPath, entry.RomPath, StringComparison.OrdinalIgnoreCase)))
+            Games.Add(entry);
+        OptimizerPanel.UpsertManual(game);
+        FooterText.Text = entry.DisplayName + " added. It stays until you remove it.";
+    }
+
+    private void RemoveManualGame(GameEntry game)
+    {
+        if (!game.IsManual) return;
+        if (!string.IsNullOrEmpty(game.ManualId))
+        {
+            ManualShortcutStore.Delete(game.ManualId);
+            OptimizerPanel.RemoveManual(game.ManualId);
+        }
+        Games.Remove(game);
+        FooterText.Text = game.DisplayName + " removed.";
+    }
+
     private void SearchPacks_Click(object sender, RoutedEventArgs e)
     {
-        MainTabs.SelectedIndex = 2;
+        MainTabs.SelectedIndex = 4;
         if (GameList.SelectedItem is GameEntry g)
             StorePanel.Prefill(g.Identity);
     }
@@ -716,7 +768,7 @@ public partial class MainWindow : Window
             enabled: !string.IsNullOrEmpty(game.RomPath) && CartRom.IsSupportedSystem(game.System));
         AddMenu(GameMenu, "Search packs…", (_, _) =>
         {
-            MainTabs.SelectedIndex = 2;
+            MainTabs.SelectedIndex = 4;
             StorePanel.Prefill(game.Identity);
         });
         GameMenu.Items.Add(new Separator());
@@ -725,6 +777,11 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(game.RomPath))
                 PinPath(DeckClient.Parent(game.RomPath), game.DisplayName);
         }, enabled: !string.IsNullOrEmpty(game.RomPath));
+        if (game.IsManual)
+        {
+            GameMenu.Items.Add(new Separator());
+            AddMenu(GameMenu, "Remove", (_, _) => RemoveManualGame(game));
+        }
     }
 
     private static void AddMenu(ItemsControl parent, string header, RoutedEventHandler click, bool enabled = true)
@@ -1641,7 +1698,7 @@ public partial class MainWindow : Window
 
     private string RouteDestination(string localPath, string fallbackDir)
     {
-        if (GameList.SelectedItem is GameEntry { TitleId: not null } game && MainTabs.SelectedIndex == 1)
+        if (GameList.SelectedItem is GameEntry { TitleId: not null } game && MainTabs.SelectedIndex == 2)
             return game.ModPath ?? DeckClient.Combine(_catalog.EdenMods, game.TitleId);
 
         var ext = Path.GetExtension(localPath);
@@ -1931,6 +1988,14 @@ public partial class MainWindow : Window
             {
                 Games.Clear();
                 foreach (var g in games) Games.Add(g);
+                foreach (var item in ManualShortcutStore.Load()
+                             .Where(x => x.AddedByUser &&
+                                         x.Kind.Equals("Game", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var entry = ManualShortcutStore.ToLibraryEntry(item);
+                    if (!Games.Any(g => string.Equals(g.RomPath, entry.RomPath, StringComparison.OrdinalIgnoreCase)))
+                        Games.Add(entry);
+                }
                 BuildQuickAccess();
                 StorePanel.SetGames(_catalog.StoreGames, games.Select(x => x.Identity));
                 StorePanel.RefreshLocalState(installed);

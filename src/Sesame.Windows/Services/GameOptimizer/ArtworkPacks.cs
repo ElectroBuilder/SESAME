@@ -125,7 +125,7 @@ public static class ArtworkPacks
         "hero" => "Hero",
         "wide" => "Wide",
         "logo" => "Logo",
-        "icon" => "Icoon",
+        "icon" => "Icon",
         _ => "Cover"
     };
 }

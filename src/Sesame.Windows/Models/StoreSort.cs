@@ -80,10 +80,10 @@ public sealed class StoreSort
     {
         "Title" => Title,
         "Author" => Author,
-        "Added" => Newest,
-        "Updated" => Updated,
+        "Added" or "AddedUtc" => Newest,
+        "Updated" or "UpdatedUtc" => Updated,
         "Size" => Size,
-        "Status" => Status,
+        "Status" or "StatusText" => Status,
         _ => null
     };
 

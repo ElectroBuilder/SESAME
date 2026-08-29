@@ -150,6 +150,7 @@ public static class SteamShortcuts
         var collection = game.ShortcutKind switch
         {
             ShortcutKind.Hydra => "Hydra",
+            ShortcutKind.Game => "Games",
             ShortcutKind.App => "Apps",
             _ => string.IsNullOrWhiteSpace(game.SystemName) ? game.Category : game.SystemName
         };

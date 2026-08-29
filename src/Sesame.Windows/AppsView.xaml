@@ -1,0 +1,58 @@
+<UserControl x:Class="Sesame.AppsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="{DynamicResource Bg}">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
+                    BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Scan apps" Click="Scan_Click"
+                            ToolTip="Find native Deck apps (Kodi, Stremio, Hydra, EmuDeck, Lutris, browsers)"/>
+                    <Button Content="+ App" Click="AddApp_Click"
+                            ToolTip="Add an app the scanner missed. Name and executable path are enough."/>
+                    <Button Content="Choose launch" Click="PickLaunch_Click"
+                            ToolTip="When the same app was found more than once, pick the launch to keep."/>
+                    <Button Content="Remove" Click="Remove_Click"
+                            ToolTip="Remove a manually added app"/>
+                    <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="12,0,0,0"
+                               Foreground="{DynamicResource Muted}"
+                               Text="Connect to the Deck, then scan. Apps such as Kate are ignored."/>
+                </StackPanel>
+            </Border>
+            <ListView x:Name="AppList" BorderThickness="0">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Name" Width="220"
+                                        DisplayMemberBinding="{Binding DisplayName}"/>
+                        <GridViewColumn Header="Kind" Width="80"
+                                        DisplayMemberBinding="{Binding KindText}"/>
+                        <GridViewColumn Header="Tags" Width="140"
+                                        DisplayMemberBinding="{Binding TagsText}"/>
+                        <GridViewColumn Header="Source" Width="280"
+                                        DisplayMemberBinding="{Binding Target}"/>
+                        <GridViewColumn Header="Steam" Width="70"
+                                        DisplayMemberBinding="{Binding SteamText}"/>
+                        <GridViewColumn Header="Status" Width="160"
+                                        DisplayMemberBinding="{Binding Status}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </DockPanel>
+
+        <Grid x:Name="ProgressOverlay" Visibility="Collapsed" Panel.ZIndex="20">
+            <Border Background="{DynamicResource Bg}" Opacity="0.82"/>
+            <Border Width="480" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Accent}"
+                    BorderThickness="1.5" CornerRadius="14" Padding="28,24">
+                <StackPanel>
+                    <TextBlock x:Name="OverlayTitle" FontSize="20" FontWeight="SemiBold"
+                               TextWrapping="Wrap" Text="Reading apps…"/>
+                    <TextBlock x:Name="OverlayDetail" FontSize="14" Foreground="{DynamicResource Muted}"
+                               Margin="0,10,0,0" TextWrapping="Wrap"
+                               Text="This can take a moment while the Deck is busy."/>
+                    <ProgressBar Height="16" IsIndeterminate="True" Margin="0,18,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

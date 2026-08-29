@@ -49,7 +49,7 @@ public partial class ShellWindow : Window
             _session.Client.Dispose();
         };
         if (!_gameMode)
-            ShowPage(_optimizer, "Optimize");
+            ShowPage(_optimizer, "Artwork");
         Opened += async (_, _) =>
         {
             try
@@ -98,11 +98,11 @@ public partial class ShellWindow : Window
         FocusTile(_tile);
     }
 
-    private void NavOpt_Click(object? sender, RoutedEventArgs e) => ShowPage(_optimizer, "Optimize");
+    private void NavOpt_Click(object? sender, RoutedEventArgs e) => ShowPage(_optimizer, "Artwork");
     private void NavFiles_Click(object? sender, RoutedEventArgs e) => ShowPage(_files, "Files");
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => ShowPage(_settings, "Settings");
 
-    private void Tile0_Click(object? sender, RoutedEventArgs e) { _tile = 0; ShowPage(_optimizer, "Optimize"); }
+    private void Tile0_Click(object? sender, RoutedEventArgs e) { _tile = 0; ShowPage(_optimizer, "Artwork"); }
     private void Tile1_Click(object? sender, RoutedEventArgs e) { _tile = 1; ShowPage(_optimizer, "Bibliotheek"); }
     private void Tile2_Click(object? sender, RoutedEventArgs e) { _tile = 2; ShowPage(_files, "Files"); }
     private void Tile3_Click(object? sender, RoutedEventArgs e) { _tile = 3; ShowPage(_settings, "Settings"); }
@@ -181,7 +181,7 @@ public partial class ShellWindow : Window
         {
             if (_current == _optimizer) ShowPage(_files, "Files");
             else if (_current == _files) ShowPage(_settings, "Settings");
-            else ShowPage(_optimizer, "Optimize");
+            else ShowPage(_optimizer, "Artwork");
         }
     }
 

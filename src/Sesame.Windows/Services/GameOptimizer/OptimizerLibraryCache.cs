@@ -49,6 +49,18 @@ public sealed class OptimizerCacheEntry
     public string? SelectedLogoUrl { get; set; }
     public string? SelectedIconUrl { get; set; }
     public string ShortcutKind { get; set; } = "Rom";
+    public bool IsManual { get; set; }
+    public string ManualId { get; set; } = "";
+    public string ChosenLaunch { get; set; } = "";
+    public List<OptimizerCacheLaunch> LaunchChoices { get; set; } = new();
+}
+
+public sealed class OptimizerCacheLaunch
+{
+    public string Exe { get; set; } = "";
+    public string StartDir { get; set; } = "";
+    public string Options { get; set; } = "";
+    public string RomPath { get; set; } = "";
 }
 
 public static class OptimizerLibraryCache
@@ -67,7 +79,7 @@ public static class OptimizerLibraryCache
                 var file = Read(key) ?? ReadLegacy(host);
                 if (file?.Games is null || file.Games.Count == 0) return [];
                 if (!Matches(file, key, host)) return [];
-                return file.Games.Select(ToGame).ToList();
+                return ExtraShortcuts.Sanitize(file.Games.Select(ToGame)).ToList();
             }
             catch
             {
@@ -167,7 +179,17 @@ public static class OptimizerLibraryCache
         SelectedHeroUrl = game.SelectedHeroUrl,
         SelectedLogoUrl = game.SelectedLogoUrl,
         SelectedIconUrl = game.SelectedIconUrl,
-        ShortcutKind = game.ShortcutKind.ToString()
+        ShortcutKind = game.ShortcutKind.ToString(),
+        IsManual = game.IsManual,
+        ManualId = game.ManualId,
+        ChosenLaunch = game.ChosenLaunch,
+        LaunchChoices = game.LaunchChoices.Select(c => new OptimizerCacheLaunch
+        {
+            Exe = c.Exe,
+            StartDir = c.StartDir,
+            Options = c.Options,
+            RomPath = c.RomPath
+        }).ToList()
     };
 
     private static OptimizerGame ToGame(OptimizerCacheEntry e)
@@ -209,7 +231,17 @@ public static class OptimizerLibraryCache
             SelectedIconUrl = e.SelectedIconUrl,
             ShortcutKind = Enum.TryParse<ShortcutKind>(e.ShortcutKind, true, out var kind)
                 ? kind
-                : ShortcutKind.Rom
+                : ShortcutKind.Rom,
+            IsManual = e.IsManual,
+            ManualId = e.ManualId ?? "",
+            ChosenLaunch = e.ChosenLaunch ?? "",
+            LaunchChoices = (e.LaunchChoices ?? []).Select(c => new LaunchChoice
+            {
+                Exe = c.Exe,
+                StartDir = c.StartDir,
+                Options = c.Options,
+                RomPath = c.RomPath
+            }).ToList()
         };
         OptimizerPicks.Apply(game);
         return game;

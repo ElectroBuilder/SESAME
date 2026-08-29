@@ -1,0 +1,33 @@
+<Window x:Class="Sesame.ManualEntryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add"
+        Icon="pack://application:,,,/Assets/sesame-taskbar.ico"
+        Width="520" SizeToContent="Height"
+        MinWidth="420"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Bg}"
+        Foreground="{DynamicResource Text}">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Cancel" IsCancel="True" Click="Cancel_Click"/>
+            <Button Content="Add" Style="{StaticResource AccentButton}" IsDefault="True" Click="Save_Click"/>
+        </StackPanel>
+        <StackPanel>
+            <TextBlock x:Name="HintText" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"/>
+            <TextBlock Text="Name" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="NameBox"/>
+            <TextBlock Text="Executable path on the Deck" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="ExeBox"
+                         ToolTip="Full path, for example /usr/bin/kodi or a Flatpak command"/>
+                <Button x:Name="BrowseBtn" Grid.Column="1" Content="Browse…" Margin="8,0,0,0"
+                        Click="Browse_Click" Visibility="Collapsed"/>
+            </Grid>
+        </StackPanel>
+    </DockPanel>
+</Window>

@@ -55,9 +55,9 @@
     </Style>
 
     <Style x:Key="ChromeButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="#1A3A48"/>
-        <Setter Property="Foreground" Value="#F4FBFC"/>
-        <Setter Property="BorderBrush" Value="#00D9F5"/>
+        <Setter Property="Background" Value="{DynamicResource ChromeBg}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ChromeFg}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ChromeBorder}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
         <Setter Property="Padding" Value="12,7"/>
         <Setter Property="MinHeight" Value="34"/>
@@ -75,16 +75,16 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="#245566"/>
-                            <Setter TargetName="bd" Property="BorderBrush" Value="#7AF3FA"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource ChromeHover}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentHover}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="#123844"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource ChromePressed}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="bd" Property="Background" Value="#152830"/>
-                            <Setter TargetName="bd" Property="BorderBrush" Value="#3A6A78"/>
-                            <Setter Property="Foreground" Value="#8EB8C4"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource ChromeDisabledBg}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource ChromeDisabledBorder}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource ChromeDisabledFg}"/>
                             <Setter Property="Opacity" Value="1"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -282,23 +282,87 @@
         </Setter>
     </Style>
 
+    <Style x:Key="ColumnHeaderGripper" TargetType="Thumb">
+        <Setter Property="Width" Value="12"/>
+        <Setter Property="Cursor" Value="SizeWE"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="Transparent">
+                        <Rectangle x:Name="bar" Width="2" RadiusX="1" RadiusY="1"
+                                   Fill="{DynamicResource Accent}" Opacity="0.28"
+                                   HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="0,8"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="bar"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="bar"
+                                                         Storyboard.TargetProperty="Width"
+                                                         To="3.5" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="bar"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0.28" Duration="0:0:0.14"/>
+                                        <DoubleAnimation Storyboard.TargetName="bar"
+                                                         Storyboard.TargetProperty="Width"
+                                                         To="2" Duration="0:0:0.14"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="bar" Property="Opacity" Value="1"/>
+                            <Setter TargetName="bar" Property="Width" Value="3.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="GridViewColumnHeader">
         <Setter Property="Background" Value="{DynamicResource Header}"/>
         <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Padding" Value="8,7"/>
+        <Setter Property="Padding" Value="8,7,14,7"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="GridViewColumnHeader">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{DynamicResource Border}" BorderThickness="0,0,1,1"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                    </Border>
+                    <Grid>
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{DynamicResource Border}" BorderThickness="0,0,1,1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                        <Thumb x:Name="PART_HeaderGripper" Style="{StaticResource ColumnHeaderGripper}"
+                               HorizontalAlignment="Right"/>
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="Role" Value="Padding">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="GridViewColumnHeader">
+                            <Border Background="{DynamicResource Header}"
+                                    BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="TreeView">

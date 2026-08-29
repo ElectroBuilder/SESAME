@@ -79,7 +79,7 @@
                     <StackPanel>
                         <TextBlock Text="Category masks" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
                         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
-                                   Text="A colored bar with a console logo on top of the cover. Turn this on or off per platform. Hydra is off by default: those games often already have artwork. Apps (Kodi, Stremio, …) are also off by default. The Game Optimizer switch is the master: if it is off, nothing gets a mask."/>
+                                   Text="A colored bar with a console logo on top of the cover. Turn this on or off per platform. Hydra is off by default: those games often already have artwork. Apps (Kodi, Stremio, …) are also off by default. The Artwork mask switch is the master: if it is off, nothing gets a mask."/>
                         <CheckBox x:Name="MasksMasterBox" Content="Use category masks"
                                   Margin="0,0,0,14" Checked="MasksMaster_Changed" Unchecked="MasksMaster_Changed"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">

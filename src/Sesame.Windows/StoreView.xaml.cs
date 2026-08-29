@@ -52,6 +52,14 @@ public partial class StoreView : UserControl
         SortBox.SelectedItem = StoreSort.Popular;
         _mods.Load();
         _hitView.Filter = HitPassesFilter;
+        ListColumns.Attach(ResultList, _hitView, sort: false,
+            properties: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Added"] = nameof(PackHit.AddedUtc),
+                ["Updated"] = nameof(PackHit.UpdatedUtc),
+                ["Size"] = nameof(PackHit.Size),
+                ["Status"] = nameof(PackHit.StatusText)
+            });
         ApplySort();
     }
 
@@ -562,18 +570,24 @@ public partial class StoreView : UserControl
 
     private void SortHeader_Click(object sender, RoutedEventArgs e)
     {
-        if (e.OriginalSource is not GridViewColumnHeader { Column.Header: string header }) return;
-        var mapped = StoreSort.FromHeader(header);
+        if (e.OriginalSource is TextBox) return;
+        var header = HeaderOf(e.OriginalSource as DependencyObject);
+        if (header?.Column is null) return;
+        var key = ListColumns.TryInfo(header.Column, out var title, out var property)
+            ? title
+            : header.Column.Header as string;
+        if (string.IsNullOrEmpty(key) && property.Length > 0) key = property;
+        var mapped = StoreSort.FromHeader(key);
         if (mapped is not null)
         {
             SortBox.SelectedItem = mapped;
             return;
         }
 
-        var prop = header switch
+        var prop = key switch
         {
-            "Kind" => nameof(PackHit.Kind),
-            "Source" => nameof(PackHit.Source),
+            nameof(PackHit.Kind) or "Kind" => nameof(PackHit.Kind),
+            nameof(PackHit.Source) or "Source" => nameof(PackHit.Source),
             _ => nameof(PackHit.Title)
         };
         if (prop == _sortProperty)
@@ -588,6 +602,17 @@ public partial class StoreView : UserControl
             _sortDir = ListSortDirection.Ascending;
         }
         ApplySort();
+    }
+
+    private static GridViewColumnHeader? HeaderOf(DependencyObject? node)
+    {
+        while (node is not null)
+        {
+            if (node is GridViewColumnHeader header) return header;
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        return null;
     }
 
     private void ApplySort()

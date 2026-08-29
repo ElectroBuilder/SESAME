@@ -142,13 +142,20 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Title" Width="240" DisplayMemberBinding="{Binding Title}"/>
-                        <GridViewColumn Header="Kind" Width="100" DisplayMemberBinding="{Binding Kind}"/>
-                        <GridViewColumn Header="Author" Width="120" DisplayMemberBinding="{Binding Author}"/>
-                        <GridViewColumn Header="Added" Width="100" DisplayMemberBinding="{Binding AddedText}"/>
-                        <GridViewColumn Header="Updated" Width="100" DisplayMemberBinding="{Binding UpdatedText}"/>
-                        <GridViewColumn Header="Source" Width="110" DisplayMemberBinding="{Binding Source}"/>
-                        <GridViewColumn Header="Size" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
+                        <GridViewColumn Header="Title" Width="240"
+                                        DisplayMemberBinding="{Binding Title}"/>
+                        <GridViewColumn Header="Kind" Width="100"
+                                        DisplayMemberBinding="{Binding Kind}"/>
+                        <GridViewColumn Header="Author" Width="120"
+                                        DisplayMemberBinding="{Binding Author}"/>
+                        <GridViewColumn Header="Added" Width="100"
+                                        DisplayMemberBinding="{Binding AddedText}"/>
+                        <GridViewColumn Header="Updated" Width="100"
+                                        DisplayMemberBinding="{Binding UpdatedText}"/>
+                        <GridViewColumn Header="Source" Width="110"
+                                        DisplayMemberBinding="{Binding Source}"/>
+                        <GridViewColumn Header="Size" Width="80"
+                                        DisplayMemberBinding="{Binding SizeText}"/>
                         <GridViewColumn Header="Status" Width="170">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>

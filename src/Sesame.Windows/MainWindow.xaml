@@ -111,7 +111,7 @@
                 </DockPanel>
                 <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="{DynamicResource Bg}"/>
 
-                <TabControl Grid.Column="2" x:Name="MainTabs">
+                <TabControl Grid.Column="2" x:Name="MainTabs" SelectionChanged="MainTabs_Changed">
                     <TabItem Header="Files">
                         <DockPanel Background="{DynamicResource Bg}">
                             <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
@@ -160,9 +160,12 @@
                                                 </DataTemplate>
                                             </GridViewColumn.CellTemplate>
                                         </GridViewColumn>
-                                        <GridViewColumn Header="Type" Width="90" DisplayMemberBinding="{Binding Kind}"/>
-                                        <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeText}"/>
-                                        <GridViewColumn Header="Modified" Width="160" DisplayMemberBinding="{Binding LastWrite}"/>
+                                        <GridViewColumn Header="Type" Width="90"
+                                                        DisplayMemberBinding="{Binding Kind}"/>
+                                        <GridViewColumn Header="Size" Width="90"
+                                                        DisplayMemberBinding="{Binding SizeText}"/>
+                                        <GridViewColumn Header="Modified" Width="160"
+                                                        DisplayMemberBinding="{Binding LastWrite}"/>
                                     </GridView>
                                 </ListView.View>
                                 <ListView.ContextMenu>
@@ -183,12 +186,17 @@
                             </ListView>
                         </DockPanel>
                     </TabItem>
+                    <TabItem Header="Apps">
+                        <local:AppsView x:Name="AppsPanel"/>
+                    </TabItem>
                     <TabItem Header="Games">
                         <DockPanel Background="{DynamicResource Bg}">
                             <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
                                     BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="Scan library" Click="ScanGames_Click"/>
+                                    <Button Content="+ Game" Click="AddGame_Click"
+                                            ToolTip="Add a game the scanner missed. Name and executable path are enough."/>
                                     <Button Content="Open ROM folder" Click="OpenRom_Click"/>
                                     <Button Content="Open mods" Click="OpenMods_Click"/>
                                     <Button Content="Open saves" Click="OpenSaves_Click"/>
@@ -205,15 +213,26 @@
                                       ContextMenuOpening="GameList_ContextMenuOpening">
                                 <ListView.View>
                                     <GridView>
-                                        <GridViewColumn Header="Game" Width="240" DisplayMemberBinding="{Binding DisplayName}"/>
-                                        <GridViewColumn Header="File name" Width="260" DisplayMemberBinding="{Binding FileNameText}"/>
-                                        <GridViewColumn Header="System" Width="80" DisplayMemberBinding="{Binding System}"/>
-                                        <GridViewColumn Header="Kind" Width="90" DisplayMemberBinding="{Binding KindText}"/>
-                                        <GridViewColumn Header="Title ID" Width="150" DisplayMemberBinding="{Binding TitleIdText}"/>
-                                        <GridViewColumn Header="Mods" Width="60" DisplayMemberBinding="{Binding ModsText}"/>
-                                        <GridViewColumn Header="Saves" Width="60" DisplayMemberBinding="{Binding SavesText}"/>
-                                        <GridViewColumn Header="Account" Width="110" DisplayMemberBinding="{Binding SaveAccountName}"/>
-                                        <GridViewColumn Header="Path" Width="320" DisplayMemberBinding="{Binding RomPath}"/>
+                                        <GridViewColumn Header="Game" Width="220"
+                                                        DisplayMemberBinding="{Binding DisplayName}"/>
+                                        <GridViewColumn Header="File name" Width="240"
+                                                        DisplayMemberBinding="{Binding FileNameText}"/>
+                                        <GridViewColumn Header="System" Width="80"
+                                                        DisplayMemberBinding="{Binding System}"/>
+                                        <GridViewColumn Header="Kind" Width="70"
+                                                        DisplayMemberBinding="{Binding KindText}"/>
+                                        <GridViewColumn Header="Tags" Width="140"
+                                                        DisplayMemberBinding="{Binding TagsText}"/>
+                                        <GridViewColumn Header="Title ID" Width="140"
+                                                        DisplayMemberBinding="{Binding TitleIdText}"/>
+                                        <GridViewColumn Header="Mods" Width="70"
+                                                        DisplayMemberBinding="{Binding ModsText}"/>
+                                        <GridViewColumn Header="Saves" Width="70"
+                                                        DisplayMemberBinding="{Binding SavesText}"/>
+                                        <GridViewColumn Header="Account" Width="110"
+                                                        DisplayMemberBinding="{Binding SaveAccountName}"/>
+                                        <GridViewColumn Header="Path" Width="280"
+                                                        DisplayMemberBinding="{Binding RomPath}"/>
                                     </GridView>
                                 </ListView.View>
                                 <ListView.ContextMenu>
@@ -222,7 +241,7 @@
                             </ListView>
                         </DockPanel>
                     </TabItem>
-                    <TabItem Header="Game Optimizer">
+                    <TabItem Header="Artwork">
                         <local:GameOptimizerView x:Name="OptimizerPanel"/>
                     </TabItem>
                     <TabItem Header="Store">

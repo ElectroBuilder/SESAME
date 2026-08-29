@@ -100,7 +100,7 @@ public static class ArtworkClient
             {
                 "hero" => "Hero",
                 "logo" => "Logo",
-                "icon" => "Icoon",
+                "icon" => "Icon",
                 "wide" => "Wide",
                 _ => "Cover"
             };

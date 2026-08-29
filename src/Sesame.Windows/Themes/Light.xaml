@@ -18,10 +18,18 @@
     <Color x:Key="TermBgColor">#071018</Color>
     <Color x:Key="TermFgColor">#7EE8C7</Color>
     <Color x:Key="InkColor">#F4FBFC</Color>
-    <Color x:Key="BrandBarColor">#070B10</Color>
-    <Color x:Key="BrandTextColor">#F4FBFC</Color>
-    <Color x:Key="BrandMutedColor">#8EB8C4</Color>
-    <Color x:Key="BrandAccentColor">#00D9F5</Color>
+    <Color x:Key="BrandBarColor">#D7E8EE</Color>
+    <Color x:Key="BrandTextColor">#0A1C24</Color>
+    <Color x:Key="BrandMutedColor">#3D6570</Color>
+    <Color x:Key="BrandAccentColor">#0097A8</Color>
+    <Color x:Key="ChromeBgColor">#F7FBFC</Color>
+    <Color x:Key="ChromeFgColor">#0A1C24</Color>
+    <Color x:Key="ChromeBorderColor">#0097A8</Color>
+    <Color x:Key="ChromeHoverColor">#C5DCE3</Color>
+    <Color x:Key="ChromePressedColor">#B8EAF0</Color>
+    <Color x:Key="ChromeDisabledBgColor">#D7E8EE</Color>
+    <Color x:Key="ChromeDisabledBorderColor">#8BB3BF</Color>
+    <Color x:Key="ChromeDisabledFgColor">#5A7E88</Color>
 
     <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
     <SolidColorBrush x:Key="Panel" Color="{StaticResource PanelColor}"/>
@@ -45,4 +53,12 @@
     <SolidColorBrush x:Key="BrandText" Color="{StaticResource BrandTextColor}"/>
     <SolidColorBrush x:Key="BrandMuted" Color="{StaticResource BrandMutedColor}"/>
     <SolidColorBrush x:Key="BrandAccent" Color="{StaticResource BrandAccentColor}"/>
+    <SolidColorBrush x:Key="ChromeBg" Color="{StaticResource ChromeBgColor}"/>
+    <SolidColorBrush x:Key="ChromeFg" Color="{StaticResource ChromeFgColor}"/>
+    <SolidColorBrush x:Key="ChromeBorder" Color="{StaticResource ChromeBorderColor}"/>
+    <SolidColorBrush x:Key="ChromeHover" Color="{StaticResource ChromeHoverColor}"/>
+    <SolidColorBrush x:Key="ChromePressed" Color="{StaticResource ChromePressedColor}"/>
+    <SolidColorBrush x:Key="ChromeDisabledBg" Color="{StaticResource ChromeDisabledBgColor}"/>
+    <SolidColorBrush x:Key="ChromeDisabledBorder" Color="{StaticResource ChromeDisabledBorderColor}"/>
+    <SolidColorBrush x:Key="ChromeDisabledFg" Color="{StaticResource ChromeDisabledFgColor}"/>
 </ResourceDictionary>

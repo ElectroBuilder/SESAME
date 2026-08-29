@@ -9,7 +9,7 @@
     </Grid.RowDefinitions>
     <StackPanel Orientation="Horizontal" Margin="16" Spacing="8">
       <Button Classes="accent" Content="Scan" Click="Scan_Click"/>
-      <Button Classes="accent" Content="Optimize" Click="Apply_Click"/>
+      <Button Classes="accent" Content="Apply artwork" Click="Apply_Click"/>
       <Button Content="All on" Click="AllOn_Click"/>
       <Button Content="All off" Click="AllOff_Click"/>
     </StackPanel>

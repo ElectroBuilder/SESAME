@@ -20,9 +20,11 @@
         <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
                 BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="8,6">
             <StackPanel Orientation="Horizontal">
-                <Button Content="Optimize" Style="{StaticResource AccentButton}"
+                <Button Content="Apply artwork" Style="{StaticResource AccentButton}"
                         Click="OptimizeSelected_Click"
-                        ToolTip="Prepare shortcuts, artwork, category and FPS for Steam Game Mode"/>
+                        ToolTip="Write shortcuts, artwork, category and FPS for Steam Game Mode"/>
+                <Button Content="Choose launch" Click="PickLaunch_Click"
+                        ToolTip="When the same app was found more than once, pick the launch to keep."/>
                 <ComboBox x:Name="SystemFilter" Width="180" Margin="8,0,8,0"
                           SelectionChanged="Filter_Changed"/>
                 <TextBox x:Name="SearchBox" Width="220" KeyDown="Search_KeyDown"
@@ -60,15 +62,26 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Game" Width="220" DisplayMemberBinding="{Binding DisplayName}"/>
-                        <GridViewColumn Header="System" Width="130" DisplayMemberBinding="{Binding SystemName}"/>
-                        <GridViewColumn Header="Emulator" Width="150" DisplayMemberBinding="{Binding EmulatorName}"/>
-                        <GridViewColumn Header="Kind" Width="90" DisplayMemberBinding="{Binding KindText}"/>
-                        <GridViewColumn Header="Category" Width="160" DisplayMemberBinding="{Binding Category}"/>
-                        <GridViewColumn Header="FPS" Width="70" DisplayMemberBinding="{Binding FpsText}"/>
-                        <GridViewColumn Header="Steam" Width="70" DisplayMemberBinding="{Binding SteamText}"/>
-                        <GridViewColumn Header="Artwork" Width="110" DisplayMemberBinding="{Binding ArtworkText}"/>
-                        <GridViewColumn Header="Status" Width="130" DisplayMemberBinding="{Binding Status}"/>
+                        <GridViewColumn Header="Name" Width="200"
+                                        DisplayMemberBinding="{Binding DisplayName}"/>
+                        <GridViewColumn Header="System" Width="120"
+                                        DisplayMemberBinding="{Binding SystemName}"/>
+                        <GridViewColumn Header="Emulator" Width="130"
+                                        DisplayMemberBinding="{Binding EmulatorName}"/>
+                        <GridViewColumn Header="Kind" Width="70"
+                                        DisplayMemberBinding="{Binding KindText}"/>
+                        <GridViewColumn Header="Tags" Width="140"
+                                        DisplayMemberBinding="{Binding TagsText}"/>
+                        <GridViewColumn Header="Category" Width="140"
+                                        DisplayMemberBinding="{Binding Category}"/>
+                        <GridViewColumn Header="FPS" Width="70"
+                                        DisplayMemberBinding="{Binding FpsText}"/>
+                        <GridViewColumn Header="Steam" Width="70"
+                                        DisplayMemberBinding="{Binding SteamText}"/>
+                        <GridViewColumn Header="Artwork" Width="100"
+                                        DisplayMemberBinding="{Binding ArtworkText}"/>
+                        <GridViewColumn Header="Status" Width="120"
+                                        DisplayMemberBinding="{Binding Status}"/>
                     </GridView>
                 </ListView.View>
             </ListView>
@@ -236,7 +249,7 @@
                             </ListBox.ItemsPanel>
                         </ListBox>
                     </TabItem>
-                    <TabItem Header="Icoon">
+                    <TabItem Header="Icon">
                         <ListBox x:Name="IconList" BorderThickness="0" Background="{DynamicResource PanelAlt}"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  ItemTemplate="{StaticResource ArtThumb}"
