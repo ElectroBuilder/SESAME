@@ -104,21 +104,53 @@ install_cemuhook() {
   python3 -m pip install --user --upgrade --break-system-packages termcolor >>"$LOG" 2>&1 || true
 }
 
+# Count only separate Left/Right — Combined/pair does not count as "ready".
 joycon_evdev_count() {
   python3 - <<'PY' 2>/dev/null || echo 0
 import evdev
-names=("Nintendo Switch Left Joy-Con","Nintendo Switch Right Joy-Con",
-       "Nintendo Switch Combined Joy-Cons","Joy-Con (L)","Joy-Con (R)")
+left=("Nintendo Switch Left Joy-Con","Joy-Con (L)")
+right=("Nintendo Switch Right Joy-Con","Joy-Con (R)")
 n=0
 for path in evdev.list_devices():
     try:
         d=evdev.InputDevice(path)
     except Exception:
         continue
-    if any(d.name.startswith(x) or d.name==x for x in names):
+    name=d.name or ""
+    if any(name.startswith(x) or name==x for x in left+right):
         n+=1
 print(n)
 PY
+}
+
+joycon_combined_names() {
+  python3 - <<'PY' 2>/dev/null || true
+import evdev
+hits=[]
+for path in evdev.list_devices():
+    try:
+        d=evdev.InputDevice(path)
+    except Exception:
+        continue
+    name=(d.name or "")
+    low=name.lower()
+    if ("combined" in low and ("joy" in low or "switch" in low)) or "joycon-pair" in low or "joy-con pair" in low:
+        hits.append(name)
+print("\n".join(hits))
+PY
+}
+
+warn_combined() {
+  local hits
+  hits=$(joycon_combined_names)
+  if [ -n "$hits" ]; then
+    log "WARN: Combined/pair Joy-Con device(s) detected:"
+    while IFS= read -r line; do
+      [ -n "$line" ] && log "  - $line"
+    done <<<"$hits"
+    log "Re-pair each Joy-Con with SL+SR separately (not L+R). SESAME wires only DSU L+R;"
+    log "Combined may still appear in Dolphin's dropdown but will not be used as Wiimote Device."
+  fi
 }
 
 start_cemuhook() {
@@ -157,12 +189,14 @@ main() {
     exit 0
   fi
 
+  warn_combined
+
   local count
   count=$(joycon_evdev_count)
   if [ "$count" = "0" ]; then
-    log "No Nintendo Switch Joy-Con evdev devices — pair with SL+SR each (not L+R)"
+    log "No separate Left/Right Joy-Con evdev devices — pair with SL+SR each (not L+R / Combined)"
   else
-    log "Found $count joycond-compatible device(s)"
+    log "Found $count separate Left/Right Joy-Con device(s) (Combined excluded from count)"
   fi
 
   # Restart if already running so we always own 26761 (not 26760).

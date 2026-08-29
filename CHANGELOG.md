@@ -2,9 +2,9 @@
 
 ## 0.6.10 — 2026-08-29
 
-- Wii Joy-Cons via joycond-cemuhook: DSU pads use the real names (`Nintendo Switch Right/Left Joy-Con`), DualShock-style button aliases (Cross/Circle/…), and UDP **26761** (port file for Dolphin; Deck gyro stays on 26760).
-- Optimize forces **Steam Input Off** on Dolphin shortcuts so Steam no longer steals Joy-Cons from cemuhook.
-- Wrapper waits briefly after starting cemuhook before patching Dolphin config.
+- Wii Joy-Cons: when cemuhook DSU is up, Wiimote1 is **DSU-only** — Right = Wiimote, Left = Nunchuk on that same remote. No SDL Combined/pair OR-ed into bindings; Combined/joycon-pair is ignored as Device (may still appear in Dolphin’s dropdown — ignore it).
+- `WiimoteNew.ini` is fully overwritten each launch; Wiimote 2–4 stay off; GCPad is forced off Joy-Cons (Steam Virtual Gamepad).
+- DSU pad names (`Nintendo Switch Right/Left Joy-Con`), DualShock button aliases, UDP **26761** (Deck gyro stays on 26760); Optimize forces **Steam Input Off** on Dolphin shortcuts.
 
 ## 0.6.9 — 2026-08-29
 

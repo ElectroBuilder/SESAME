@@ -7,12 +7,13 @@ Default Joy-Con layout (single player — always):
 
 Wiimote 2–4 stay OFF unless SESAME_WII_MULTI=1.
 
-Motion (reliable): joycond-cemuhook DSU on UDP 26761 (started by sesame-joycon-dsu.sh).
-Default cemuhook port is 26760 — SESAME forces 26761 so SteamDeckGyroDSU can keep 26760.
-DSU pad names (from joycond-cemuhook): "Nintendo Switch Right Joy-Con" / "… Left Joy-Con".
-Fallback: SteamDeckGyroDSU / Deck IMU on 26760.
-Aiming without a sensor bar uses Dolphin IMUIR (gyro → pointer).
-Home on the Right Joy-Con recenters the pointer when it drifts.
+When joycond-cemuhook DSU is ok (UDP 26761):
+  Device bindings are DSU-ONLY — Nintendo Switch Right/Left Joy-Con.
+  No SDL Combined / pair / joycon-pair OR-ed in. Dolphin may still *list*
+  every OS pad in dropdowns; SESAME only wires Wiimote1 to DSU R + Nunchuk L.
+
+Fallback (no DSU): separate L/R SDL pads only — never Combined/pair as Device.
+GCPad is forced off Joy-Cons (Steam Virtual Gamepad).
 
 Guide: https://system-maid.neocities.org/post/joycond-cemuhook/
 Wiki: https://github.com/joaorb64/joycond-cemuhook/wiki
@@ -26,8 +27,10 @@ import re
 # joycond-cemuhook publishes these exact names over DSU (not "Joy-Con (R)").
 DSU_RIGHT = "Nintendo Switch Right Joy-Con"
 DSU_LEFT = "Nintendo Switch Left Joy-Con"
-DSU_RIGHT_ALT = "Joy-Con (R)"
-DSU_LEFT_ALT = "Joy-Con (L)"
+DSU_DEV_R = "DSUClient/0/%s" % DSU_RIGHT
+DSU_DEV_L = "DSUClient/0/%s" % DSU_LEFT
+
+SAFE_GCPAD = "SDL/0/Steam Virtual Gamepad"
 
 DECK_IMU = {
     "IMUAccelerometer/Up": "`SteamDeck/0/Steam Deck:Accel Up`|`DSUClient/0/steamdeckgyro:Accel Up`|`Accel Up`",
@@ -44,7 +47,6 @@ DECK_IMU = {
     "IMUGyroscope/Yaw Right": "`SteamDeck/0/Steam Deck:Gyro Yaw Right`|`DSUClient/0/steamdeckgyro:Gyro Yaw Right`|`Gyro Yaw Right`",
 }
 
-# Mouse IR only for Deck/pad fallback — fights gyro when Joy-Cons aim via IMUIR.
 CURSOR_IR = {
     "IR/Up": "`Cursor Y-`|`XInput2/0/Virtual core pointer:Cursor Y-`",
     "IR/Down": "`Cursor Y+`|`XInput2/0/Virtual core pointer:Cursor Y+`",
@@ -111,6 +113,27 @@ def is_xboxish(name):
     return any(x in low for x in ("x-box", "xbox 360", "xbox wireless", "xbox one", "xbox controller"))
 
 
+def is_combined_or_pair(name):
+    """Combined / joycon-pair / 'Nintendo Switch Combined Joy-Cons' — never wire these."""
+    low = (name or "").lower()
+    if "combined" in low and ("joy" in low or "switch" in low):
+        return True
+    if "joycon-pair" in low or "joy-con-pair" in low:
+        return True
+    if "joy-con pair" in low or "joycon pair" in low:
+        return True
+    if "pair" in low and "joy" in low and "pro" not in low:
+        return True
+    return False
+
+
+def is_joyconish(name):
+    low = (name or "").lower()
+    return "joy-con" in low or "joycon" in low or (
+        "nintendo switch" in low and "pro" not in low
+    )
+
+
 def sdl(name):
     return "SDL/0/%s" % name
 
@@ -121,6 +144,8 @@ def ref(device, control):
 
 def side_of(name):
     low = (name or "").lower()
+    if is_combined_or_pair(name):
+        return "C"
     if any(
         x in low
         for x in (
@@ -130,12 +155,9 @@ def side_of(name):
             "left joy-con",
             "joy-con left",
             "nintendo switch left joy-con",
-            "(l)",
         )
-    ) and "right" not in low and "(r)" not in low:
-        # bare "(l)" is risky; require joy/con context unless explicit left
-        if "joy" in low or "left" in low:
-            return "L"
+    ):
+        return "L"
     if any(
         x in low
         for x in (
@@ -152,8 +174,6 @@ def side_of(name):
         return "R"
     if ("(l)" in low or " left" in low) and "joy" in low:
         return "L"
-    if "combined" in low and ("joy" in low or "switch" in low):
-        return "C"
     if "joy-con" in low or "joycon" in low:
         return "?"
     return ""
@@ -179,17 +199,90 @@ def classify(pool):
     return left, right, combined, loose
 
 
-def wiimote_buttons(right_dev):
-    """Right Joy-Con held as Wiimote (Nintendo face layout).
+def dsu_status():
+    path = pathlib.Path(os.path.expanduser("~")) / ".local/share/sesame/joycon-dsu.status"
+    try:
+        return path.read_text(encoding="utf-8").strip().lower()
+    except Exception:
+        return ""
 
-    DSU from joycond-cemuhook uses DualShock-style names (Cross/Circle/…).
-    SDL / Switch names (East/South/A/B) stay as fallbacks.
-    """
+
+def dsu_ok():
+    return dsu_status() == "ok"
+
+
+def dsu_port():
+    env = os.environ.get("SESAME_JOYCON_DSU_PORT", "").strip()
+    if env.isdigit():
+        return env
+    path = pathlib.Path(os.path.expanduser("~")) / ".local/share/sesame/joycon-dsu.port"
+    try:
+        p = path.read_text(encoding="utf-8").strip()
+        if p.isdigit():
+            return p
+    except Exception:
+        pass
+    return "26761"
+
+
+def wiimote_buttons_dsu():
+    """Right Joy-Con via cemuhook DualShock-style names only (no SDL OR)."""
+    r = DSU_DEV_R
+
+    def b(*controls):
+        return "|".join(ref(r, c) for c in controls)
+
+    return {
+        "Buttons/A": b("Button Circle", "Button East", "Button A"),
+        "Buttons/B": b("Button Cross", "Button South", "Button B", "Button R2"),
+        "Buttons/1": b("Button Triangle", "Button North", "Button X"),
+        "Buttons/2": b("Button Square", "Button West", "Button Y"),
+        "Buttons/-": b("Button Share", "Button Minus", "Button Capture"),
+        "Buttons/+": b("Button Options", "Button Plus"),
+        "Buttons/Home": b("Button PS", "Button Home", "Button Guide"),
+        "D-Pad/Up": b("Pad N", "Hat 0 N", "Left Y-"),
+        "D-Pad/Down": b("Pad S", "Hat 0 S", "Left Y+"),
+        "D-Pad/Left": b("Pad W", "Hat 0 W", "Left X-"),
+        "D-Pad/Right": b("Pad E", "Hat 0 E", "Left X+"),
+        "Shake/X": b("Button R1", "Button SL", "Button SR"),
+        "Shake/Y": b("Button R1", "Button SL", "Button SR"),
+        "Shake/Z": b("Button R1", "Button SL", "Button SR"),
+    }
+
+
+def nunchuk_dsu():
+    """Left Joy-Con → Nunchuk, DSU only."""
+    l = DSU_DEV_L
+
+    def b(*controls):
+        return "|".join(ref(l, c) for c in controls)
+
+    keys = {
+        "Nunchuk/Buttons/C": b("Button L1", "Button SL", "Button L", "Shoulder L"),
+        "Nunchuk/Buttons/Z": b("Button L2", "Button ZL", "Trigger L", "Full Axis 2+"),
+        "Nunchuk/Stick/Up": b("Left Y-", "Axis 1-"),
+        "Nunchuk/Stick/Down": b("Left Y+", "Axis 1+"),
+        "Nunchuk/Stick/Left": b("Left X-", "Axis 0-"),
+        "Nunchuk/Stick/Right": b("Left X+", "Axis 0+"),
+    }
+    for key, axis in NUNCHUK_ACCEL:
+        keys[key] = ref(l, axis)
+    return keys
+
+
+def imu_dsu():
+    """MotionPlus from Right DSU pad only."""
+    out = {}
+    for key, axis in IMU_AXES:
+        out[key] = ref(DSU_DEV_R, axis)
+    return out
+
+
+def wiimote_buttons_sdl(right_dev):
     def b(*controls):
         return "|".join(ref(right_dev, c) for c in controls)
 
     return {
-        # Switch A=East=Circle; B=South=Cross; X=North=Triangle; Y=West=Square
         "Buttons/A": b("Button East", "Button Circle", "Button A", "EAST"),
         "Buttons/B": b(
             "Button South", "Button Cross", "Button B", "SOUTH",
@@ -210,81 +303,35 @@ def wiimote_buttons(right_dev):
     }
 
 
-def nunchuk_on(left_dev):
+def nunchuk_sdl(left_dev):
     def b(*controls):
         return "|".join(ref(left_dev, c) for c in controls)
 
     keys = {
-        "Nunchuk/Buttons/C": b(
-            "Button SL", "Button L", "Button L1", "Shoulder L", "TL",
-        ),
-        "Nunchuk/Buttons/Z": b(
-            "Button ZL", "Button L2", "Trigger L", "Full Axis 2+", "Axis 2+",
-        ),
+        "Nunchuk/Buttons/C": b("Button SL", "Button L", "Button L1", "Shoulder L", "TL"),
+        "Nunchuk/Buttons/Z": b("Button ZL", "Button L2", "Trigger L", "Full Axis 2+", "Axis 2+"),
         "Nunchuk/Stick/Up": b("Left Y-", "Axis 1-"),
         "Nunchuk/Stick/Down": b("Left Y+", "Axis 1+"),
         "Nunchuk/Stick/Left": b("Left X-", "Axis 0-"),
         "Nunchuk/Stick/Right": b("Left X+", "Axis 0+"),
     }
     for key, axis in NUNCHUK_ACCEL:
-        keys[key] = "|".join(
-            [
-                "`DSUClient/0/%s:%s`" % (DSU_LEFT, axis),
-                "`DSUClient/1/%s:%s`" % (DSU_LEFT, axis),
-                "`DSUClient/0/%s:%s`" % (DSU_LEFT_ALT, axis),
-                "`DSUClient/1/%s:%s`" % (DSU_LEFT_ALT, axis),
-                ref(left_dev, axis),
-                "`%s`" % axis,
-            ]
-        )
+        keys[key] = ref(left_dev, axis)
     return keys
 
 
-def imu_from_right(right_dev):
-    """Wiimote MotionPlus: Joy-Con DSU first, then SDL Right. Deck only last resort."""
+def imu_sdl(right_dev):
     out = {}
     for key, axis in IMU_AXES:
-        parts = [
-            "`DSUClient/0/%s:%s`" % (DSU_RIGHT, axis),
-            "`DSUClient/1/%s:%s`" % (DSU_RIGHT, axis),
-            "`DSUClient/0/%s:%s`" % (DSU_RIGHT_ALT, axis),
-            "`DSUClient/1/%s:%s`" % (DSU_RIGHT_ALT, axis),
-            ref(right_dev, axis),
-            "`SteamDeck/0/Steam Deck:%s`" % axis,
-            "`DSUClient/0/steamdeckgyro:%s`" % axis,
-            "`%s`" % axis,
-        ]
-        out[key] = "|".join(parts)
+        out[key] = "|".join(
+            [
+                ref(right_dev, axis),
+                "`SteamDeck/0/Steam Deck:%s`" % axis,
+                "`DSUClient/0/steamdeckgyro:%s`" % axis,
+                "`%s`" % axis,
+            ]
+        )
     return out
-
-
-def dsu_status():
-    path = pathlib.Path(os.path.expanduser("~")) / ".local/share/sesame/joycon-dsu.status"
-    try:
-        return path.read_text(encoding="utf-8").strip().lower()
-    except Exception:
-        return ""
-
-
-def dsu_port():
-    env = os.environ.get("SESAME_JOYCON_DSU_PORT", "").strip()
-    if env.isdigit():
-        return env
-    path = pathlib.Path(os.path.expanduser("~")) / ".local/share/sesame/joycon-dsu.port"
-    try:
-        p = path.read_text(encoding="utf-8").strip()
-        if p.isdigit():
-            return p
-    except Exception:
-        pass
-    return "26761"
-
-
-def primary_devices(right_name, left_name):
-    """Prefer DSU Joy-Con pads when cemuhook status is ok (correct cemuhook names)."""
-    if dsu_status() == "ok":
-        return "DSUClient/0/%s" % DSU_RIGHT, "DSUClient/0/%s" % DSU_LEFT
-    return sdl(right_name), sdl(left_name)
 
 
 def section_span(text, section):
@@ -328,11 +375,29 @@ def write_section(keys):
     return "\n".join("%s = %s" % (k, v) for k, v in keys.items()) + "\n"
 
 
-def build_pair(right_name, left_name):
-    right, left = primary_devices(right_name, left_name)
-    # Also keep SDL fallbacks in button expressions via dual device refs when on DSU.
-    right_sdl = sdl(right_name)
-    left_sdl = sdl(left_name)
+def build_dsu_only():
+    """Hardcoded DSU Right Wiimote + DSU Left Nunchuk — no SDL/Combined ORs."""
+    keys = {
+        "Device": DSU_DEV_R,
+        "Source": "1",
+        "Extension": "Nunchuk",
+        "Options/Sideways Wiimote": "False",
+        "IMUIR/Enabled": "True",
+        "IMUIR/Recenter": "`%s:Button PS`|`%s:Button Home`|MODE" % (DSU_DEV_R, DSU_DEV_R),
+        "IMUIR/Total Yaw": "16",
+        "IR/Auto-Hide": "False",
+        "Rumble/Motor": "Strong",
+    }
+    keys.update(wiimote_buttons_dsu())
+    keys.update(imu_dsu())
+    keys.update(nunchuk_dsu())
+    log("build_dsu_only device=%s nunchuk=%s port=%s" % (DSU_DEV_R, DSU_DEV_L, dsu_port()))
+    return "[Wiimote1]\n" + write_section(keys)
+
+
+def build_sdl_pair(right_name, left_name):
+    """Separate L/R SDL only — never Combined. Used when DSU is not ok."""
+    right, left = sdl(right_name), sdl(left_name)
     keys = {
         "Device": right,
         "Source": "1",
@@ -344,80 +409,39 @@ def build_pair(right_name, left_name):
         "IR/Auto-Hide": "False",
         "Rumble/Motor": "Strong",
     }
-    # Merge DSU + SDL button sources so either path works.
-    wb = wiimote_buttons(right)
-    if right.startswith("DSUClient"):
-        wb2 = wiimote_buttons(right_sdl)
-        for k, v in wb2.items():
-            wb[k] = wb[k] + "|" + v
-    keys.update(wb)
-    keys.update(imu_from_right(right if right.startswith("DSUClient") else right_sdl))
-    nk = nunchuk_on(left)
-    if left.startswith("DSUClient"):
-        nk2 = nunchuk_on(left_sdl)
-        for k, v in nk2.items():
-            if k.startswith("Nunchuk/Buttons") or k.startswith("Nunchuk/Stick"):
-                nk[k] = nk[k] + "|" + v
-    keys.update(nk)
-    log("build_pair device=%s nunchuk=%s status=%s" % (right, left, dsu_status()))
+    keys.update(wiimote_buttons_sdl(right))
+    keys.update(imu_sdl(right))
+    keys.update(nunchuk_sdl(left))
+    log("build_sdl_pair device=%s nunchuk=%s" % (right, left))
     return "[Wiimote1]\n" + write_section(keys)
 
 
-def build_combined(name):
-    """Single combined Joy-Con pad: Wiimote + Nunchuk on the same device."""
-    dev = sdl(name)
-    keys = {
-        "Device": dev,
-        "Source": "1",
-        "Extension": "Nunchuk",
-        "Options/Sideways Wiimote": "False",
-        "IMUIR/Enabled": "True",
-        "IMUIR/Recenter": "`Button Home`|`Button Guide`|MODE",
-        "IMUIR/Total Yaw": "16",
-        "IR/Auto-Hide": "False",
-        "Rumble/Motor": "Strong",
-        "Buttons/A": "`Button A`|`Button S`|SOUTH|EAST",
-        "Buttons/B": "`Button B`|`Button ZR`|`Trigger R`|EAST",
-        "Buttons/1": "`Button X`|NORTH",
-        "Buttons/2": "`Button Y`|WEST",
-        "Buttons/-": "`Button Minus`|SELECT",
-        "Buttons/+": "`Button Plus`|START",
-        "Buttons/Home": "`Button Home`|MODE",
-        "D-Pad/Up": "`Pad N`|`Right Y-`",
-        "D-Pad/Down": "`Pad S`|`Right Y+`",
-        "D-Pad/Left": "`Pad W`|`Right X-`",
-        "D-Pad/Right": "`Pad E`|`Right X+`",
-        "Shake/X": "`Button SL`|`Button SR`|TL",
-        "Shake/Y": "`Button SL`|`Button SR`|TL",
-        "Shake/Z": "`Button SL`|`Button SR`|TL",
-        "Nunchuk/Buttons/C": "`Button L`|`Shoulder L`|TL",
-        "Nunchuk/Buttons/Z": "`Button ZL`|`Trigger L`|`Full Axis 2+`",
-        "Nunchuk/Stick/Up": "`Left Y-`|`Axis 1-`",
-        "Nunchuk/Stick/Down": "`Left Y+`|`Axis 1+`",
-        "Nunchuk/Stick/Left": "`Left X-`|`Axis 0-`",
-        "Nunchuk/Stick/Right": "`Left X+`|`Axis 0+`",
-    }
-    keys.update(imu_from_right(dev))
-    return "[Wiimote1]\n" + write_section(keys)
-
-
-def pick_pair(pool):
+def pick_mode(pool):
+    """Choose wiring mode. Combined/pair is never the primary Device."""
     left, right, combined, loose = classify(pool)
-    log(
-        "devices left=%s right=%s combined=%s loose=%s all=%s"
-        % (left, right, combined, loose, [n for n in pool if "joy" in n.lower() or "switch" in n.lower()])
-    )
+    if combined:
+        log(
+            "WARN: Combined/pair device(s) present (IGNORED for Wiimote Device): %s — "
+            "re-pair each Joy-Con with SL+SR (not L+R). They may still appear in Dolphin's "
+            "dropdown but will not be wired." % combined
+        )
+
+    if dsu_ok():
+        log("mode=dsu (cemuhook ok) — ignoring /proc Combined and SDL Joy-Con names for Device")
+        return ("dsu", DSU_RIGHT, DSU_LEFT)
 
     if right and left:
         return ("pair", right[0], left[0])
+
+    # Never select Combined — fall through to Deck/virtual fallback.
     if combined:
-        return ("combined", combined[0], None)
-    # Two unlabeled Joy-Cons: treat first as Left, second as Right (common when names lack L/R).
-    if len(loose) >= 2:
+        log("Combined seen but DSU not ok and no separate L/R — using non-Joy-Con fallback")
+
+    if len(loose) >= 2 and not any(is_combined_or_pair(n) for n in loose):
         return ("pair", loose[1], loose[0])
-    if len(loose) == 1 and right:
+    if len(loose) == 1 and right and not is_combined_or_pair(loose[0]):
         return ("pair", right[0], loose[0])
-    if len(loose) == 1 and left:
+    if len(loose) == 1 and left and not is_combined_or_pair(loose[0]):
         return ("pair", loose[0], left[0])
     return (None, None, None)
 
@@ -427,7 +451,8 @@ def multi_enabled():
 
 
 def fallback_device(pool):
-    n = find(("joy-con", "nintendo switch combined", "nintendo switch pro"), pool)
+    """Never Joy-Con Combined/pair — prefer Deck / Steam Virtual Gamepad."""
+    n = find(("nintendo switch pro",), pool)
     if n:
         return sdl(n)
     n = find(("8bitdo",), pool)
@@ -437,11 +462,16 @@ def fallback_device(pool):
     if n:
         return sdl(n)
     n = find(("steam deck",), pool)
-    if n and "virtual" not in n.lower():
+    if n and "virtual" not in n.lower() and "joy" not in n.lower():
         return "SteamDeck/0/Steam Deck"
     if os.environ.get("SteamAppId") or os.environ.get("SteamGameId") or os.environ.get("SteamDeck"):
-        return "SDL/0/Steam Virtual Gamepad"
+        return SAFE_GCPAD
     return "SDL/0/Steam Deck Controller"
+
+
+def gcpad_device(pool):
+    """GCPad must never grab Joy-Cons / Combined."""
+    return SAFE_GCPAD
 
 
 def patch_dolphin_ini(path, wiimote_count):
@@ -484,48 +514,52 @@ def inactive_wiimotes(start=2):
     return "".join(parts)
 
 
-def write_joycon_config(path, kind, right_name, left_name):
-    if kind == "pair":
-        body = build_pair(right_name, left_name)
-        log("mode=pair right=%s left=%s → Wiimote1+Nunchuk only" % (right_name, left_name))
-    else:
-        body = build_combined(right_name)
-        log("mode=combined device=%s → Wiimote1+Nunchuk only" % right_name)
+def write_wiimote_full(path, body):
+    """Full overwrite — clears leftover Combined / Wiimote2 junk from prior runs."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body + inactive_wiimotes(2))
     return 1
 
 
 def patch_fallback(path, device):
-    cur = path.read_text(errors="ignore") if path.exists() else ""
-    if not cur.strip():
-        cur = "[Wiimote1]\nSource = 1\n"
-    cur = set_key(cur, "Wiimote1", "Source", "1")
-    cur = set_key(cur, "Wiimote1", "Device", device)
-    for k, v in DECK_IMU.items():
-        cur = set_key(cur, "Wiimote1", k, v)
-    for k, v in CURSOR_IR.items():
-        cur = set_key(cur, "Wiimote1", k, v)
-    cur = set_key(cur, "Wiimote1", "IMUIR/Enabled", "True")
-    cur = set_key(cur, "Wiimote1", "IMUIR/Total Yaw", "16")
-    cur = set_key(cur, "Wiimote1", "IMUIR/Recenter", "`Button Guide`|MODE")
-    if not get_key(cur, "Wiimote1", "Extension"):
-        cur = set_key(cur, "Wiimote1", "Extension", "Nunchuk")
-    # Force other remotes off so leftover Joy-Cons never become Wiimote2.
-    for i in range(2, 5):
-        cur = set_key(cur, "Wiimote%d" % i, "Source", "0")
-    path.write_text(cur)
+    """Deck/pad fallback — still full rewrite, never leave Combined Device."""
+    keys = {
+        "Device": device,
+        "Source": "1",
+        "Extension": "Nunchuk",
+        "Options/Sideways Wiimote": "False",
+        "IMUIR/Enabled": "True",
+        "IMUIR/Total Yaw": "16",
+        "IMUIR/Recenter": "`Button Guide`|MODE",
+        "Rumble/Motor": "Strong",
+    }
+    keys.update(DECK_IMU)
+    keys.update(CURSOR_IR)
+    body = "[Wiimote1]\n" + write_section(keys)
+    write_wiimote_full(path, body)
     return 1
 
 
 def patch_gcpad(path, device):
-    if not path.exists():
-        return
-    cur = path.read_text(errors="ignore")
+    """Force GCPad1 off Joy-Cons / Combined — full section rewrite when present."""
+    safe = device if device and not is_joyconish(device) else SAFE_GCPAD
+    if is_combined_or_pair(safe) or is_joyconish(safe):
+        safe = SAFE_GCPAD
+    cur = path.read_text(errors="ignore") if path.exists() else ""
     if not cur.strip():
+        # Write a minimal GCPad so leftover empty files don't get Joy-Cons later.
+        path.write_text("[GCPad1]\nDevice = %s\nSource = 0\n" % safe)
+        log("GCPadNew.ini created Device=%s (Source=0)" % safe)
         return
-    if get_key(cur, "GCPad1", "Device") or "[GCPad1]" in cur:
-        cur = set_key(cur, "GCPad1", "Device", device)
-        path.write_text(cur)
+    # Keep existing bindings but force Device away from Joy-Cons; disable if was Joy-Con.
+    was = get_key(cur, "GCPad1", "Device")
+    cur = set_key(cur, "GCPad1", "Device", safe)
+    if was and is_joyconish(was):
+        cur = set_key(cur, "GCPad1", "Source", "0")
+        log("GCPad1 was Joy-Con (%s) → Device=%s Source=0" % (was, safe))
+    else:
+        log("GCPad1 Device=%s (was %s)" % (safe, was or "(empty)"))
+    path.write_text(cur)
 
 
 def dirs():
@@ -538,8 +572,9 @@ def dirs():
 
 def main():
     pool = names()
-    kind, right_name, left_name = pick_pair(pool)
+    kind, right_name, left_name = pick_mode(pool)
     fallback = fallback_device(pool)
+    pad = gcpad_device(pool)
 
     for d in dirs():
         p = pathlib.Path(d)
@@ -547,33 +582,27 @@ def main():
             continue
         try:
             profiles = p / "Profiles" / "Wiimote"
-            if kind == "pair":
-                count = write_joycon_config(p / "WiimoteNew.ini", "pair", right_name, left_name)
-                body = build_pair(right_name, left_name)
+            if kind == "dsu":
+                body = build_dsu_only()
+                count = write_wiimote_full(p / "WiimoteNew.ini", body)
                 write_profile(profiles / "SESAME-joycon.ini", body)
                 write_profile(profiles / "SESAME-joycon-nunchuk.ini", body)
-                primary = sdl(right_name)
-            elif kind == "combined":
-                count = write_joycon_config(p / "WiimoteNew.ini", "combined", right_name, None)
-                body = build_combined(right_name)
+            elif kind == "pair":
+                body = build_sdl_pair(right_name, left_name)
+                count = write_wiimote_full(p / "WiimoteNew.ini", body)
                 write_profile(profiles / "SESAME-joycon.ini", body)
                 write_profile(profiles / "SESAME-joycon-nunchuk.ini", body)
-                primary = sdl(right_name)
             else:
-                log("mode=fallback device=%s (no Joy-Con L/R pair seen)" % fallback)
+                log("mode=fallback device=%s (no separate Joy-Con L/R; Combined ignored)" % fallback)
                 count = patch_fallback(p / "WiimoteNew.ini", fallback)
-                primary = fallback
 
-            # Multiplayer remotes only when explicitly requested.
-            if multi_enabled() and kind == "pair":
+            if multi_enabled() and kind in ("pair", "dsu"):
                 left, right, _, loose = classify(pool)
                 extras = right[1:] + left[1:] + loose
-                # Keep Wiimote1 as pair; add remotes without touching Wiimote1.
-                # (Advanced — default stays single Wiimote.)
                 log("SESAME_WII_MULTI extras ignored in this build beyond logging: %s" % extras)
 
             patch_dolphin_ini(p / "Dolphin.ini", count)
-            patch_gcpad(p / "GCPadNew.ini", primary)
+            patch_gcpad(p / "GCPadNew.ini", pad)
             enable_dsu(p / "DSUClient.ini")
         except Exception as ex:
             log("error in %s: %s" % (d, ex))
