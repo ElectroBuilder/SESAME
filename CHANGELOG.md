@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.12 — 2026-08-29
+
+- Connect shows a progress overlay (session N/N, waking, opening folders). Auto-connect skips the long Wake-on-LAN retry loop so dead sessions fail fast.
+- Settings → Emulators: joycond status runs off the UI thread (“Checking joycond…”) so opening Settings no longer freezes.
+- Flatpak app covers no longer inherit Stremio: match launch exe/options before DisplayName, scrub contaminated optimizer picks, and refuse artwork from a different catalog app.
+
 ## 0.6.11 — 2026-08-29
 
 - Wii Joy-Cons: **Combined-first** (press L+R) for single-player Wiimote+Nunchuk — one Device, one Steam player; cemuhook starts with `-r` (Right IMU). Separate L/R still works as fallback (cross-bind).

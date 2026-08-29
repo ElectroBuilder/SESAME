@@ -42,17 +42,20 @@ public static class OptimizerPicks
         game.Selected = pick.Selected;
         if (!string.IsNullOrWhiteSpace(pick.DisplayName) && AllowRename(game, pick.DisplayName))
             game.DisplayName = pick.DisplayName;
-        if (!string.IsNullOrWhiteSpace(pick.SearchQuery))
-            game.SearchQuery = pick.SearchQuery;
-        if (pick.SteamGridDbId is int id)
-            game.SteamGridDbId = id;
-        game.SelectedGridUrl = pick.SelectedGridUrl ?? game.SelectedGridUrl;
-        game.SelectedWideUrl = pick.SelectedWideUrl ?? game.SelectedWideUrl;
-        game.SelectedHeroUrl = pick.SelectedHeroUrl ?? game.SelectedHeroUrl;
-        game.SelectedLogoUrl = pick.SelectedLogoUrl ?? game.SelectedLogoUrl;
-        game.SelectedIconUrl = pick.SelectedIconUrl ?? game.SelectedIconUrl;
-        if (!string.IsNullOrWhiteSpace(pick.ArtworkSource))
-            game.ArtworkSource = pick.ArtworkSource;
+        if (AllowArtwork(game, pick))
+        {
+            if (!string.IsNullOrWhiteSpace(pick.SearchQuery))
+                game.SearchQuery = pick.SearchQuery;
+            if (pick.SteamGridDbId is int id)
+                game.SteamGridDbId = id;
+            game.SelectedGridUrl = pick.SelectedGridUrl ?? game.SelectedGridUrl;
+            game.SelectedWideUrl = pick.SelectedWideUrl ?? game.SelectedWideUrl;
+            game.SelectedHeroUrl = pick.SelectedHeroUrl ?? game.SelectedHeroUrl;
+            game.SelectedLogoUrl = pick.SelectedLogoUrl ?? game.SelectedLogoUrl;
+            game.SelectedIconUrl = pick.SelectedIconUrl ?? game.SelectedIconUrl;
+            if (!string.IsNullOrWhiteSpace(pick.ArtworkSource))
+                game.ArtworkSource = pick.ArtworkSource;
+        }
         if (pick.LaunchLocked &&
             HostAllowsLaunch(pick) &&
             LaunchComposer.ShouldKeepLaunch(pick.Target, pick.LaunchOptions))
@@ -133,6 +136,25 @@ public static class OptimizerPicks
         return string.Equals(current.Id, fromPick.Id, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Block re-applying Stremio (or other) artwork onto a different catalog app.
+    /// </summary>
+    private static bool AllowArtwork(OptimizerGame game, OptimizerPick pick)
+    {
+        if (game.ShortcutKind != ShortcutKind.App) return true;
+        if (!DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var current))
+            return true;
+        foreach (var proposed in new[] { pick.DisplayName, pick.SearchQuery })
+        {
+            if (string.IsNullOrWhiteSpace(proposed)) continue;
+            if (!DeckApps.TryMatch(proposed, proposed, "", out var fromPick))
+                continue;
+            if (!string.Equals(current.Id, fromPick.Id, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+        return true;
+    }
+
     private static bool HostAllowsLaunch(OptimizerPick pick) =>
         string.IsNullOrWhiteSpace(pick.Host) ||
         string.IsNullOrWhiteSpace(CurrentKey) ||
@@ -149,6 +171,13 @@ public static class OptimizerPicks
             AppDataPaths.RestrictFile(path);
             var list = JsonSerializer.Deserialize<List<OptimizerPick>>(File.ReadAllText(path), Json);
             if (list is null) return;
+            var dirty = false;
+            foreach (var pick in list)
+            {
+                if (ScrubContaminatedAppPick(pick))
+                    dirty = true;
+            }
+
             _map = list
                 .Where(p => !string.IsNullOrWhiteSpace(p.RomPath) || !string.IsNullOrWhiteSpace(p.PickKey))
                 .SelectMany(p =>
@@ -156,17 +185,88 @@ public static class OptimizerPicks
                     var entries = new List<KeyValuePair<string, OptimizerPick>>();
                     if (!string.IsNullOrWhiteSpace(p.PickKey))
                         entries.Add(new(p.PickKey, p));
-                    if (!string.IsNullOrWhiteSpace(p.RomPath))
+                    // Never index Flatpak apps by shared /usr/bin/flatpak (or any app| pick).
+                    if (ShouldIndexRomPath(p))
                         entries.Add(new(Key(p.RomPath), p));
                     return entries;
                 })
                 .GroupBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase);
+            if (dirty)
+                Save();
         }
         catch
         {
             _map = new Dictionary<string, OptimizerPick>(StringComparer.OrdinalIgnoreCase);
         }
+    }
+
+    private static bool ShouldIndexRomPath(OptimizerPick pick)
+    {
+        if (string.IsNullOrWhiteSpace(pick.RomPath)) return false;
+        if (IsAppPickKey(pick.PickKey)) return false;
+        var path = pick.RomPath.Replace('\\', '/');
+        if (path.Contains("/usr/bin/flatpak", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith("/flatpak", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return LooksLikeRomPath(path);
+    }
+
+    private static bool LooksLikeRomPath(string path)
+    {
+        var leaf = Path.GetFileName(path);
+        if (string.IsNullOrEmpty(leaf)) return false;
+        var ext = Path.GetExtension(leaf);
+        if (string.IsNullOrEmpty(ext)) return false;
+        return ext.ToLowerInvariant() is
+            ".iso" or ".wbfs" or ".rvz" or ".nso" or ".xci" or ".nsp" or ".nsz" or
+            ".nes" or ".sfc" or ".smc" or ".n64" or ".z64" or ".v64" or ".gb" or ".gbc" or ".gba" or
+            ".nds" or ".3ds" or ".cia" or ".cue" or ".chd" or ".pbp" or ".cso" or ".bin" or
+            ".zip" or ".7z" or ".rar" or ".gcm" or ".gcz" or ".wad" or ".dol" or ".elf";
+    }
+
+    private static bool IsAppPickKey(string? key) =>
+        (key ?? "").StartsWith("app|", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Clear Stremio (or other) artwork that was saved under a different app|id pick.
+    /// </summary>
+    private static bool ScrubContaminatedAppPick(OptimizerPick pick)
+    {
+        var key = pick.PickKey ?? "";
+        if (!IsAppPickKey(key)) return false;
+        var id = key["app|".Length..];
+        var catalog = DeckApps.ById(id);
+        if (catalog is null) return false;
+
+        var changed = false;
+        if (!string.IsNullOrWhiteSpace(pick.RomPath))
+        {
+            pick.RomPath = "";
+            changed = true;
+        }
+
+        if (!PickTextMatchesOtherApp(pick.DisplayName, catalog.Id) &&
+            !PickTextMatchesOtherApp(pick.SearchQuery, catalog.Id))
+            return changed;
+
+        pick.SelectedGridUrl = null;
+        pick.SelectedWideUrl = null;
+        pick.SelectedHeroUrl = null;
+        pick.SelectedLogoUrl = null;
+        pick.SelectedIconUrl = null;
+        pick.SteamGridDbId = null;
+        pick.ArtworkSource = null;
+        pick.SearchQuery = catalog.Title;
+        pick.DisplayName = catalog.Title;
+        return true;
+    }
+
+    private static bool PickTextMatchesOtherApp(string? text, string catalogId)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        if (!DeckApps.TryMatch(text, text, "", out var hit)) return false;
+        return !string.Equals(hit.Id, catalogId, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void Save()

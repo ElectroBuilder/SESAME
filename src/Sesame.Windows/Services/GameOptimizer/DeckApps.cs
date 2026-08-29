@@ -24,12 +24,26 @@ public static class DeckApps
         new("jellyfin", "Jellyfin", ["jellyfin", "org.jellyfin"])
     ];
 
+    /// <summary>
+    /// Match launch target (exe + options) before DisplayName so a wrong title
+    /// cannot steal another Flatpak app's id (e.g. Firefox named "Stremio").
+    /// </summary>
     public static bool TryMatch(string title, string exe, string options, out Entry entry)
     {
-        var hay = (title + " " + exe + " " + options).Replace('\\', '/');
+        var launch = (exe + " " + options).Replace('\\', '/');
         foreach (var item in Catalog)
         {
-            if (item.Needles.Any(n => TokenHit(hay, n)))
+            if (item.Needles.Any(n => TokenHit(launch, n)))
+            {
+                entry = item;
+                return true;
+            }
+        }
+
+        var name = (title ?? "").Replace('\\', '/');
+        foreach (var item in Catalog)
+        {
+            if (item.Needles.Any(n => TokenHit(name, n)))
             {
                 entry = item;
                 return true;
@@ -39,6 +53,9 @@ public static class DeckApps
         entry = Catalog[0];
         return false;
     }
+
+    public static Entry? ById(string? id) =>
+        Catalog.FirstOrDefault(e => string.Equals(e.Id, id, StringComparison.OrdinalIgnoreCase));
 
     public static int LaunchRank(string exe, string options)
     {

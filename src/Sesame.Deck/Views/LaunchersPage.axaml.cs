@@ -14,10 +14,12 @@ public partial class LaunchersPage : UserControl
     {
         InitializeComponent();
         Reload();
-        RefreshJoyCondStatus();
+        _ = RefreshJoyCondStatusAsync();
     }
 
-    public void RefreshJoyCondStatus()
+    public void RefreshJoyCondStatus() => _ = RefreshJoyCondStatusAsync();
+
+    public async Task RefreshJoyCondStatusAsync()
     {
         if (JoyCondStatus is null) return;
         if (!DeckSession.Current.Connected)
@@ -26,9 +28,11 @@ public partial class LaunchersPage : UserControl
             return;
         }
 
+        JoyCondStatus.Text = "Checking joycond…";
         try
         {
-            var st = JoyCondInstall.Query(DeckSession.Current.Client);
+            var client = DeckSession.Current.Client;
+            var st = await Task.Run(() => JoyCondInstall.Query(client));
             JoyCondStatus.Text =
                 "Status: joycond " + (st.JoyCondActive ? "active" : st.ActiveRaw) +
                 ", cemuhook " + (st.CemuhookOk ? "OK" : "not ready");
@@ -51,7 +55,7 @@ public partial class LaunchersPage : UserControl
 
         var win = new JoyCondInstallWindow();
         await win.ShowDialog(owner);
-        RefreshJoyCondStatus();
+        await RefreshJoyCondStatusAsync();
     }
 
     public void Reload()

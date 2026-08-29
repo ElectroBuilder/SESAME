@@ -197,8 +197,8 @@ public static class ExtraShortcuts
             {
                 if (!DeckApps.TryMatch(title, exe, options, out var app))
                     continue;
-                title = app.Title;
-                AddParsed(games, title, exe, start, options, ShortcutKind.App, "apps", "app", "Apps");
+                // Catalog title wins — never keep a contaminated DisplayName/SearchQuery.
+                AddParsed(games, app.Title, exe, start, options, ShortcutKind.App, "apps", "app", "Apps");
                 continue;
             }
 

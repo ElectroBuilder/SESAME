@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using Renci.SshNet.Common;
 using Sesame.Models;
@@ -86,7 +87,7 @@ public partial class MainWindow : Window
     {
         if (HostEnvironment.LocalAvailable && !HostEnvironment.ForceRemote)
         {
-            await ConnectToAsync(ConnectionProfile.LocalDeck(), quiet: true, trySiblings: false);
+            await ConnectToAsync(ConnectionProfile.LocalDeck(), quiet: true, trySiblings: false, wakeAttempts: 0);
             return;
         }
 
@@ -101,17 +102,30 @@ public partial class MainWindow : Window
 
         if (ordered.Count == 0) return;
 
-        foreach (var profile in ordered)
+        ShowWork("Connecting…", "Looking for a Steam Deck session…");
+        try
         {
-            FooterText.Text = "Trying " + profile.Name + " (" + profile.Host + ")…";
-            ProfileBox.SelectedItem = _targets.FirstOrDefault(t => t.Id == profile.Id) ?? ProfileBox.SelectedItem;
-            // Short timeout so dead sessions fail fast while walking the list.
-            await ConnectToAsync(profile, quiet: true, trySiblings: false, connectTimeoutSeconds: 5);
-            if (_client.IsConnected) return;
-        }
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                var profile = ordered[i];
+                ShowWork("Connecting…",
+                    "Trying session " + profile.Name + " (" + (i + 1) + "/" + ordered.Count + ")…");
+                await Dispatcher.Yield(DispatcherPriority.Render);
+                ProfileBox.SelectedItem = _targets.FirstOrDefault(t => t.Id == profile.Id) ?? ProfileBox.SelectedItem;
+                // No WoL loop on auto-connect — walk sessions fast with a short timeout.
+                await ConnectToAsync(profile, quiet: true, trySiblings: false,
+                    connectTimeoutSeconds: 5, wakeAttempts: 0, manageOverlay: false);
+                if (_client.IsConnected) return;
+                await Dispatcher.Yield(DispatcherPriority.Render);
+            }
 
-        FooterText.Text = "No session connected. Pick one and click Connect.";
-        StatusText.Text = "Not connected";
+            FooterText.Text = "No session connected. Pick one and click Connect.";
+            StatusText.Text = "Not connected";
+        }
+        finally
+        {
+            HideWork();
+        }
     }
 
     private void Settings_Click(object sender, RoutedEventArgs e)
@@ -255,7 +269,9 @@ public partial class MainWindow : Window
         ConnectionProfile selected,
         bool quiet = false,
         bool trySiblings = true,
-        int connectTimeoutSeconds = 12)
+        int connectTimeoutSeconds = 12,
+        int wakeAttempts = 8,
+        bool manageOverlay = true)
     {
         if (_busy) return;
         var chosen = selected.Clone();
@@ -268,13 +284,19 @@ public partial class MainWindow : Window
         TermHint.Text = "  ·  connecting…";
         ResetTerminal("");
         _busy = true;
-        FooterText.Text = chosen.IsLocal ? "Connecting locally…" : "Connecting to " + chosen.Host + "…";
+        var detail = chosen.IsLocal
+            ? "Opening local session…"
+            : "Connecting to " + chosen.Host + "…";
+        if (manageOverlay)
+            ShowWork("Connecting…", detail);
+        else
+            SetStatus(detail);
         try
         {
             if (chosen.IsLocal)
                 await Task.Run(() => _client.ConnectLocal());
             else
-                await Task.Run(() => ConnectOrWake(chosen, fallback, connectTimeoutSeconds));
+                await Task.Run(() => ConnectOrWake(chosen, fallback, connectTimeoutSeconds, wakeAttempts));
         }
         catch (Exception ex)
         {
@@ -291,6 +313,7 @@ public partial class MainWindow : Window
         if (!_client.IsConnected)
         {
             TermHint.Text = "  ·  click here and type a command";
+            if (manageOverlay) HideWork();
             return;
         }
 
@@ -302,7 +325,7 @@ public partial class MainWindow : Window
             : $"Connected to {p.Name} ({p.Host})";
         StatusText.Foreground = (Brush)FindResource("Ok");
         TermHint.Text = "  ·  click in the window and type  ·  Enter runs  ·  Ctrl+C stops";
-        FooterText.Text = "Connected — opening folders…";
+        SetStatus("Opening folders…");
 
         // List home first so the UI unlocks; MAC/layout must NOT hold the SSH gate beforehand.
         var home = _client.Home;
@@ -324,18 +347,24 @@ public partial class MainWindow : Window
             OptimizerPanel.OnConnected();
             AppsPanel.OnConnected();
             RefreshDashboard();
-        }, System.Windows.Threading.DispatcherPriority.Background);
+        }, DispatcherPriority.Background);
+
+        if (manageOverlay) HideWork();
     }
 
-    private void ConnectOrWake(ConnectionProfile chosen, List<ConnectionProfile> fallback, int timeoutSeconds = 12)
+    private void ConnectOrWake(
+        ConnectionProfile chosen,
+        List<ConnectionProfile> fallback,
+        int timeoutSeconds = 12,
+        int wakeAttempts = 8)
     {
         Exception? last = null;
-        if (TryConnectOrWake(chosen, timeoutSeconds, out last)) return;
+        if (TryConnectOrWake(chosen, timeoutSeconds, wakeAttempts, out last)) return;
         if (last is not null && !LooksLikeNetworkFailure(last))
             throw last;
         foreach (var other in fallback)
         {
-            if (TryConnectOrWake(other, timeoutSeconds, out last)) return;
+            if (TryConnectOrWake(other, timeoutSeconds, wakeAttempts, out last)) return;
             if (last is not null && !LooksLikeNetworkFailure(last))
                 throw last;
         }
@@ -343,10 +372,14 @@ public partial class MainWindow : Window
             "No SSH connection to the Steam Deck. Check host, port and key. If the Deck is asleep, fill in the MAC address under Sessions…");
     }
 
-    private bool TryConnectOrWake(ConnectionProfile profile, int timeoutSeconds, out Exception? error)
+    private bool TryConnectOrWake(
+        ConnectionProfile profile,
+        int timeoutSeconds,
+        int wakeAttempts,
+        out Exception? error)
     {
         error = null;
-        Dispatcher.BeginInvoke(() => FooterText.Text = "Connecting to " + profile.Host + "…");
+        ReportConnect("Connecting to " + profile.Host + "…");
         try
         {
             _client.Connect(profile, timeoutSeconds);
@@ -362,18 +395,22 @@ public partial class MainWindow : Window
             error = ex;
         }
 
+        // Auto-connect passes wakeAttempts: 0 — skip the long WoL reconnect loop.
+        if (wakeAttempts <= 0) return false;
+
         var mac = WakeOnLan.ResolveMac(profile);
         if (mac is null) return false;
 
-        Dispatcher.BeginInvoke(() => FooterText.Text = "No SSH reply — waking the Deck…");
+        ReportConnect("Waking Deck…");
         try { WakeOnLan.Send(mac, profile.Host); }
         catch { return false; }
 
-        for (var i = 0; i < 20; i++)
+        var max = Math.Clamp(wakeAttempts, 1, 10);
+        for (var i = 0; i < max; i++)
         {
             if (i > 0) Thread.Sleep(1000);
             var n = i + 1;
-            Dispatcher.BeginInvoke(() => FooterText.Text = "Reconnecting… (" + n + ")");
+            ReportConnect("Reconnecting… (" + n + "/" + max + ")");
             try
             {
                 _client.Connect(profile, timeoutSeconds);
@@ -383,13 +420,23 @@ public partial class MainWindow : Window
             {
                 error = ex;
                 if (!LooksLikeNetworkFailure(ex)) return false;
-                if (n is 6 or 12)
+                if (n is 4 or 8)
                 {
                     try { WakeOnLan.Send(mac, profile.Host); } catch { /* extra magic packet */ }
                 }
             }
         }
         return false;
+    }
+
+    private void ReportConnect(string text)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            FooterText.Text = text;
+            if (_workOpen)
+                WorkDetail.Text = text;
+        });
     }
 
     private static bool LooksLikeNetworkFailure(Exception ex)
