@@ -4,11 +4,9 @@
   <ScrollViewer>
     <StackPanel Margin="24" Spacing="14" MaxWidth="720" HorizontalAlignment="Left">
       <TextBlock Text="Settings" FontSize="26" FontWeight="Bold"/>
-      <TextBlock TextWrapping="Wrap" Foreground="#8EB8C4"
-                 Text="SESAME can manage this Steam Deck locally (no SSH) or over SSH from another machine."/>
 
       <TextBlock Text="Library folders" FontWeight="SemiBold" Margin="0,12,0,0"/>
-      <TextBlock TextWrapping="Wrap" Foreground="#8EB8C4"
+      <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
                  Text="Set the ROM root and where Hydra, Lutris and other non-Steam games live. SESAME then creates empty system folders and Switch mods/saves for the emulators you use. No game titles are written."/>
       <TextBlock Text="ROMs" FontWeight="SemiBold"/>
       <TextBox x:Name="RomsRootBox" Watermark="/home/deck/Emulation/roms"/>
@@ -19,7 +17,7 @@
       <TextBlock Text="Other non-Steam games" FontWeight="SemiBold"/>
       <TextBox x:Name="OtherGamesBox" Watermark="/home/deck/Games/Other"/>
       <TextBlock Text="Switch emulators" FontWeight="SemiBold" Margin="0,8,0,0"/>
-      <TextBlock TextWrapping="Wrap" Foreground="#8EB8C4"
+      <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
                  Text="Mods and save folders are created only for the Switch emulators you check."/>
       <StackPanel Spacing="6">
         <CheckBox x:Name="UseEdenBox" Content="Eden"/>
@@ -30,21 +28,30 @@
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Classes="accent" Content="Save and create folders" Click="SaveLibrary_Click" HorizontalAlignment="Left"/>
       </StackPanel>
-      <TextBlock x:Name="LibraryStatus" Foreground="#00D9F5" TextWrapping="Wrap"/>
+      <TextBlock x:Name="LibraryStatus" Foreground="{DynamicResource Accent}" TextWrapping="Wrap"/>
 
       <TextBlock Text="SteamGridDB API key" FontWeight="SemiBold" Margin="0,12,0,0"/>
       <TextBox x:Name="KeyBox" PasswordChar="•" Watermark="Paste your key"/>
       <Button Classes="accent" Content="Save" Click="SaveKey_Click" HorizontalAlignment="Left"/>
-      <TextBlock x:Name="KeyStatus" Foreground="#00D9F5"/>
+      <TextBlock x:Name="KeyStatus" Foreground="{DynamicResource Accent}"/>
       <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,12,0,0"/>
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="Dark" Click="Dark_Click"/>
         <Button Content="Light" Click="Light_Click"/>
       </StackPanel>
-      <TextBlock Text="Session" FontWeight="SemiBold" Margin="0,12,0,0"/>
-      <TextBlock x:Name="HostInfo" TextWrapping="Wrap"/>
-      <Button Content="Switch to Desktop Mode (SteamOS)" Click="Desktop_Click" HorizontalAlignment="Left"/>
-      <TextBlock FontSize="13" Foreground="#8EB8C4" TextWrapping="Wrap"
+
+      <TextBlock Text="Updates" FontWeight="SemiBold" Margin="0,12,0,0"/>
+      <TextBlock x:Name="UpdateVersion" TextWrapping="Wrap"/>
+      <TextBlock x:Name="UpdateNotes" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Check for updates" Click="CheckUpdate_Click"/>
+        <Button x:Name="InstallUpdateBtn" Classes="accent" Content="Install and restart"
+                IsEnabled="False" Click="InstallUpdate_Click"/>
+      </StackPanel>
+      <TextBlock x:Name="UpdateStatus" Foreground="{DynamicResource Accent}" TextWrapping="Wrap"/>
+
+      <Button Content="Switch to Desktop Mode (SteamOS)" Click="Desktop_Click" HorizontalAlignment="Left" Margin="0,12,0,0"/>
+      <TextBlock FontSize="13" Foreground="{DynamicResource Muted}" TextWrapping="Wrap"
                  Text="Optimize briefly closes Steam. Do that in Desktop Mode if SESAME is running from Game Mode."/>
     </StackPanel>
   </ScrollViewer>

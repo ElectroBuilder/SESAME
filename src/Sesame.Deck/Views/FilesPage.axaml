@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Sesame.Deck.Views.FilesPage">
   <DockPanel>
-    <Border DockPanel.Dock="Top" Background="#0B1218" Padding="8,6" BorderBrush="#1E4A58" BorderThickness="0,0,0,1">
+    <Border DockPanel.Dock="Top" Background="{DynamicResource Panel}" Padding="8,6" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
       <StackPanel Orientation="Horizontal" Spacing="6">
         <Button Content="Back" Click="Back_Click"/>
         <Button Content="Up" Click="Up_Click"/>
@@ -23,19 +23,19 @@
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="*"/>
       </Grid.RowDefinitions>
-      <TextBlock Grid.Column="1" Text="Name" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
-      <TextBlock Grid.Column="2" Text="Type" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
-      <TextBlock Grid.Column="3" Text="Size" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
-      <TextBlock Grid.Column="4" Text="Modified" FontWeight="SemiBold" Margin="8,6" Foreground="#8EB8C4"/>
+      <TextBlock Grid.Column="1" Text="Name" FontWeight="SemiBold" Margin="8,6" Foreground="{DynamicResource Muted}"/>
+      <TextBlock Grid.Column="2" Text="Type" FontWeight="SemiBold" Margin="8,6" Foreground="{DynamicResource Muted}"/>
+      <TextBlock Grid.Column="3" Text="Size" FontWeight="SemiBold" Margin="8,6" Foreground="{DynamicResource Muted}"/>
+      <TextBlock Grid.Column="4" Text="Modified" FontWeight="SemiBold" Margin="8,6" Foreground="{DynamicResource Muted}"/>
       <ListBox x:Name="FileList" Grid.Row="1" Grid.ColumnSpan="5" DoubleTapped="Open_Double">
         <ListBox.ItemTemplate>
           <DataTemplate>
             <Grid ColumnDefinitions="56,*,90,90,180">
-              <TextBlock Text="{Binding Glyph}" FontSize="16" VerticalAlignment="Center" Margin="8,4" Foreground="#00D9F5"/>
+              <TextBlock Text="{Binding Glyph}" FontSize="16" VerticalAlignment="Center" Margin="8,4" Foreground="{DynamicResource Accent}"/>
               <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center"/>
-              <TextBlock Grid.Column="2" Text="{Binding Kind}" VerticalAlignment="Center" Foreground="#8EB8C4"/>
-              <TextBlock Grid.Column="3" Text="{Binding SizeText}" VerticalAlignment="Center" Foreground="#8EB8C4"/>
-              <TextBlock Grid.Column="4" Text="{Binding LastWrite}" VerticalAlignment="Center" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="2" Text="{Binding Kind}" VerticalAlignment="Center" Foreground="{DynamicResource Muted}"/>
+              <TextBlock Grid.Column="3" Text="{Binding SizeText}" VerticalAlignment="Center" Foreground="{DynamicResource Muted}"/>
+              <TextBlock Grid.Column="4" Text="{Binding LastWrite}" VerticalAlignment="Center" Foreground="{DynamicResource Muted}"/>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>

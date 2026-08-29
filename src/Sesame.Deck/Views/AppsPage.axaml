@@ -3,13 +3,13 @@
              x:Class="Sesame.Deck.Views.AppsPage">
   <Grid>
     <DockPanel>
-      <Border DockPanel.Dock="Top" Background="#0B1218" Padding="8,6" BorderBrush="#1E4A58" BorderThickness="0,0,0,1">
+      <Border DockPanel.Dock="Top" Background="{DynamicResource Panel}" Padding="8,6" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <Button Content="Scan apps" Click="Scan_Click"/>
           <Button Classes="accent" Content="+ App" Click="Add_Click"/>
           <Button Content="Choose launch" Click="Pick_Click"/>
           <Button Content="Remove" Click="Remove_Click"/>
-          <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#8EB8C4"
+          <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource Muted}"
                      Text="Native Deck apps. Duplicates are merged."/>
         </StackPanel>
       </Border>
@@ -18,11 +18,11 @@
           <DataTemplate>
             <Grid ColumnDefinitions="220,80,120,*,80,160" Margin="4,6">
               <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
-              <TextBlock Grid.Column="1" Text="{Binding KindText}" Foreground="#8EB8C4"/>
-              <TextBlock Grid.Column="2" Text="{Binding TagsText}" Foreground="#8EB8C4"/>
-              <TextBlock Grid.Column="3" Text="{Binding Target}" TextTrimming="CharacterEllipsis" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="1" Text="{Binding KindText}" Foreground="{DynamicResource Muted}"/>
+              <TextBlock Grid.Column="2" Text="{Binding TagsText}" Foreground="{DynamicResource Muted}"/>
+              <TextBlock Grid.Column="3" Text="{Binding Target}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Muted}"/>
               <TextBlock Grid.Column="4" Text="{Binding SteamText}"/>
-              <TextBlock Grid.Column="5" Text="{Binding Status}" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="5" Text="{Binding Status}" Foreground="{DynamicResource Muted}"/>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>

@@ -14,6 +14,7 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         AppDataPaths.EnsureProtected();
+        DeckTheme.LoadSaved();
         OptimizerSettings.Load();
         LaunchConfigStore.Load();
         LibraryPaths.Load();

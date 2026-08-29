@@ -70,7 +70,7 @@ public partial class OptimizerPage : UserControl
         var session = DeckSession.Current;
         if (!session.Connected)
         {
-            Hint.Text = "Connect first (This Deck).";
+            Hint.Text = "Connect first.";
             return;
         }
         _busy = true;

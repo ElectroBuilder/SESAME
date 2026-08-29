@@ -93,6 +93,6 @@ public static class HostEnvironment
 
     public static string RuntimeLabel =>
         LocalAvailable
-            ? (IsSteamOs ? "Steam Deck" : "Linux (lokaal)")
+            ? (IsSteamOs ? "Steam Deck" : "Linux (local)")
             : RuntimeInformation.OSDescription;
 }

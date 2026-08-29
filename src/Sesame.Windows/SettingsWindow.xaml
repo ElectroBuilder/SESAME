@@ -157,6 +157,25 @@
             <TabItem Header="Emulators">
                 <local:LaunchersView x:Name="Launchers" Margin="4,12,4,0"/>
             </TabItem>
+            <TabItem Header="Updates">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,12,4,4">
+                    <StackPanel MaxWidth="640" HorizontalAlignment="Left">
+                        <TextBlock Text="SESAME updates" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="UpdateVersion" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
+                                   Text="Checks GitHub for a newer release, downloads the Windows build, replaces the installed files and restarts SESAME."/>
+                        <TextBlock x:Name="UpdateNotes" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
+                                   Margin="0,0,0,16"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Button Content="Check for updates" Click="CheckUpdate_Click"/>
+                            <Button x:Name="InstallUpdateBtn" Content="Install and restart"
+                                    Style="{StaticResource AccentButton}" IsEnabled="False"
+                                    Click="InstallUpdate_Click"/>
+                        </StackPanel>
+                        <TextBlock x:Name="UpdateStatus" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

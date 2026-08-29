@@ -35,17 +35,49 @@ jobs:
       - run: dotnet publish src/Sesame.Deck/Sesame.Deck.csproj -c Release -r linux-x64 --self-contained true -o artifacts/linux-x64
       - run: test -s artifacts/linux-x64/SESAME
       - run: chmod +x artifacts/linux-x64/SESAME
-      - run: tar -czf sesame-linux-x64.tar.gz -C artifacts/linux-x64 .
-      - run: tar -tzf sesame-linux-x64.tar.gz | grep -E '(^|/)SESAME$'
       - uses: actions/upload-artifact@v4
         with:
           name: sesame-linux-x64
           path: artifacts/linux-x64
-      - name: Publish Linux release tarball
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+  release:
+    needs: [windows, linux]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sesame-windows
+          path: pack/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: sesame-linux-x64
+          path: pack/linux-x64
+      - name: Pack versioned assets
+        run: |
+          VERSION=$(python3 -c "import re; print(re.search(r'<Version>([^<]+)', open('Directory.Build.props', encoding='utf-8').read()).group(1))")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          python3 .github/scripts/changelog_section.py "$VERSION" > release-notes.md
+          python3 -c "import shutil; shutil.make_archive('sesame-windows', 'zip', 'pack/windows')"
+          tar -czf sesame-linux-x64.tar.gz -C pack/linux-x64 .
+          test -s sesame-windows.zip
+          test -s sesame-linux-x64.tar.gz
+          tar -tzf sesame-linux-x64.tar.gz | grep -E '(^|/)SESAME$'
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: SESAME ${{ env.VERSION }}
+          body_path: release-notes.md
+          make_latest: true
+          files: |
+            sesame-windows.zip
+            sesame-linux-x64.tar.gz
+      - name: Refresh linux tag (installer fallback)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: linux
           name: SESAME Linux
-          make_latest: true
+          make_latest: false
           files: sesame-linux-x64.tar.gz

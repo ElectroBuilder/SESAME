@@ -19,7 +19,7 @@ public sealed class DeckSession
     public bool Local => Client.IsLocal;
     public string Status =>
         !Client.IsConnected ? "Not connected"
-        : Client.IsLocal ? "Local on this Steam Deck"
+        : Client.IsLocal ? ""
         : "SSH · " + (Client.ActiveProfile?.Name ?? Client.ActiveProfile?.Host ?? "");
 
     public DeckSession()

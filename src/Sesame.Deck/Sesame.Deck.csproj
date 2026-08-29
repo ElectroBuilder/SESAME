@@ -8,13 +8,13 @@
     <AssemblyName>SESAME</AssemblyName>
     <Product>SESAME</Product>
     <Description>Steam Easy Shortcut Artwork Manager Engine</Description>
-    <Version>0.4.3</Version>
     <ApplicationIcon>Assets\sesame.ico</ApplicationIcon>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Themes\**" />
     <Content Include="Assets\sesame.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>

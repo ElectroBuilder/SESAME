@@ -3,12 +3,12 @@
              x:Class="Sesame.Deck.Views.GamesPage">
   <Grid>
     <DockPanel>
-      <Border DockPanel.Dock="Top" Background="#0B1218" Padding="8,6" BorderBrush="#1E4A58" BorderThickness="0,0,0,1">
+      <Border DockPanel.Dock="Top" Background="{DynamicResource Panel}" Padding="8,6" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <Button Content="Scan library" Click="Scan_Click"/>
           <Button Classes="accent" Content="+ Game" Click="Add_Click"/>
           <Button Content="Remove" Click="Remove_Click"/>
-          <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#8EB8C4"
+          <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource Muted}"
                      Text="ROMs plus games you add yourself."/>
         </StackPanel>
       </Border>
@@ -17,11 +17,11 @@
           <DataTemplate>
             <Grid ColumnDefinitions="220,80,80,140,140,*" Margin="4,6">
               <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
-              <TextBlock Grid.Column="1" Text="{Binding System}" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="1" Text="{Binding System}" Foreground="{DynamicResource Muted}"/>
               <TextBlock Grid.Column="2" Text="{Binding KindText}"/>
-              <TextBlock Grid.Column="3" Text="{Binding TagsText}" Foreground="#8EB8C4"/>
-              <TextBlock Grid.Column="4" Text="{Binding TitleIdText}" Foreground="#8EB8C4"/>
-              <TextBlock Grid.Column="5" Text="{Binding RomPath}" TextTrimming="CharacterEllipsis" Foreground="#8EB8C4"/>
+              <TextBlock Grid.Column="3" Text="{Binding TagsText}" Foreground="{DynamicResource Muted}"/>
+              <TextBlock Grid.Column="4" Text="{Binding TitleIdText}" Foreground="{DynamicResource Muted}"/>
+              <TextBlock Grid.Column="5" Text="{Binding RomPath}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Muted}"/>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>

@@ -24,7 +24,7 @@ Install or update SESAME into ~/Applications/SESAME (no sudo).
   curl -fsSL https://raw.githubusercontent.com/ElectroBuilder/SESAME/main/install.sh | bash
 
 Steam Deck / Arch / SteamOS need 64-bit x86 (x86_64). The app is the GitHub
-release asset sesame-linux-x64.tar.gz (tag: linux).
+release asset sesame-linux-x64.tar.gz (latest versioned release).
 EOF
 }
 
@@ -112,8 +112,8 @@ download_release() {
   local unpack="$CACHE/unpack-$$"
   local url ok=0
   local urls=(
-    "https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${ASSET}"
     "https://github.com/${REPO}/releases/latest/download/${ASSET}"
+    "https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${ASSET}"
   )
 
   for url in "${urls[@]}"; do
@@ -269,7 +269,7 @@ install_desktop_files() {
 [Desktop Entry]
 Type=Application
 Name=SESAME
-Comment=Steam Deck Shortcut & Artwork Manager
+Comment=Steam Easy Shortcut Artwork Manager Engine
 Exec=$DEST/SESAME --desktop
 Icon=sesame
 Terminal=false

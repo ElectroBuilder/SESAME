@@ -24,9 +24,13 @@ public partial class SettingsWindow : Window
         BindMasks();
         RefreshKeyStatus();
         BindLibrary();
+        UpdateVersion.Text = "Installed: " + AppVersion.Label;
+        InstallUpdateBtn.IsEnabled = false;
         _loading = false;
         Closing += Settings_Closing;
     }
+
+    private AppRelease? _release;
 
     public bool KeyChanged { get; private set; }
     public bool LaunchersChanged { get; private set; }
@@ -178,6 +182,55 @@ public partial class SettingsWindow : Window
         LibraryPaths.Save();
         Launchers.Reload();
         LibraryStatus.Text = "Saved. Empty folders are created the next time you connect to the Deck.";
+    }
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateStatus.Text = "Checking GitHub…";
+        InstallUpdateBtn.IsEnabled = false;
+        try
+        {
+            _release = await AppUpdate.CheckAsync();
+            if (_release is null)
+            {
+                UpdateStatus.Text = "No versioned GitHub release found yet.";
+                return;
+            }
+
+            UpdateVersion.Text = "Installed: " + AppVersion.Label + "   Latest: v" + _release.Version;
+            UpdateNotes.Text = _release.Notes;
+            if (_release.IsNewer)
+            {
+                InstallUpdateBtn.IsEnabled = true;
+                UpdateStatus.Text = "SESAME " + _release.Version + " is ready to install.";
+            }
+            else
+                UpdateStatus.Text = "You already have the latest version.";
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = ex.Message;
+        }
+    }
+
+    private async void InstallUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_release is not { IsNewer: true }) return;
+        if (MessageBox.Show(this,
+                "Download SESAME " + _release.Version + " from GitHub, replace this install and restart?",
+                "Update SESAME", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+        InstallUpdateBtn.IsEnabled = false;
+        var progress = new Progress<string>(text => UpdateStatus.Text = text);
+        try
+        {
+            await AppUpdate.ApplyAsync(_release, progress);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = ex.Message;
+            InstallUpdateBtn.IsEnabled = true;
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => DialogResult = true;

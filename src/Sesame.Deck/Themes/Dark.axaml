@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Color x:Key="BgColor">#05070A</Color>
+  <Color x:Key="PanelColor">#0B1218</Color>
+  <Color x:Key="PanelAltColor">#121C26</Color>
+  <Color x:Key="BorderColor">#1E4A58</Color>
+  <Color x:Key="TextColor">#F4FBFC</Color>
+  <Color x:Key="MutedColor">#8EB8C4</Color>
+  <Color x:Key="AccentColor">#00D9F5</Color>
+  <Color x:Key="GoldColor">#FFB020</Color>
+  <Color x:Key="InkColor">#041016</Color>
+  <Color x:Key="SelectColor">#123844</Color>
+  <Color x:Key="HoverColor">#163C48</Color>
+  <Color x:Key="BrandBarColor">#070B10</Color>
+  <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
+  <SolidColorBrush x:Key="Panel" Color="{StaticResource PanelColor}"/>
+  <SolidColorBrush x:Key="PanelAlt" Color="{StaticResource PanelAltColor}"/>
+  <SolidColorBrush x:Key="Border" Color="{StaticResource BorderColor}"/>
+  <SolidColorBrush x:Key="Text" Color="{StaticResource TextColor}"/>
+  <SolidColorBrush x:Key="Muted" Color="{StaticResource MutedColor}"/>
+  <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}"/>
+  <SolidColorBrush x:Key="Gold" Color="{StaticResource GoldColor}"/>
+  <SolidColorBrush x:Key="Ink" Color="{StaticResource InkColor}"/>
+  <SolidColorBrush x:Key="Select" Color="{StaticResource SelectColor}"/>
+  <SolidColorBrush x:Key="Hover" Color="{StaticResource HoverColor}"/>
+  <SolidColorBrush x:Key="BrandBar" Color="{StaticResource BrandBarColor}"/>
+  <SolidColorBrush x:Key="BrandText" Color="{StaticResource TextColor}"/>
+  <SolidColorBrush x:Key="BrandMuted" Color="{StaticResource MutedColor}"/>
+  <SolidColorBrush x:Key="BrandAccent" Color="{StaticResource AccentColor}"/>
+</ResourceDictionary>

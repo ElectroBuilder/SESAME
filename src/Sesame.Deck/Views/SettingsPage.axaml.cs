@@ -1,7 +1,6 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Styling;
+using Sesame;
 using Sesame.Services;
 using Sesame.Services.GameOptimizer;
 
@@ -9,6 +8,8 @@ namespace Sesame.Deck.Views;
 
 public partial class SettingsPage : UserControl
 {
+    private AppRelease? _release;
+
     public SettingsPage()
     {
         InitializeComponent();
@@ -16,7 +17,7 @@ public partial class SettingsPage : UserControl
         {
             KeyBox.Text = OptimizerSettings.HasSteamGridDb ? "••••••••••••••••" : "";
             KeyStatus.Text = OptimizerSettings.HasSteamGridDb ? "Key is saved." : "No key yet.";
-            HostInfo.Text = DeckSession.Current.Status + Environment.NewLine + HostEnvironment.RuntimeLabel;
+            UpdateVersion.Text = "Installed: " + AppVersion.Label;
             BindLibrary();
         };
     }
@@ -48,7 +49,7 @@ public partial class SettingsPage : UserControl
 
         if (!DeckSession.Current.Connected)
         {
-            LibraryStatus.Text = "Saved. Connect to this Deck to create the empty folders.";
+            LibraryStatus.Text = "Saved. Folders are created after SESAME connects.";
             return;
         }
 
@@ -71,18 +72,55 @@ public partial class SettingsPage : UserControl
         KeyStatus.Text = OptimizerSettings.HasSteamGridDb ? "Key saved." : "Key cleared.";
     }
 
-    private void Dark_Click(object? sender, RoutedEventArgs e)
+    private void Dark_Click(object? sender, RoutedEventArgs e) => DeckTheme.Apply(DeckTheme.Dark);
+
+    private void Light_Click(object? sender, RoutedEventArgs e) => DeckTheme.Apply(DeckTheme.Light);
+
+    private async void CheckUpdate_Click(object? sender, RoutedEventArgs e)
     {
-        if (Application.Current is { } app)
-            app.RequestedThemeVariant = ThemeVariant.Dark;
-        HostInfo.Text = "Dark theme.";
+        UpdateStatus.Text = "Checking GitHub…";
+        InstallUpdateBtn.IsEnabled = false;
+        try
+        {
+            _release = await AppUpdate.CheckAsync();
+            if (_release is null)
+            {
+                UpdateStatus.Text = "No versioned GitHub release found yet.";
+                return;
+            }
+
+            UpdateVersion.Text = "Installed: " + AppVersion.Label + "   Latest: v" + _release.Version;
+            UpdateNotes.Text = string.IsNullOrWhiteSpace(_release.Notes)
+                ? ""
+                : _release.Notes;
+            if (_release.IsNewer)
+            {
+                InstallUpdateBtn.IsEnabled = true;
+                UpdateStatus.Text = "SESAME " + _release.Version + " is ready to install.";
+            }
+            else
+                UpdateStatus.Text = "You already have the latest version.";
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = ex.Message;
+        }
     }
 
-    private void Light_Click(object? sender, RoutedEventArgs e)
+    private async void InstallUpdate_Click(object? sender, RoutedEventArgs e)
     {
-        if (Application.Current is { } app)
-            app.RequestedThemeVariant = ThemeVariant.Light;
-        HostInfo.Text = "Light theme. Chrome colors stay SESAME teal; content follows the system light variant.";
+        if (_release is not { IsNewer: true }) return;
+        InstallUpdateBtn.IsEnabled = false;
+        var progress = new Progress<string>(text => UpdateStatus.Text = text);
+        try
+        {
+            await AppUpdate.ApplyAsync(_release, progress);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = ex.Message;
+            InstallUpdateBtn.IsEnabled = true;
+        }
     }
 
     private void Desktop_Click(object? sender, RoutedEventArgs e)
@@ -91,11 +129,11 @@ public partial class SettingsPage : UserControl
         {
             if (DeckSession.Current.Connected)
                 DeckSession.Current.Client.Execute("steamos-session-select plasma", 15);
-            HostInfo.Text = "SteamOS is switching to Desktop Mode…";
+            UpdateStatus.Text = "SteamOS is switching to Desktop Mode…";
         }
         catch (Exception ex)
         {
-            HostInfo.Text = ex.Message;
+            UpdateStatus.Text = ex.Message;
         }
     }
 }

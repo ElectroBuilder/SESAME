@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:Sesame.Deck.Views"
+        xmlns:sesame="clr-namespace:Sesame;assembly=Sesame.Core"
         x:Class="Sesame.Deck.Views.ShellWindow"
         Title="SESAME"
         Width="1280" Height="800"
         MinWidth="960" MinHeight="540"
-        Background="#05070A"
+        Background="{DynamicResource Bg}"
         WindowStartupLocation="CenterScreen"
         KeyDown="OnKeyDown">
   <Grid>
@@ -19,33 +20,32 @@
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="*"/>
       </Grid.RowDefinitions>
-      <Border Background="#070B10" Padding="16,12" BorderBrush="#00D9F5" BorderThickness="0,0,0,2">
+      <Border Background="{DynamicResource BrandBar}" Padding="16,12"
+              BorderBrush="{DynamicResource Accent}" BorderThickness="0,0,0,2">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="16">
             <Image Source="avares://SESAME/Assets/sesame-icon-lg.png" Width="72" Height="72" Stretch="Uniform"/>
             <StackPanel VerticalAlignment="Center" Spacing="2">
               <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBlock Text="SESAME" FontSize="28" FontWeight="Bold" Foreground="#00D9F5"/>
+                <TextBlock Text="SESAME" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource BrandAccent}"/>
                 <TextBlock x:Name="VersionLabel" FontSize="14" FontWeight="SemiBold"
-                           Foreground="#FFB020" VerticalAlignment="Bottom" Margin="0,0,0,3"/>
+                           Foreground="{DynamicResource Gold}" VerticalAlignment="Bottom" Margin="0,0,0,3"/>
               </StackPanel>
-              <TextBlock Text="STEAM DECK SHORTCUT &amp; ARTWORK MANAGER"
-                         FontSize="12" FontWeight="SemiBold" Foreground="#FFB020"/>
+              <TextBlock Text="{x:Static sesame:AppBrand.Tagline}"
+                         FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Gold}"/>
             </StackPanel>
           </StackPanel>
           <TextBlock x:Name="StatusLabel" Grid.Column="1" VerticalAlignment="Center" Margin="24,0,0,0"
-                     Foreground="#8EB8C4"/>
+                     Foreground="{DynamicResource Muted}" IsVisible="False"/>
           <StackPanel Grid.Column="2" Orientation="Horizontal">
             <Button x:Name="GameBackBtn" Content="Back" IsVisible="False" Click="GameBack_Click"/>
-            <Button x:Name="LocalBtn" Classes="accent" Content="This Deck" Click="Local_Click"/>
             <Button x:Name="RemoteBtn" Content="SSH…" Click="Remote_Click"/>
-            <Button Content="Disconnect" Click="Disconnect_Click"/>
             <Button Content="Settings" Click="NavSettings_Click"/>
           </StackPanel>
         </Grid>
       </Border>
       <Grid Grid.Row="1" ColumnDefinitions="240,6,*">
-        <DockPanel x:Name="QuickPane" Background="#0B1218">
+        <DockPanel x:Name="QuickPane" Background="{DynamicResource Panel}">
           <TextBlock DockPanel.Dock="Top" Text="Quick access" FontWeight="SemiBold" Margin="12,10,12,6"/>
           <ListBox x:Name="QuickList" SelectionChanged="Quick_Changed">
             <ListBox.ItemTemplate>
@@ -55,7 +55,7 @@
             </ListBox.ItemTemplate>
           </ListBox>
         </DockPanel>
-        <GridSplitter Grid.Column="1" Width="6" Background="#05070A"/>
+        <GridSplitter Grid.Column="1" Width="6" Background="{DynamicResource Bg}"/>
         <TabControl x:Name="MainTabs" Grid.Column="2" SelectionChanged="Tabs_Changed">
           <TabItem Header="Files">
             <views:FilesPage x:Name="FilesPanel"/>
@@ -89,36 +89,36 @@
           <StackPanel Orientation="Horizontal" Spacing="20">
             <Image Source="avares://SESAME/Assets/sesame-icon-lg.png" Width="96" Height="96" Stretch="Uniform"/>
             <StackPanel VerticalAlignment="Center" Spacing="4">
-              <TextBlock Text="SESAME" FontSize="36" FontWeight="Bold" Foreground="#00D9F5"/>
-              <TextBlock Text="STEAM DECK SHORTCUT &amp; ARTWORK MANAGER"
-                         FontSize="16" FontWeight="SemiBold" Foreground="#FFB020"/>
+              <TextBlock Text="SESAME" FontSize="36" FontWeight="Bold" Foreground="{DynamicResource BrandAccent}"/>
+              <TextBlock Text="{x:Static sesame:AppBrand.Tagline}"
+                         FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource Gold}"/>
             </StackPanel>
           </StackPanel>
-          <TextBlock x:Name="GameStatus" FontSize="18" Foreground="#8EB8C4"/>
+          <TextBlock x:Name="GameStatus" FontSize="18" Foreground="{DynamicResource Muted}"/>
         </StackPanel>
         <UniformGrid Grid.Row="1" Rows="2" Columns="2" Margin="48,16,48,24">
           <Button x:Name="Tile0" Classes="tile" Margin="10" Click="Tile0_Click">
             <StackPanel>
               <TextBlock Text="Artwork" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Covers already on this Deck" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="Covers already on this Deck" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile1" Classes="tile" Margin="10" Click="Tile1_Click">
             <StackPanel>
               <TextBlock Text="Library" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="ROMs, Hydra and apps" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="ROMs, Hydra and apps" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile2" Classes="tile" Margin="10" Click="Tile2_Click">
             <StackPanel>
               <TextBlock Text="Files" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="Folders on this Deck" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="Folders on this Deck" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
           <Button x:Name="Tile3" Classes="tile" Margin="10" Click="Tile3_Click">
             <StackPanel>
               <TextBlock Text="Settings" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="SteamGridDB key" Foreground="#8EB8C4" Margin="0,8,0,0"/>
+              <TextBlock Text="SteamGridDB key" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
         </UniformGrid>
@@ -126,11 +126,12 @@
       <Grid x:Name="GamePage" IsVisible="False"/>
     </Grid>
 
-    <Border Grid.Row="1" Background="#070B10" Padding="16,8" BorderBrush="#1E4A58" BorderThickness="0,1,0,0">
+    <Border Grid.Row="1" Background="{DynamicResource BrandBar}" Padding="16,8"
+            BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0">
       <DockPanel>
-        <TextBlock x:Name="HintBar" Foreground="#8EB8C4" FontSize="14"
-                   Text="A confirm   B back   D-pad navigate   L/R tabs"/>
-        <TextBlock x:Name="FooterStatus" DockPanel.Dock="Right" HorizontalAlignment="Right" Foreground="#00D9F5"/>
+        <TextBlock x:Name="HintBar" Foreground="{DynamicResource Muted}" FontSize="14"/>
+        <TextBlock x:Name="FooterStatus" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                   Foreground="{DynamicResource Accent}"/>
       </DockPanel>
     </Border>
   </Grid>

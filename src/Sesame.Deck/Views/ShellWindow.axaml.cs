@@ -32,7 +32,7 @@ public partial class ShellWindow : Window
         GameRoot.IsVisible = _gameMode;
         HintBar.Text = _gameMode
             ? "A confirm    B back    D-pad / stick navigate    L/R tabs"
-            : "Same as Windows: Files, Apps, Games, Artwork and Store. This machine is local — no SSH needed.";
+            : "";
         if (_gameMode)
         {
             WindowState = WindowState.FullScreen;
@@ -119,10 +119,14 @@ public partial class ShellWindow : Window
 
     private void RefreshStatus()
     {
-        StatusLabel.Text = _session.Status;
-        GameStatus.Text = _session.Status + " · " + HostEnvironment.RuntimeLabel;
-        FooterStatus.Text = _session.Status;
-        LocalBtn.IsVisible = HostEnvironment.LocalAvailable;
+        var status = _session.Status;
+        StatusLabel.Text = status;
+        StatusLabel.IsVisible = !string.IsNullOrWhiteSpace(status);
+        GameStatus.Text = string.IsNullOrWhiteSpace(status)
+            ? HostEnvironment.RuntimeLabel
+            : status + " · " + HostEnvironment.RuntimeLabel;
+        if (!string.IsNullOrWhiteSpace(status))
+            FooterStatus.Text = status;
         RemoteBtn.IsVisible = true;
     }
 
@@ -177,32 +181,12 @@ public partial class ShellWindow : Window
 
     private void GameBack_Click(object? sender, RoutedEventArgs e) => ShowHome();
 
-    private async void Local_Click(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            await _session.ConnectLocalAsync();
-            AfterConnect();
-        }
-        catch (Exception ex)
-        {
-            FooterStatus.Text = ex.Message;
-        }
-        RefreshStatus();
-    }
-
     private async void Remote_Click(object? sender, RoutedEventArgs e)
     {
         var dlg = new RemoteDialog();
         await dlg.ShowDialog(this);
         if (dlg.Connected)
             AfterConnect();
-        RefreshStatus();
-    }
-
-    private void Disconnect_Click(object? sender, RoutedEventArgs e)
-    {
-        _session.Disconnect();
         RefreshStatus();
     }
 

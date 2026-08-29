@@ -10,7 +10,6 @@
     <AssemblyName>SESAME</AssemblyName>
     <Product>SESAME</Product>
     <Description>Steam Easy Shortcut Artwork Manager Engine</Description>
-    <Version>0.4.3</Version>
     <ApplicationIcon>Assets\sesame-taskbar.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
