@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.4 — 2026-08-29
+
+- Wii Joy-Cons: always one Wiimote + Nunchuk (Right = remote/gyro, Left = Nunchuk); Wiimote 2–4 stay off.
+- Joy-Con motion uses a real DSU server (joycond-cemuhook on UDP 26761), separate from SteamDeckGyroDSU on 26760. SESAME starts it when launching Wii games and points Dolphin Alternate Input Sources at both.
+- Aiming uses IMUIR (gyro pointer) with Home to recenter; mouse Cursor IR no longer fights the gyro.
+- Optimize hint explains Steam Input Off, SL+SR separate pairing, and one-time joycond install when needed.
+
 ## 0.6.3 — 2026-08-29
 
 - Wii / Dolphin: Joy-Cons on the Deck map like BetterJoy — Right → Wiimote (+ gyro), Left → Nunchuk; extra Joy-Cons become remotes 2–4 for Wii Sports. Re-Optimize Wii games after pairing; turn Steam Input Off for the Joy-Cons.

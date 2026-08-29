@@ -21,6 +21,7 @@
     <EmbeddedResource Include="..\Sesame.Windows\Scripts\extra-scan.py" LogicalName="Sesame.extra-scan.py" />
     <EmbeddedResource Include="..\Sesame.Windows\Scripts\sesame-dolphin.sh" LogicalName="Sesame.sesame-dolphin.sh" />
     <EmbeddedResource Include="..\Sesame.Windows\Scripts\sesame-dolphin-cfg.py" LogicalName="Sesame.sesame-dolphin-cfg.py" />
+    <EmbeddedResource Include="..\Sesame.Windows\Scripts\sesame-joycon-dsu.sh" LogicalName="Sesame.sesame-joycon-dsu.sh" />
     <EmbeddedResource Include="..\Sesame.Windows\Assets\Logos\*.png" LogicalName="Sesame.Assets.Logos.%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\Sesame.Windows\Assets\sesame-icon-lg.png" LogicalName="Sesame.Assets.sesame-icon-lg.png" />
     <EmbeddedResource Include="..\Sesame.Windows\Assets\sesame-icon.png" LogicalName="Sesame.Assets.sesame-icon.png" />
