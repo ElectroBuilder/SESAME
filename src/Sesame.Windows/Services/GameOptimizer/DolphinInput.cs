@@ -11,15 +11,16 @@ public static class DolphinInput
     public const string JoyConDsuName = "sesame-joycon-dsu.sh";
     public const string InstallJoyCondName = "sesame-install-joycond.sh";
     public const string ProfileName = "SESAME-gyro";
+    public const string Joy2WiiName = "SESAME - Joy2Wii";
+    public const string Joy2WiiBareName = "SESAME - Joy2Wii (no nunchuk)";
 
     public const string DutchGyroHint =
-        "Wii Joy-Cons:\n" +
-        "• Combine with L+R (one player) · Steam Input Off · Home recenters\n" +
-        "• Combined = Wiimote + Nunchuk · Right IMU for motion (cemuhook -r)\n" +
-        "• Prefer Combined over separate SL+SR · re-Optimize after update\n\n" +
-        "Install once via Settings → Emulators → Install Joy-Con motion…\n" +
-        "(or Desktop Mode: bash ~/.local/share/sesame/install-joycond.sh)\n" +
-        "Then re-Optimize and launch via SESAME.";
+        "Wii Joy-Cons (SESAME - Joy2Wii):\n" +
+        "• Combine with L+R · Steam Input Off on the Wii shortcut (required in Game Mode)\n" +
+        "• Profile: SESAME - Joy2Wii (Nunchuk) · bare: SESAME - Joy2Wii (no nunchuk)\n" +
+        "• Games that demand “remove Nunchuk”: cycle Wiimote profile hotkey, or launch with SESAME_WII_NUNCHUK=0\n" +
+        "• Home / Button N recenters · gyro dead zone from your layout\n\n" +
+        "Re-Optimize Wii after update so wrappers refresh. Launch via the SESAME Steam shortcut.";
 
     public static string WrapperPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, WrapperName);
@@ -87,26 +88,80 @@ public static class DolphinInput
                 client.EnsureDirectory(DeckClient.Combine(dir, "Profiles/Wiimote"));
                 client.EnsureDirectory(DeckClient.Combine(dir, "Profiles/GCPad"));
                 PatchIni(client, DeckClient.Combine(dir, "Dolphin.ini"));
-                client.WriteText(DeckClient.Combine(dir, "Profiles/Wiimote/" + ProfileName + ".ini"),
-                    WiiProfile("SDL/0/Steam Virtual Gamepad"));
-                client.WriteText(DeckClient.Combine(dir, "Profiles/Wiimote/SESAME-joycon-nunchuk.ini"),
-                    JoyConNunchukProfile());
-                client.WriteText(DeckClient.Combine(dir, "Profiles/Wiimote/SESAME-joycon.ini"),
-                    JoyConNunchukProfile());
-                client.WriteText(DeckClient.Combine(dir, "Profiles/Wiimote/SESAME-joycon-remote.ini"),
-                    JoyConRemoteProfile());
+                WriteJoy2WiiProfiles(client, dir);
                 client.WriteText(DeckClient.Combine(dir, "Profiles/GCPad/" + ProfileName + ".ini"),
                     GcProfile("SDL/0/Steam Virtual Gamepad"));
-                // Full overwrite: Combined Joy-Cons Wiimote+Nunchuk (runtime cfg may refine).
-                client.WriteText(DeckClient.Combine(dir, "WiimoteNew.ini"), JoyConWiimoteIni());
                 EnsureGcPad(client, DeckClient.Combine(dir, "GCPadNew.ini"));
+                // DSU optional — Joy2Wii uses SDL Accel R/L; keep Alternate Input Sources harmless.
                 EnsureDsu(client, DeckClient.Combine(dir, "DSUClient.ini"));
+                DeleteObsoleteProfiles(client, dir);
             }
             catch
             {
                 /* andere config-map is optioneel */
             }
         }
+    }
+
+    private static void WriteJoy2WiiProfiles(DeckClient client, string dir)
+    {
+        var nunchuk = LoadScript("Sesame.sesame-joy2wii.ini");
+        var bare = StripNunchukProfile(nunchuk);
+        var wiimoteDir = DeckClient.Combine(dir, "Profiles/Wiimote");
+        client.WriteText(DeckClient.Combine(wiimoteDir, Joy2WiiName + ".ini"), nunchuk);
+        client.WriteText(DeckClient.Combine(wiimoteDir, Joy2WiiBareName + ".ini"), bare);
+        // Active layout for all Wii games unless a game overrides Extension.
+        client.WriteText(DeckClient.Combine(dir, "WiimoteNew.ini"), ProfileToWiimoteIni(nunchuk));
+    }
+
+    private static void DeleteObsoleteProfiles(DeckClient client, string dir)
+    {
+        foreach (var name in new[]
+                 {
+                     "SESAME-joycon.ini", "SESAME-joycon-nunchuk.ini", "SESAME-joycon-remote.ini",
+                     "SESAME-gyro.ini"
+                 })
+        {
+            try
+            {
+                var path = DeckClient.Combine(dir, "Profiles/Wiimote/" + name);
+                if (client.Exists(path))
+                    client.Execute("rm -f " + DeckClient.ShQuote(path), 5);
+            }
+            catch
+            {
+                /* cleanup best-effort */
+            }
+        }
+    }
+
+    private static string StripNunchukProfile(string profile)
+    {
+        var lines = new List<string>();
+        foreach (var line in profile.Replace("\r\n", "\n").Split('\n'))
+        {
+            if (line.StartsWith("Extension =", StringComparison.OrdinalIgnoreCase))
+            {
+                lines.Add("Extension = None");
+                continue;
+            }
+            if (line.StartsWith("Nunchuk/", StringComparison.OrdinalIgnoreCase))
+                continue;
+            lines.Add(line);
+        }
+        return string.Join("\n", lines).TrimEnd() + "\n";
+    }
+
+    private static string ProfileToWiimoteIni(string profile)
+    {
+        var body = profile.Replace("[Profile]\n", "[Wiimote1]\n", StringComparison.Ordinal)
+            .Replace("[Profile]\r\n", "[Wiimote1]\r\n", StringComparison.Ordinal);
+        if (!body.Contains("Source =", StringComparison.OrdinalIgnoreCase))
+            body = body.Replace("[Wiimote1]\n", "[Wiimote1]\nSource = 1\n", StringComparison.Ordinal);
+        if (!body.EndsWith('\n')) body += "\n";
+        return body +
+               "[Wiimote2]\nSource = 0\n[Wiimote3]\nSource = 0\n[Wiimote4]\nSource = 0\n" +
+               "[BalanceBoard]\nSource = 0\n";
     }
 
     public static void Bind(OptimizerGame game)
@@ -142,10 +197,8 @@ public static class DolphinInput
                 " " + DeckClient.ShQuote(JoyConDsuPath) +
                 " " + DeckClient.ShQuote(InstallJoyCondPath) +
                 " " + DeckClient.ShQuote(DeckClient.Combine(EmulatorProbe.WrapperDir, "install-joycond.sh")) +
-                " ; bash " + DeckClient.ShQuote(JoyConDsuPath) +
-                " >/dev/null 2>&1 || true" +
                 " ; python3 " + DeckClient.ShQuote(CfgPath) +
-                " >/dev/null 2>&1 || true", 120);
+                " >/dev/null 2>&1 || true", 60);
         }
         catch
         {

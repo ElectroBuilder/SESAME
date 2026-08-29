@@ -26,7 +26,6 @@ export SDL_JOYSTICK_HIDAPI_PS4="${SDL_JOYSTICK_HIDAPI_PS4:-1}"
 export SDL_JOYSTICK_HIDAPI_PS5="${SDL_JOYSTICK_HIDAPI_PS5:-1}"
 export SDL_JOYSTICK_HIDAPI_XBOX="${SDL_JOYSTICK_HIDAPI_XBOX:-1}"
 export SDL_JOYSTICK_HIDAPI_GAMECUBE="${SDL_JOYSTICK_HIDAPI_GAMECUBE:-1}"
-# Joy-Con DSU (joycond-cemuhook) on 26761; SteamDeckGyroDSU stays on 26760.
 export SESAME_JOYCON_DSU_PORT="${SESAME_JOYCON_DSU_PORT:-26761}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -36,15 +35,13 @@ DOL="$HOME/Emulation/tools/launchers/dolphin.sh"
 DOL2="$HOME/Emulation/tools/launchers/dolphin-emu.sh"
 case "$ROM" in
   */roms/wii/*|*/wii/*)
-    # Encourage Combined Joy-Cons (press L+R) for one-player Wiimote+Nunchuk.
-    # Official path: Combined + cemuhook -r (Right IMU). Separate SL+SR still works.
+    # Combined Joy-Cons (L+R) → SDL "Nintendo Switch Joy-Con (L/R)" for Joy2Wii.
     export SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS="${SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS:-1}"
     set -- "$WII" "$DOL" "$DOL2" "$GC"
-    # Start Joy-Con motion DSU before patching Dolphin (guide: joycond-cemuhook).
-    if [ -f "$HERE/sesame-joycon-dsu.sh" ]; then
+    # Optional DSU (cemuhook). Joy2Wii uses SDL Accel R/L — skip by default for faster Game Mode starts.
+    if [ "${SESAME_JOYCON_DSU:-0}" = "1" ] && [ -f "$HERE/sesame-joycon-dsu.sh" ]; then
       bash "$HERE/sesame-joycon-dsu.sh" >/dev/null 2>&1 || true
-      # Give cemuhook a moment to publish pads before Dolphin cfg / launch.
-      sleep 1.5
+      sleep 0.5
     fi
     ;;
   *)
@@ -52,13 +49,15 @@ case "$ROM" in
     set -- "$GC" "$DOL" "$DOL2" "$WII"
     ;;
 esac
+
+# Apply SESAME - Joy2Wii (or no-nunchuk) into WiimoteNew.ini — never invent IMU maps.
+# SESAME_WII_NUNCHUK=0 → Extension=None for games that require removing the Nunchuk.
 if [ -f "$HERE/sesame-dolphin-cfg.py" ]; then
   python3 "$HERE/sesame-dolphin-cfg.py" >/dev/null 2>&1 || true
 fi
 for s in "$@"; do
   [ "$s" = "$HERE/sesame-dolphin.sh" ] && continue
   [ "$s" = "$HERE/vssh-dolphin.sh" ] && continue
-  # EmuDeck gc.sh/wii.sh expect only the ROM path.
   if [ -x "$s" ]; then exec "$s" "$ROM"; fi
 done
 exec /usr/bin/flatpak run --filesystem=host --device=all org.DolphinEmu.dolphin-emu -b -e "$ROM"

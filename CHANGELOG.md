@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.14 — 2026-08-29
+
+- Wii controller default is now **SESAME - Joy2Wii** (your proven Combined SDL Joy-Con L/R layout with Accel R/L + gyro dead zone). Obsolete SESAME-joycon* auto profiles are removed.
+- Companion profile **SESAME - Joy2Wii (no nunchuk)** for games that refuse to continue until the Nunchuk is removed — cycle with Dolphin’s Next/Previous Wiimote Profile hotkey, or set `SESAME_WII_NUNCHUK=0` at launch.
+- Launch wrapper no longer invents IMU maps or starts cemuhook by default (faster Game Mode). Steam Input Off on Wii shortcuts remains required so SDL still sees Joy-Con (L/R).
+
 ## 0.6.13 — 2026-08-29
 
 - Wii Joy-Con motion: invert pitch/vertical accel for Joy-Con held as Wiimote (fixes swing up→down and upside-down aiming).
