@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.13 — 2026-08-29
+
+- Wii Joy-Con motion: invert pitch/vertical accel for Joy-Con held as Wiimote (fixes swing up→down and upside-down aiming).
+- Stop OR-ing Steam Deck gyro into Joy-Con IMU bindings (that caused panicky noise at rest).
+- IMU pointer smoothing: Accelerometer Influence **1%**, Calibration Period **3.5s**, Total Yaw **25**; IMUIR on by default.
+- Recognize SDL Combined name `Joy-Con (L/R)` on Steam Deck.
+
 ## 0.6.12 — 2026-08-29
 
 - Connect shows a progress overlay (session N/N, waking, opening folders). Auto-connect skips the long Wake-on-LAN retry loop so dead sessions fail fast.

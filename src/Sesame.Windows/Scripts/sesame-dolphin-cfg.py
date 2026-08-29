@@ -64,6 +64,7 @@ CURSOR_IR = {
     "IR/Auto-Hide": "False",
 }
 
+# Direct 1:1 axis names (Deck fallback / Pro Controller).
 IMU_AXES = [
     ("IMUAccelerometer/Up", "Accel Up"),
     ("IMUAccelerometer/Down", "Accel Down"),
@@ -79,13 +80,30 @@ IMU_AXES = [
     ("IMUGyroscope/Yaw Right", "Gyro Yaw Right"),
 ]
 
+# Joy-Con held vertically as a Wiimote: pitch/swing/aim are inverted vs Switch grip.
+# Map Dolphin Wiimote axis → physical Joy-Con DSU/SDL axis (swapped pairs).
+JOYCON_WIIMOTE_IMU = [
+    ("IMUAccelerometer/Up", "Accel Down"),
+    ("IMUAccelerometer/Down", "Accel Up"),
+    ("IMUAccelerometer/Left", "Accel Left"),
+    ("IMUAccelerometer/Right", "Accel Right"),
+    ("IMUAccelerometer/Forward", "Accel Backward"),
+    ("IMUAccelerometer/Backward", "Accel Forward"),
+    ("IMUGyroscope/Pitch Up", "Gyro Pitch Down"),
+    ("IMUGyroscope/Pitch Down", "Gyro Pitch Up"),
+    ("IMUGyroscope/Roll Left", "Gyro Roll Left"),
+    ("IMUGyroscope/Roll Right", "Gyro Roll Right"),
+    ("IMUGyroscope/Yaw Left", "Gyro Yaw Left"),
+    ("IMUGyroscope/Yaw Right", "Gyro Yaw Right"),
+]
+
 NUNCHUK_ACCEL = [
-    ("Nunchuk/IMUAccelerometer/Up", "Accel Up"),
-    ("Nunchuk/IMUAccelerometer/Down", "Accel Down"),
+    ("Nunchuk/IMUAccelerometer/Up", "Accel Down"),
+    ("Nunchuk/IMUAccelerometer/Down", "Accel Up"),
     ("Nunchuk/IMUAccelerometer/Left", "Accel Left"),
     ("Nunchuk/IMUAccelerometer/Right", "Accel Right"),
-    ("Nunchuk/IMUAccelerometer/Forward", "Accel Forward"),
-    ("Nunchuk/IMUAccelerometer/Backward", "Accel Backward"),
+    ("Nunchuk/IMUAccelerometer/Forward", "Accel Backward"),
+    ("Nunchuk/IMUAccelerometer/Backward", "Accel Forward"),
 ]
 
 
@@ -123,9 +141,11 @@ def is_xboxish(name):
 
 
 def is_combined_or_pair(name):
-    """Combined / joycon-pair / 'Nintendo Switch Combined Joy-Cons'."""
+    """Combined / joycon-pair / SDL 'Joy-Con (L/R)' / joycond Combined."""
     low = (name or "").lower()
     if "combined" in low and ("joy" in low or "switch" in low):
+        return True
+    if "joy-con (l/r)" in low or "joycon (l/r)" in low or "(l/r)" in low:
         return True
     if "joycon-pair" in low or "joy-con-pair" in low:
         return True
@@ -324,11 +344,13 @@ def nunchuk_buttons(device, dualshock=True):
     return keys
 
 
-def imu_from(device, extra_fallback=True):
+def imu_from(device, extra_fallback=True, joycon_wiimote=False):
+    """Bind IMU axes. Never OR Steam Deck gyro into Joy-Con profiles (causes jitter at rest)."""
+    axes = JOYCON_WIIMOTE_IMU if joycon_wiimote else IMU_AXES
     out = {}
-    for key, axis in IMU_AXES:
+    for key, axis in axes:
         parts = [ref(device, axis)]
-        if extra_fallback:
+        if extra_fallback and not joycon_wiimote:
             parts.extend(
                 [
                     "`SteamDeck/0/Steam Deck:%s`" % axis,
@@ -337,6 +359,14 @@ def imu_from(device, extra_fallback=True):
                 ]
             )
         out[key] = "|".join(parts)
+    return out
+
+
+def imu_joycon(*devices):
+    """Single-path Joy-Con→Wiimote IMU: inverted pitch/accel, no Deck gyro noise."""
+    out = {}
+    for key, axis in JOYCON_WIIMOTE_IMU:
+        out[key] = "|".join(ref(d, axis) for d in devices if d)
     return out
 
 
@@ -390,6 +420,24 @@ def write_section(keys):
     return "\n".join("%s = %s" % (k, v) for k, v in keys.items()) + "\n"
 
 
+def imu_pointer_keys(device):
+    """Stable gyro pointer: low accel influence (less jitter), Home recenters."""
+    return {
+        "IMUIR/Enabled": "True",
+        "IMUIR/Total Yaw": "25",
+        "IMUIR/Accelerometer Influence": "1",
+        "IMUIR/Recenter": or_join(
+            ref(device, "Button PS"),
+            ref(device, "Button Home"),
+            ref(device, "Button Guide"),
+            "MODE",
+        ),
+        "IMUGyroscope/Calibration Period": "3.5",
+        "IR/Auto-Hide": "False",
+        "Rumble/Motor": "Strong",
+    }
+
+
 def build_combined(device, dualshock, imu_extra=None):
     """One Device for Wiimote + Nunchuk (Combined preferred)."""
     keys = {
@@ -397,24 +445,16 @@ def build_combined(device, dualshock, imu_extra=None):
         "Source": "1",
         "Extension": "Nunchuk",
         "Options/Sideways Wiimote": "False",
-        "IMUIR/Enabled": "True",
-        "IMUIR/Recenter": or_join(
-            ref(device, "Button PS"),
-            ref(device, "Button Home"),
-            ref(device, "Button Guide"),
-            "MODE",
-        ),
-        "IMUIR/Total Yaw": "16",
-        "IR/Auto-Hide": "False",
-        "Rumble/Motor": "Strong",
     }
+    keys.update(imu_pointer_keys(device))
     keys.update(wiimote_buttons(device, dualshock=dualshock))
     keys.update(nunchuk_buttons(device, dualshock=dualshock))
-    imu = imu_from(device, extra_fallback=not dualshock)
+    # Joy-Con→Wiimote remap; never merge Deck gyro (panic jitter at rest).
+    imu = imu_from(device, extra_fallback=False, joycon_wiimote=True)
     if imu_extra:
         imu = merge_binding_dicts(imu, imu_extra)
     keys.update(imu)
-    log("build_combined device=%s dualshock=%s" % (device, dualshock))
+    log("build_combined device=%s dualshock=%s joycon_imu=1" % (device, dualshock))
     return "[Wiimote1]\n" + write_section(keys)
 
 
@@ -425,24 +465,15 @@ def build_separate(right_dev, left_dev, dualshock_right=False, dualshock_left=Fa
         "Source": "1",
         "Extension": "Nunchuk",
         "Options/Sideways Wiimote": "False",
-        "IMUIR/Enabled": "True",
-        "IMUIR/Recenter": or_join(
-            ref(right_dev, "Button PS"),
-            ref(right_dev, "Button Home"),
-            ref(right_dev, "Button Guide"),
-            "MODE",
-        ),
-        "IMUIR/Total Yaw": "16",
-        "IR/Auto-Hide": "False",
-        "Rumble/Motor": "Strong",
     }
+    keys.update(imu_pointer_keys(right_dev))
     keys.update(wiimote_buttons(right_dev, dualshock=dualshock_right))
     keys.update(nunchuk_buttons(left_dev, dualshock=dualshock_left))
     if imu_pref:
         keys.update(imu_pref)
     else:
-        keys.update(imu_from(right_dev, extra_fallback=True))
-    log("build_separate device=%s nunchuk=%s" % (right_dev, left_dev))
+        keys.update(imu_from(right_dev, extra_fallback=False, joycon_wiimote=True))
+    log("build_separate device=%s nunchuk=%s joycon_imu=1" % (right_dev, left_dev))
     return "[Wiimote1]\n" + write_section(keys)
 
 
@@ -480,10 +511,7 @@ def pick_and_build(pool):
             # but Combined is preferred; for separate use Device=SDL Right with DSU IMU OR,
             # or Device=DSU Right if we want full DSU. Prefer hybrid: SDL Device + DSU IMU
             # so buttons work even if one DSU pad flickers; if ok, also allow DSU Device.
-            imu = merge_binding_dicts(
-                imu_from(DSU_DEV_R, extra_fallback=False),
-                imu_from(sdl(r_name), extra_fallback=True),
-            )
+            imu = imu_joycon(DSU_DEV_R, sdl(r_name))
             # Buttons: OR SDL + DSU so either path works.
             keys_body = build_separate(
                 sdl(r_name),
@@ -508,7 +536,7 @@ def pick_and_build(pool):
             DSU_DEV_L,
             dualshock_right=True,
             dualshock_left=True,
-            imu_pref=imu_from(DSU_DEV_R, extra_fallback=False),
+            imu_pref=imu_joycon(DSU_DEV_R),
         )
 
     if len(loose) >= 2 and not any(is_combined_or_pair(n) for n in loose):
@@ -539,7 +567,9 @@ def merge_profiles_prefer_device(primary_body, fallback_body, device):
         "Extension": prim.get("Extension", "Nunchuk"),
         "Options/Sideways Wiimote": prim.get("Options/Sideways Wiimote", "False"),
         "IMUIR/Enabled": prim.get("IMUIR/Enabled", "True"),
-        "IMUIR/Total Yaw": prim.get("IMUIR/Total Yaw", "16"),
+        "IMUIR/Total Yaw": prim.get("IMUIR/Total Yaw", "25"),
+        "IMUIR/Accelerometer Influence": prim.get("IMUIR/Accelerometer Influence", "1"),
+        "IMUGyroscope/Calibration Period": prim.get("IMUGyroscope/Calibration Period", "3.5"),
         "IR/Auto-Hide": prim.get("IR/Auto-Hide", "False"),
         "Rumble/Motor": prim.get("Rumble/Motor", "Strong"),
     }

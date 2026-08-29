@@ -269,7 +269,8 @@ public static class DolphinInput
     // Preferred: Combined Joy-Cons (L+R). Runtime sesame-dolphin-cfg.py refines from live pads.
     // Dolphin can cross-bind Left while Device=Right via `LeftDevice:control`, but Combined is simpler.
     private const string DsuCombined = "DSUClient/0/Nintendo Switch Combined Joy-Cons";
-    private const string SdlCombined = "SDL/0/Nintendo Switch Combined Joy-Cons";
+    // Steam Deck SDL often names Combined "Nintendo Switch Joy-Con (L/R)".
+    private const string SdlCombined = "SDL/0/Nintendo Switch Joy-Con (L/R)";
 
     private static string JoyConWiimoteIni() =>
         JoyConNunchukProfile().Replace("[Profile]\n", "[Wiimote1]\n", StringComparison.Ordinal) +
@@ -309,7 +310,9 @@ public static class DolphinInput
             "Nunchuk/Stick/Right = `" + d + ":Left X+`\n" +
             JoyConImu(d) +
             "IMUIR/Enabled = True\n" +
-            "IMUIR/Total Yaw = 16\n" +
+            "IMUIR/Total Yaw = 25\n" +
+            "IMUIR/Accelerometer Influence = 1\n" +
+            "IMUGyroscope/Calibration Period = 3.5\n" +
             "IMUIR/Recenter = `" + d + ":Button Home`|`" + d + ":Button Guide`|`" + d + ":Button PS`\n" +
             "IR/Auto-Hide = False\n" +
             "Rumble/Motor = Strong\n";
@@ -334,31 +337,33 @@ public static class DolphinInput
             "Buttons/Home = `" + d + ":Button Home`|`" + d + ":Button Guide`\n" +
             JoyConImu(d) +
             "IMUIR/Enabled = True\n" +
-            "IMUIR/Total Yaw = 16\n" +
+            "IMUIR/Total Yaw = 25\n" +
+            "IMUIR/Accelerometer Influence = 1\n" +
+            "IMUGyroscope/Calibration Period = 3.5\n" +
             "IMUIR/Recenter = `" + d + ":Button Home`|`" + d + ":Button Guide`\n" +
             "Rumble/Motor = Strong\n";
     }
 
     private static string JoyConImu(string device)
     {
+        // Joy-Con held as Wiimote: invert pitch + vertical accel (no Steam Deck gyro OR).
         var sb = new StringBuilder();
         foreach (var (key, axis) in new (string, string)[]
                  {
-                     ("IMUAccelerometer/Up", "Accel Up"),
-                     ("IMUAccelerometer/Down", "Accel Down"),
+                     ("IMUAccelerometer/Up", "Accel Down"),
+                     ("IMUAccelerometer/Down", "Accel Up"),
                      ("IMUAccelerometer/Left", "Accel Left"),
                      ("IMUAccelerometer/Right", "Accel Right"),
-                     ("IMUAccelerometer/Forward", "Accel Forward"),
-                     ("IMUAccelerometer/Backward", "Accel Backward"),
-                     ("IMUGyroscope/Pitch Up", "Gyro Pitch Up"),
-                     ("IMUGyroscope/Pitch Down", "Gyro Pitch Down"),
+                     ("IMUAccelerometer/Forward", "Accel Backward"),
+                     ("IMUAccelerometer/Backward", "Accel Forward"),
+                     ("IMUGyroscope/Pitch Up", "Gyro Pitch Down"),
+                     ("IMUGyroscope/Pitch Down", "Gyro Pitch Up"),
                      ("IMUGyroscope/Roll Left", "Gyro Roll Left"),
                      ("IMUGyroscope/Roll Right", "Gyro Roll Right"),
                      ("IMUGyroscope/Yaw Left", "Gyro Yaw Left"),
                      ("IMUGyroscope/Yaw Right", "Gyro Yaw Right"),
                  })
         {
-            // Combined IMU (+ optional DSU Combined OR when live cfg runs with status=ok).
             sb.Append(key).Append(" = `").Append(device).Append(':').Append(axis).Append("`");
             if (!device.StartsWith("DSUClient/", StringComparison.Ordinal))
                 sb.Append("|`").Append(DsuCombined).Append(':').Append(axis).Append("`");
