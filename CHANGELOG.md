@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.7 — 2026-08-29
+
+- Windows SSH connect no longer freezes the UI: MAC/WoL learning and shell resize run off the UI thread; Optimize cache loads in the background.
+- Auto-connect on startup: tries known sessions in order (selected first, then the rest) until one connects.
+- Joy-Con install script: noninteractive pacman (no stuck PGP prompt), cmake via `pip --user` when pacman fails, out-of-tree cmake build. Re-Optimize once so `install-joycond.sh` is written, then run it in Desktop Mode.
+
 ## 0.6.6 — 2026-08-29
 
 - Joy-Con DSU: SESAME no longer tells you to `systemctl enable joycond` when the unit is missing (SteamOS does not ship it). Optimize deploys `~/.local/share/sesame/install-joycond.sh` for a real one-time Desktop Mode install (build + `sudo make install` + enable + cemuhook). Status stays `need-install` until `systemctl status joycond` would succeed.

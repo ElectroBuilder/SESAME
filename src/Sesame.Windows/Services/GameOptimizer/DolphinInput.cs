@@ -16,8 +16,9 @@ public static class DolphinInput
         "Wii Joy-Cons:\n" +
         "• Pair L+R, press SL+SR on each · Steam Input Off on this shortcut\n" +
         "• Right = Wiimote (gyro) · Left = Nunchuk · Home recenters\n\n" +
-        "Joy-Con motion is not on SteamOS by default. Once in Desktop Mode:\n" +
+        "Joy-Con motion is not on SteamOS by default. After updating SESAME, Optimize once, then in Desktop Mode:\n" +
         "  bash ~/.local/share/sesame/install-joycond.sh\n" +
+        "(Needs sudo once. If pacman asks about keys, the script answers noninteractively and can install cmake via pip.)\n" +
         "Then re-Optimize and launch via SESAME.";
 
     public static string WrapperPath =>
@@ -125,14 +126,19 @@ public static class DolphinInput
         {
             client.EnsureDirectory("/home/deck/.local/share/sesame");
             client.WriteText(InstallJoyCondPath, LoadScript("Sesame.sesame-install-joycond.sh"));
+            // Also next to Emulation launchers so a missing share path is less confusing
+            client.WriteText(DeckClient.Combine(EmulatorProbe.WrapperDir, "install-joycond.sh"),
+                LoadScript("Sesame.sesame-install-joycond.sh"));
             client.Execute(
                 "chmod +x " + DeckClient.ShQuote(WrapperPath) +
                 " " + DeckClient.ShQuote(JoyConDsuPath) +
                 " " + DeckClient.ShQuote(InstallJoyCondPath) +
+                " " + DeckClient.ShQuote(DeckClient.Combine(EmulatorProbe.WrapperDir, "install-joycond.sh")) +
                 " ; sed -i 's/\\r$//' " + DeckClient.ShQuote(WrapperPath) +
                 " " + DeckClient.ShQuote(CfgPath) +
                 " " + DeckClient.ShQuote(JoyConDsuPath) +
                 " " + DeckClient.ShQuote(InstallJoyCondPath) +
+                " " + DeckClient.ShQuote(DeckClient.Combine(EmulatorProbe.WrapperDir, "install-joycond.sh")) +
                 " ; bash " + DeckClient.ShQuote(JoyConDsuPath) +
                 " >/dev/null 2>&1 || true" +
                 " ; python3 " + DeckClient.ShQuote(CfgPath) +

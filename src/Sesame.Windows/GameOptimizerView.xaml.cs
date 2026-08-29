@@ -64,32 +64,40 @@ public partial class GameOptimizerView : UserControl
         OptimizerPicks.CurrentKey = CacheKey();
         CancelBackgroundScan();
         ClearGames();
-        LoadCachedLibrary();
+        HintText.Text = "Loading cache…";
+        var key = CacheKey();
+        var host = CacheHost();
+        var client = _client;
+        _ = Task.Run(() =>
+        {
+            var cached = OptimizerLibraryCache.Load(key, host);
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!string.Equals(CacheKey(), key, StringComparison.OrdinalIgnoreCase)) return;
+                if (cached.Count == 0)
+                {
+                    HintText.Text = "Scan to load ROMs, Hydra games and apps from this Deck.";
+                    StatusChanged?.Invoke("Optimize: not scanned yet");
+                    return;
+                }
+                ApplyScanResults(cached, prefetch: true);
+                HintText.Text = $"{_games.Count} games from cache. Scan to refresh from the Deck.";
+                StatusChanged?.Invoke($"Optimize: {_games.Count} games (cache)");
+                if (client is not { IsConnected: true }) return;
+                var snapshot = _games.ToList();
+                _ = Task.Run(() =>
+                {
+                    try { SteamGridArt.AttachAll(client, snapshot); }
+                    catch { /* covers are optional */ }
+                    Dispatcher.BeginInvoke(() => _ = PrefetchCoversAsync());
+                });
+            });
+        });
     }
 
     public void LoadCachedLibrary()
     {
-        OptimizerPicks.CurrentKey = CacheKey();
-        var cached = OptimizerLibraryCache.Load(CacheKey(), CacheHost());
-        if (cached.Count == 0)
-        {
-            HintText.Text = "Scan to load ROMs, Hydra games and apps from this Deck.";
-            StatusChanged?.Invoke("Optimize: not scanned yet");
-            return;
-        }
-
-        ApplyScanResults(cached, prefetch: true);
-        HintText.Text = $"{_games.Count} games from cache. Scan to refresh from the Deck.";
-        StatusChanged?.Invoke($"Optimize: {_games.Count} games (cache)");
-        var client = _client;
-        if (client is not { IsConnected: true }) return;
-        var snapshot = _games.ToList();
-        _ = Task.Run(() =>
-        {
-            try { SteamGridArt.AttachAll(client, snapshot); }
-            catch { /* covers are optional */ }
-            Dispatcher.BeginInvoke(() => _ = PrefetchCoversAsync());
-        });
+        OnConnected();
     }
 
     public void StartBackgroundScan() => _ = ScanLibraryAsync();

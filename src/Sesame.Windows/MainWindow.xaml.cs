@@ -79,11 +79,38 @@ public partial class MainWindow : Window
         StorePanel.TargetResolver = PreviewPackPath;
         _client.ShellOutput += text => Dispatcher.BeginInvoke(() => AppendTerminal(text));
         Closed += (_, _) => _client.Dispose();
-        Loaded += (_, _) =>
+        Loaded += (_, _) => _ = StartupConnectAsync();
+    }
+
+    private async Task StartupConnectAsync()
+    {
+        if (HostEnvironment.LocalAvailable && !HostEnvironment.ForceRemote)
         {
-            if (HostEnvironment.LocalAvailable && !HostEnvironment.ForceRemote)
-                _ = ConnectToAsync(ConnectionProfile.LocalDeck());
-        };
+            await ConnectToAsync(ConnectionProfile.LocalDeck(), quiet: true, trySiblings: false);
+            return;
+        }
+
+        var ordered = new List<ConnectionProfile>();
+        if (ProfileBox.SelectedItem is ConnectionProfile selected && !selected.IsLocal)
+            ordered.Add(selected.Clone());
+        foreach (var p in _profiles.Profiles.Where(p => !p.IsLocal))
+        {
+            if (ordered.Any(o => o.Id == p.Id)) continue;
+            ordered.Add(p.Clone());
+        }
+
+        if (ordered.Count == 0) return;
+
+        foreach (var profile in ordered)
+        {
+            FooterText.Text = "Trying " + profile.Name + " (" + profile.Host + ")…";
+            ProfileBox.SelectedItem = _targets.FirstOrDefault(t => t.Id == profile.Id) ?? ProfileBox.SelectedItem;
+            await ConnectToAsync(profile, quiet: true, trySiblings: false);
+            if (_client.IsConnected) return;
+        }
+
+        FooterText.Text = "No session connected. Pick one and click Connect.";
+        StatusText.Text = "Not connected";
     }
 
     private void Settings_Click(object sender, RoutedEventArgs e)
@@ -223,18 +250,20 @@ public partial class MainWindow : Window
         await ConnectToAsync(selected);
     }
 
-    private async Task ConnectToAsync(ConnectionProfile selected)
+    private async Task ConnectToAsync(ConnectionProfile selected, bool quiet = false, bool trySiblings = true)
     {
         if (_busy) return;
         var chosen = selected.Clone();
-        var fallback = _profiles.Profiles
-            .Where(p => p.Id != chosen.Id)
-            .Select(p => p.Clone())
-            .ToList();
+        var fallback = trySiblings
+            ? _profiles.Profiles
+                .Where(p => p.Id != chosen.Id && !p.IsLocal)
+                .Select(p => p.Clone())
+                .ToList()
+            : [];
         TermHint.Text = "  ·  connecting…";
         ResetTerminal("");
         _busy = true;
-        FooterText.Text = chosen.IsLocal ? "Connecting locally…" : "Connecting…";
+        FooterText.Text = chosen.IsLocal ? "Connecting locally…" : "Connecting to " + chosen.Host + "…";
         try
         {
             if (chosen.IsLocal)
@@ -244,7 +273,10 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, AppBrand.ShortName);
+            if (!quiet)
+                MessageBox.Show(ex.Message, AppBrand.ShortName);
+            else
+                FooterText.Text = chosen.Name + ": " + ex.Message;
         }
         finally
         {
@@ -257,7 +289,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        RememberMac();
         DisconnectBtn.IsEnabled = true;
         ConnectBtn.IsEnabled = false;
         var p = _client.ActiveProfile!;
@@ -265,17 +296,28 @@ public partial class MainWindow : Window
             ? "Local on this Steam Deck"
             : $"Connected to {p.Name} ({p.Host})";
         StatusText.Foreground = (Brush)FindResource("Ok");
-        _client.ResizeShell(_termCols, _termRows);
         TermHint.Text = "  ·  click in the window and type  ·  Enter runs  ·  Ctrl+C stops";
+        FooterText.Text = "Connected — opening folders…";
+
+        // Keep SSH follow-up off the UI thread (RememberMac used to freeze for ~12–24s).
+        var cols = _termCols;
+        var rows = _termRows;
         _ = Task.Run(() =>
         {
+            try { _client.ResizeShell(cols, rows); } catch { /* shell size is optional */ }
+            try { RememberMac(); } catch { /* MAC learn is optional */ }
             try { LibraryLayout.Ensure(_client, _catalog); }
             catch { /* folders are created on first scan if this fails */ }
         });
+
         Navigate(_client.Home, push: false, showFilesTab: false);
-        OptimizerPanel.OnConnected();
-        AppsPanel.OnConnected();
-        RefreshDashboard();
+        // Cache load can be heavy — do not block the connect handshake.
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            OptimizerPanel.OnConnected();
+            AppsPanel.OnConnected();
+            RefreshDashboard();
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void ConnectOrWake(ConnectionProfile chosen, List<ConnectionProfile> fallback)
