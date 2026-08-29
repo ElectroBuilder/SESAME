@@ -3,10 +3,15 @@
              x:Class="Sesame.Deck.Views.GamesPage">
   <Grid>
     <DockPanel>
-      <Border DockPanel.Dock="Top" Background="{DynamicResource Panel}" Padding="8,6" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
+      <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}" Padding="8,6" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <Button Content="Scan library" Click="Scan_Click"/>
-          <Button Classes="accent" Content="+ Game" Click="Add_Click"/>
+            <Button Content="+ Game" Click="Add_Click"/>
+          <Button Content="Open ROM folder" Click="OpenRom_Click"/>
+          <Button Content="Open mods" Click="OpenMods_Click"/>
+          <Button Content="Open saves" Click="OpenSaves_Click"/>
+          <Button Content="Open texture packs" Click="OpenTextures_Click"/>
+          <Button Classes="accent" Content="Search packs…" Click="SearchPacks_Click"/>
           <Button Content="Remove" Click="Remove_Click"/>
           <TextBlock x:Name="HintText" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource Muted}"
                      Text="ROMs plus games you add yourself."/>
@@ -27,7 +32,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
     </DockPanel>
-    <Border x:Name="BusyOverlay" IsVisible="False" Background="#CC05070A">
+    <Border x:Name="BusyOverlay" Classes="overlay" IsVisible="False">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
         <ProgressBar IsIndeterminate="True" Width="280" Height="8"/>
         <TextBlock x:Name="BusyText" Text="Scanning games…" FontSize="18" HorizontalAlignment="Center"/>

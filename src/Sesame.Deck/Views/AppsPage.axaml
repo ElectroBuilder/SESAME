@@ -28,7 +28,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
     </DockPanel>
-    <Border x:Name="BusyOverlay" IsVisible="False" Background="#CC05070A">
+    <Border x:Name="BusyOverlay" Classes="overlay" IsVisible="False">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
         <ProgressBar IsIndeterminate="True" Width="280" Height="8"/>
         <TextBlock x:Name="BusyText" Text="Reading installed apps…" FontSize="18" HorizontalAlignment="Center"/>

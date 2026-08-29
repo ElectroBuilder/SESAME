@@ -60,21 +60,6 @@ public sealed class GameLibrary
             games.Add(entry);
         }
 
-        foreach (var user in Eden.Users)
-        {
-            if (!client.Exists(user.Folder)) continue;
-            foreach (var folder in client.List(user.Folder))
-            {
-                if (!folder.IsDirectory || folder.Name.Length != 16 || !TitleIdInName.IsMatch(folder.Name))
-                    continue;
-                var id = folder.Name.ToUpperInvariant();
-                if (id.StartsWith("010000000000", StringComparison.OrdinalIgnoreCase)) continue;
-                if (games.Any(g => string.Equals(g.TitleId, id, StringComparison.OrdinalIgnoreCase))) continue;
-                catalog.TitleIds.TryGetValue(id, out var name);
-                games.Add(BuildEntry(client, catalog, name ?? id, id, "SWITCH", "", id, primary));
-            }
-        }
-
         return games.OrderBy(g => g.System).ThenBy(g => g.DisplayName).ToList();
     }
 
@@ -83,6 +68,9 @@ public sealed class GameLibrary
         var m = TitleIdInName.Match(fileName);
         return m.Success ? m.Value.ToUpperInvariant() : null;
     }
+
+    private static bool LooksLikeTitleId(string name) =>
+        name.Length == 16 && TitleIdInName.IsMatch(name);
 
     public static string? TexturePathFor(string displayName, string system, string? titleId, AppCatalog catalog)
     {
@@ -153,6 +141,7 @@ public sealed class GameLibrary
                 if (!item.IsDirectory || item.Name is "cache") continue;
                 if (item.Name.Trim('0').Length == 0) continue;
                 if (usedFolders.Contains(item.Name)) continue;
+                if (LooksLikeTitleId(item.Name)) continue;
                 users.Add(new EdenUser
                 {
                     Id = item.Name,

@@ -12,7 +12,6 @@ public static class DeckTheme
     public const string Dark = "Dark";
     public const string Light = "Light";
     public static string Current { get; private set; } = Dark;
-    private static ResourceDictionary? _loaded;
 
     public static void LoadSaved()
     {
@@ -35,13 +34,18 @@ public static class DeckTheme
         if (app is null) return;
         Current = theme.Equals(Light, StringComparison.OrdinalIgnoreCase) ? Light : Dark;
         app.RequestedThemeVariant = Current == Light ? ThemeVariant.Light : ThemeVariant.Dark;
+
         var dict = (ResourceDictionary)AvaloniaXamlLoader.Load(
             new Uri($"avares://SESAME/Themes/{Current}.axaml"));
-        var merged = app.Resources.MergedDictionaries;
-        if (_loaded is not null)
-            merged.Remove(_loaded);
-        merged.Insert(0, dict);
-        _loaded = dict;
+        app.Resources.MergedDictionaries.Clear();
+        app.Resources.MergedDictionaries.Add(dict);
+
+        if (app.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            foreach (var window in desktop.Windows)
+                window.RequestedThemeVariant = app.RequestedThemeVariant;
+        }
+
         try
         {
             var path = AppDataPaths.Combine("theme.txt");

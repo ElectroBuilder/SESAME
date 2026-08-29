@@ -12,6 +12,7 @@ public partial class FilesPage : UserControl
     private readonly Stack<string> _back = new();
 
     public event Action<string>? PathChanged;
+    public string CurrentPath => _cwd;
 
     public FilesPage() => InitializeComponent();
 
@@ -38,10 +39,69 @@ public partial class FilesPage : UserControl
             Navigate(PathBox.Text ?? _cwd);
     }
 
-    private void Open_Double(object? sender, TappedEventArgs e)
+    private void Open_Double(object? sender, TappedEventArgs e) => OpenSelected();
+
+    private void Open_Click(object? sender, RoutedEventArgs e) => OpenSelected();
+
+    private void OpenSelected()
     {
         if (FileList.SelectedItem is RemoteItem { IsDirectory: true } item)
             Navigate(item.FullPath);
+    }
+
+    private async void NewFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null || !DeckSession.Current.Connected) return;
+        var dlg = new AskWindow("New folder", "Folder name");
+        if (await dlg.ShowDialog<bool>(owner) != true || string.IsNullOrWhiteSpace(dlg.Value)) return;
+        try
+        {
+            DeckSession.Current.Client.EnsureDirectory(DeckClient.Combine(_cwd, dlg.Value));
+            Navigate(_cwd, push: false);
+        }
+        catch (Exception ex)
+        {
+            PathBox.Text = ex.Message;
+        }
+    }
+
+    private async void Delete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (FileList.SelectedItem is not RemoteItem item) return;
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return;
+        if (!await ConfirmWindow.Ask(owner, "Delete", "Delete " + item.Name + "?")) return;
+        try
+        {
+            DeckSession.Current.Client.Delete(item);
+            Navigate(_cwd, push: false);
+        }
+        catch (Exception ex)
+        {
+            PathBox.Text = ex.Message;
+        }
+    }
+
+    private async void Download_Click(object? sender, RoutedEventArgs e)
+    {
+        if (FileList.SelectedItem is not RemoteItem item) return;
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return;
+        var folders = await owner.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+        {
+            Title = "Download to"
+        });
+        if (folders.Count == 0) return;
+        try
+        {
+            DeckSession.Current.Client.DownloadItem(item, folders[0].Path.LocalPath);
+            PathChanged?.Invoke("Downloaded " + item.Name);
+        }
+        catch (Exception ex)
+        {
+            PathBox.Text = ex.Message;
+        }
     }
 
     private void Navigate(string path, bool push = true)

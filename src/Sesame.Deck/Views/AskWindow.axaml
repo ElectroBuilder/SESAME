@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sesame.Deck.Views.AskWindow"
+        Width="480" Height="220"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Bg}"
+        Foreground="{DynamicResource Text}">
+  <DockPanel Margin="20">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button Content="Cancel" Click="Cancel_Click"/>
+      <Button Classes="accent" Content="OK" Click="Ok_Click"/>
+    </StackPanel>
+    <StackPanel Spacing="8">
+      <TextBlock x:Name="HintText" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+      <TextBox x:Name="ValueBox"/>
+    </StackPanel>
+  </DockPanel>
+</Window>

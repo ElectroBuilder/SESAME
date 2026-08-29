@@ -32,7 +32,7 @@ public partial class ShellWindow : Window
         GameRoot.IsVisible = _gameMode;
         HintBar.Text = _gameMode
             ? "A confirm    B back    D-pad / stick navigate    L/R tabs"
-            : "";
+            : "Drop files here to upload them to the current folder or a game.";
         if (_gameMode)
         {
             WindowState = WindowState.FullScreen;
@@ -40,6 +40,9 @@ public partial class ShellWindow : Window
             Height = 800;
             QuickPane.IsVisible = false;
             GameBackBtn.IsVisible = false;
+            SessionsBtn.IsVisible = false;
+            ConnectBtn.IsVisible = false;
+            DisconnectBtn.IsVisible = false;
         }
 
         _pad = new GamepadPump(OnPad);
@@ -79,6 +82,16 @@ public partial class ShellWindow : Window
         GamesPanel.StatusChanged += text => FooterStatus.Text = text;
         GamesPanel.ManualChanged += ArtPanel.UpsertManual;
         GamesPanel.ManualRemoved += ArtPanel.RemoveManual;
+        GamesPanel.OpenFolder += path =>
+        {
+            MainTabs.SelectedIndex = 0;
+            FilesPanel.OpenPath(path);
+        };
+        GamesPanel.SearchPacks += game =>
+        {
+            MainTabs.SelectedIndex = 4;
+            StorePanel.Prefill(game);
+        };
         ArtPanel.StatusChanged += text => FooterStatus.Text = text;
         ArtPanel.SetCompact(_gameMode);
         StorePanel.SetGames(_session.Catalog.StoreGames, []);
@@ -120,14 +133,17 @@ public partial class ShellWindow : Window
     private void RefreshStatus()
     {
         var status = _session.Status;
-        StatusLabel.Text = status;
-        StatusLabel.IsVisible = !string.IsNullOrWhiteSpace(status);
-        GameStatus.Text = string.IsNullOrWhiteSpace(status)
+        if (string.IsNullOrWhiteSpace(status))
+            status = _session.Connected ? "" : "Not connected";
+        StatusLabel.Text = string.IsNullOrWhiteSpace(status) ? "Connected" : status;
+        StatusLabel.IsVisible = true;
+        GameStatus.Text = string.IsNullOrWhiteSpace(_session.Status)
             ? HostEnvironment.RuntimeLabel
-            : status + " · " + HostEnvironment.RuntimeLabel;
-        if (!string.IsNullOrWhiteSpace(status))
-            FooterStatus.Text = status;
-        RemoteBtn.IsVisible = true;
+            : _session.Status + " · " + HostEnvironment.RuntimeLabel;
+        if (!string.IsNullOrWhiteSpace(_session.Status))
+            FooterStatus.Text = _session.Status;
+        ConnectBtn.IsEnabled = !_session.Connected;
+        DisconnectBtn.IsEnabled = _session.Connected;
     }
 
     private void OpenTab(int index, bool compactArt)
@@ -149,7 +165,49 @@ public partial class ShellWindow : Window
         FocusTile(_tile);
     }
 
-    private void NavSettings_Click(object? sender, RoutedEventArgs e) => OpenTab(5, compactArt: false);
+    private async void NavSettings_Click(object? sender, RoutedEventArgs e) => await OpenSettingsAsync();
+
+    private async Task OpenSettingsAsync()
+    {
+        var win = new SettingsWindow();
+        await win.ShowDialog(this);
+        ArtPanel.OnConnected();
+    }
+
+    private void PinCurrent_Click(object? sender, RoutedEventArgs e)
+    {
+        var path = FilesPanel.CurrentPath;
+        if (string.IsNullOrWhiteSpace(path)) return;
+        _pins.Add(System.IO.Path.GetFileName(path.TrimEnd('/')), path, "Pinned");
+        BuildQuickAccess();
+    }
+
+    private async void Connect_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (HostEnvironment.LocalAvailable)
+                await _session.ConnectLocalAsync();
+            else
+            {
+                var dlg = new RemoteDialog();
+                await dlg.ShowDialog(this);
+                if (!dlg.Connected) return;
+            }
+            AfterConnect();
+        }
+        catch (Exception ex)
+        {
+            FooterStatus.Text = ex.Message;
+        }
+        RefreshStatus();
+    }
+
+    private void Disconnect_Click(object? sender, RoutedEventArgs e)
+    {
+        _session.Disconnect();
+        RefreshStatus();
+    }
 
     private void Tile0_Click(object? sender, RoutedEventArgs e)
     {
@@ -173,10 +231,10 @@ public partial class ShellWindow : Window
         FilesPanel.OnConnected();
     }
 
-    private void Tile3_Click(object? sender, RoutedEventArgs e)
+    private async void Tile3_Click(object? sender, RoutedEventArgs e)
     {
         _tile = 3;
-        OpenTab(5, compactArt: false);
+        await OpenSettingsAsync();
     }
 
     private void GameBack_Click(object? sender, RoutedEventArgs e) => ShowHome();

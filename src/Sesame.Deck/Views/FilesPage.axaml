@@ -2,12 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Sesame.Deck.Views.FilesPage">
   <DockPanel>
-    <Border DockPanel.Dock="Top" Background="{DynamicResource Panel}" Padding="8,6" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
+    <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}" Padding="8,6" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1">
       <StackPanel Orientation="Horizontal" Spacing="6">
         <Button Content="Back" Click="Back_Click"/>
         <Button Content="Up" Click="Up_Click"/>
         <Button Content="Refresh" Click="Refresh_Click"/>
-        <TextBox x:Name="PathBox" Width="420" KeyDown="Path_KeyDown"/>
+        <Button Content="New folder" Click="NewFolder_Click"/>
+        <Button Content="Open" Click="Open_Click"/>
+        <Button Content="Download" Click="Download_Click"/>
+        <Button Content="Delete" Click="Delete_Click"/>
+        <TextBox x:Name="PathBox" Width="380" Margin="4,0,8,0" KeyDown="Path_KeyDown"/>
         <Button Content="Go" Click="Go_Click"/>
       </StackPanel>
     </Border>

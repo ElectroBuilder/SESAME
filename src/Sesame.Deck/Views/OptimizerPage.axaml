@@ -60,7 +60,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
     </DockPanel>
-    <Border x:Name="BusyOverlay" IsVisible="False" Background="#CC05070A" ZIndex="20">
+    <Border x:Name="BusyOverlay" Classes="overlay" IsVisible="False" ZIndex="20">
       <Border Width="560" HorizontalAlignment="Center" VerticalAlignment="Center"
               Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="14" Padding="28">
         <StackPanel>

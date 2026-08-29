@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Sesame.Deck.Views.LaunchersPage">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="Emulators and launch rules"
+               FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4"/>
+    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
+               Text="Target is the important field. Default: {flatpak} {emulator} {core} &quot;{rom}&quot;. For RetroArch, {emulator} = run org.libretro.RetroArch -L and {core} is the full core path. {roms} is the ROM folder, {rom} the ROM file."/>
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,12,0,0">
+      <Button Content="Restore defaults" Click="Reset_Click"/>
+    </StackPanel>
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="12"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <Border Grid.Row="0" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Border}"
+              BorderThickness="1" CornerRadius="6" Padding="16">
+        <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto,Auto,Auto">
+          <TextBlock Text="roms  ({roms})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+          <TextBox x:Name="RomsBox" Grid.Row="1" LostFocus="Layout_Changed"/>
+          <TextBlock Grid.Column="2" Text="flatpak  ({flatpak})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+          <TextBox x:Name="FlatpakBox" Grid.Row="1" Grid.Column="2" LostFocus="Layout_Changed"/>
+          <TextBlock Grid.Row="2" Text="Launchers folder  ({launchers})"
+                     Foreground="{DynamicResource Muted}" Margin="0,10,0,4"/>
+          <TextBox x:Name="LaunchersBox" Grid.Row="3" LostFocus="Layout_Changed"/>
+          <TextBlock Grid.Row="2" Grid.Column="2" Text="Tools folder  ({tools})"
+                     Foreground="{DynamicResource Muted}" Margin="0,10,0,4"/>
+          <TextBox x:Name="ToolsBox" Grid.Row="3" Grid.Column="2" LostFocus="Layout_Changed"/>
+        </Grid>
+      </Border>
+      <Grid Grid.Row="2" ColumnDefinitions="240,12,*">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="Consoles" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+          <ListBox x:Name="SystemList" DisplayMemberBinding="{Binding Name}"
+                   SelectionChanged="System_Changed"/>
+        </DockPanel>
+        <Border Grid.Column="2" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Border}"
+                BorderThickness="1" CornerRadius="6" Padding="16">
+          <ScrollViewer>
+            <StackPanel>
+              <Grid ColumnDefinitions="*,12,*">
+                <StackPanel>
+                  <TextBlock Text="ROM subfolder  ({folder})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                  <TextBox x:Name="FolderBox" LostFocus="Field_Changed"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Text="Emulator  ({emulator})" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                  <ComboBox x:Name="EmulatorBox"
+                            LostFocus="Field_Changed" SelectionChanged="Emulator_Changed"/>
+                </StackPanel>
+              </Grid>
+              <TextBlock Text="Core  ({core} = full path)" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+              <ComboBox x:Name="CoreBox"
+                        LostFocus="Field_Changed" SelectionChanged="Core_Changed"/>
+              <TextBlock Text="Target template" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+              <TextBox x:Name="TargetBox" LostFocus="Field_Changed"/>
+              <TextBlock Text="Start in template" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+              <TextBox x:Name="StartDirBox" LostFocus="Field_Changed"/>
+              <TextBlock Text="Launch options template" Foreground="{DynamicResource Muted}" Margin="0,12,0,4"/>
+              <TextBox x:Name="OptionsBox" Height="48" TextWrapping="Wrap" AcceptsReturn="True"
+                       LostFocus="Field_Changed"/>
+              <TextBlock Text="Preview for Steam" Foreground="{DynamicResource Muted}" Margin="0,16,0,4"/>
+              <TextBox x:Name="PreviewBox" Height="88" IsReadOnly="True" TextWrapping="Wrap"
+                       FontFamily="Consolas" FontSize="12"
+                       Background="{DynamicResource PanelAlt}"/>
+              <TextBlock x:Name="GyroNote" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
+                         Margin="0,12,0,0" IsVisible="False"/>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</UserControl>

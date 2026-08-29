@@ -35,6 +35,24 @@ public partial class StorePage : UserControl
             GameBox.SelectedIndex = 0;
     }
 
+    public void Prefill(StoreGame? game)
+    {
+        if (game is { IsAll: false } && GameBox.ItemsSource is IEnumerable<StoreGame> items)
+        {
+            var match = items.FirstOrDefault(g => !g.IsAll && g.MatchesTitle(game.Name) && g.MatchesSystem(game.System));
+            if (match is not null)
+                GameBox.SelectedItem = match;
+            else
+            {
+                var list = items.ToList();
+                list.Add(game);
+                GameBox.ItemsSource = list;
+                GameBox.SelectedItem = game;
+            }
+        }
+        _ = SearchAsync();
+    }
+
     private void Query_KeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter) _ = SearchAsync();

@@ -1,21 +1,17 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Sesame.Deck.App"
-             RequestedThemeVariant="Dark">
-  <Application.Resources>
-    <ResourceDictionary>
-      <ResourceDictionary.MergedDictionaries>
-        <ResourceInclude Source="avares://SESAME/Themes/Dark.axaml"/>
-      </ResourceDictionary.MergedDictionaries>
-    </ResourceDictionary>
-  </Application.Resources>
+             x:Class="Sesame.Deck.App">
   <Application.Styles>
     <FluentTheme />
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource Bg}"/>
       <Setter Property="Foreground" Value="{DynamicResource Text}"/>
       <Setter Property="FontFamily" Value="Inter, Segoe UI, sans-serif"/>
-      <Setter Property="FontSize" Value="16"/>
+      <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="UserControl">
+      <Setter Property="Background" Value="{DynamicResource Bg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
     <Style Selector="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource Text}"/>
@@ -23,14 +19,15 @@
     <Style Selector="Button">
       <Setter Property="Background" Value="{DynamicResource PanelAlt}"/>
       <Setter Property="Foreground" Value="{DynamicResource Text}"/>
-      <Setter Property="Padding" Value="18,12"/>
-      <Setter Property="Margin" Value="0,0,10,0"/>
-      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="Margin" Value="0,0,8,0"/>
+      <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
       <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="MinHeight" Value="34"/>
     </Style>
     <Style Selector="Button:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Hover}"/>
+      <Setter Property="Background" Value="{DynamicResource Header}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
     </Style>
     <Style Selector="Button.accent">
@@ -39,16 +36,78 @@
       <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
+    <Style Selector="Button.chrome">
+      <Setter Property="Background" Value="{DynamicResource ChromeBg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource ChromeFg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource ChromeBorder}"/>
+      <Setter Property="BorderThickness" Value="1.5"/>
+      <Setter Property="Padding" Value="12,7"/>
+      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="MaxHeight" Value="34"/>
+    </Style>
     <Style Selector="TextBox">
       <Setter Property="Background" Value="{DynamicResource PanelAlt}"/>
       <Setter Property="Foreground" Value="{DynamicResource Text}"/>
-      <Setter Property="Padding" Value="12,10"/>
+      <Setter Property="CaretBrush" Value="{DynamicResource Text}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+      <Setter Property="Padding" Value="8,6"/>
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="{DynamicResource PanelAlt}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+    </Style>
+    <Style Selector="ComboBoxItem">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="Background" Value="{DynamicResource Panel}"/>
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+    </Style>
+    <Style Selector="RadioButton">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+    </Style>
+    <Style Selector="TabControl">
+      <Setter Property="Background" Value="{DynamicResource Bg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="Background" Value="{DynamicResource Panel}"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="14,8"/>
+    </Style>
+    <Style Selector="TabItem:selected">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="Background" Value="{DynamicResource PanelAlt}"/>
+    </Style>
+    <Style Selector="TabItem /template/ Border">
+      <Setter Property="Background" Value="{DynamicResource Panel}"/>
+    </Style>
+    <Style Selector="TabItem:selected /template/ Border">
+      <Setter Property="Background" Value="{DynamicResource PanelAlt}"/>
     </Style>
     <Style Selector="ListBox">
+      <Setter Property="Background" Value="{DynamicResource Bg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
       <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource Select}"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Header}"/>
+    </Style>
+    <Style Selector="ScrollViewer">
+      <Setter Property="Background" Value="{DynamicResource Bg}"/>
+    </Style>
+    <Style Selector="Border.overlay">
+      <Setter Property="Background" Value="{DynamicResource Overlay}"/>
     </Style>
     <Style Selector="Button.tile">
       <Setter Property="HorizontalAlignment" Value="Stretch"/>
@@ -56,9 +115,11 @@
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="Background" Value="{DynamicResource Panel}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
       <Setter Property="CornerRadius" Value="18"/>
       <Setter Property="Padding" Value="28"/>
       <Setter Property="FontSize" Value="22"/>
+      <Setter Property="MinHeight" Value="0"/>
       <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>

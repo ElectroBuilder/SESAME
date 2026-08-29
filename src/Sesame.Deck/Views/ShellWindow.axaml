@@ -4,9 +4,10 @@
         xmlns:sesame="clr-namespace:Sesame;assembly=Sesame.Core"
         x:Class="Sesame.Deck.Views.ShellWindow"
         Title="SESAME"
-        Width="1280" Height="800"
-        MinWidth="960" MinHeight="540"
+        Width="1280" Height="820"
+        MinWidth="960" MinHeight="600"
         Background="{DynamicResource Bg}"
+        Foreground="{DynamicResource Text}"
         WindowStartupLocation="CenterScreen"
         KeyDown="OnKeyDown">
   <Grid>
@@ -21,32 +22,37 @@
         <RowDefinition Height="*"/>
       </Grid.RowDefinitions>
       <Border Background="{DynamicResource BrandBar}" Padding="16,12"
-              BorderBrush="{DynamicResource Accent}" BorderThickness="0,0,0,2">
+              BorderBrush="{DynamicResource BrandAccent}" BorderThickness="0,0,0,2">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="16">
             <Image Source="avares://SESAME/Assets/sesame-icon-lg.png" Width="72" Height="72" Stretch="Uniform"/>
             <StackPanel VerticalAlignment="Center" Spacing="2">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBlock Text="SESAME" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource BrandAccent}"/>
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="SESAME" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource BrandAccent}"/>
                 <TextBlock x:Name="VersionLabel" FontSize="14" FontWeight="SemiBold"
-                           Foreground="{DynamicResource Gold}" VerticalAlignment="Bottom" Margin="0,0,0,3"/>
+                           Foreground="{DynamicResource Gold}" VerticalAlignment="Bottom" Margin="0,0,0,5"/>
               </StackPanel>
               <TextBlock Text="{x:Static sesame:AppBrand.Tagline}"
-                         FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Gold}"/>
+                         FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Gold}" Opacity="0.9"/>
             </StackPanel>
           </StackPanel>
-          <TextBlock x:Name="StatusLabel" Grid.Column="1" VerticalAlignment="Center" Margin="24,0,0,0"
-                     Foreground="{DynamicResource Muted}" IsVisible="False"/>
+          <TextBlock x:Name="StatusLabel" Grid.Column="1" VerticalAlignment="Center" Margin="24,0,12,0"
+                     Foreground="{DynamicResource BrandMuted}" Text="Not connected"/>
           <StackPanel Grid.Column="2" Orientation="Horizontal">
-            <Button x:Name="GameBackBtn" Content="Back" IsVisible="False" Click="GameBack_Click"/>
-            <Button x:Name="RemoteBtn" Content="SSH…" Click="Remote_Click"/>
-            <Button Content="Settings" Click="NavSettings_Click"/>
+            <Button x:Name="GameBackBtn" Classes="chrome" Content="Back" IsVisible="False" Click="GameBack_Click"/>
+            <Button x:Name="SessionsBtn" Classes="chrome" Content="Sessions…" Click="Remote_Click"/>
+            <Button x:Name="ConnectBtn" Classes="accent" Content="Connect" Click="Connect_Click"/>
+            <Button x:Name="DisconnectBtn" Classes="chrome" Content="Disconnect" Click="Disconnect_Click" IsEnabled="False"/>
+            <Button Classes="chrome" Content="Settings" Click="NavSettings_Click"/>
           </StackPanel>
         </Grid>
       </Border>
-      <Grid Grid.Row="1" ColumnDefinitions="240,6,*">
+      <Grid Grid.Row="1" ColumnDefinitions="260,6,*">
         <DockPanel x:Name="QuickPane" Background="{DynamicResource Panel}">
           <TextBlock DockPanel.Dock="Top" Text="Quick access" FontWeight="SemiBold" Margin="12,10,12,6"/>
+          <StackPanel DockPanel.Dock="Bottom" Margin="8,8">
+            <Button Content="Pin current folder" Click="PinCurrent_Click"/>
+          </StackPanel>
           <ListBox x:Name="QuickList" SelectionChanged="Quick_Changed">
             <ListBox.ItemTemplate>
               <DataTemplate>
@@ -71,9 +77,6 @@
           </TabItem>
           <TabItem Header="Store">
             <views:StorePage x:Name="StorePanel"/>
-          </TabItem>
-          <TabItem Header="Settings">
-            <views:SettingsPage x:Name="SettingsPanel"/>
           </TabItem>
         </TabControl>
       </Grid>
@@ -118,7 +121,7 @@
           <Button x:Name="Tile3" Classes="tile" Margin="10" Click="Tile3_Click">
             <StackPanel>
               <TextBlock Text="Settings" FontSize="28" FontWeight="Bold"/>
-              <TextBlock Text="SteamGridDB key" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
+              <TextBlock Text="Theme, SteamGridDB and emulators" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
             </StackPanel>
           </Button>
         </UniformGrid>
@@ -129,7 +132,8 @@
     <Border Grid.Row="1" Background="{DynamicResource BrandBar}" Padding="16,8"
             BorderBrush="{DynamicResource Border}" BorderThickness="0,1,0,0">
       <DockPanel>
-        <TextBlock x:Name="HintBar" Foreground="{DynamicResource Muted}" FontSize="14"/>
+        <TextBlock x:Name="HintBar" Foreground="{DynamicResource Muted}" FontSize="13"
+                   Text="Drop files here to upload them to the current folder or a game."/>
         <TextBlock x:Name="FooterStatus" DockPanel.Dock="Right" HorizontalAlignment="Right"
                    Foreground="{DynamicResource Accent}"/>
       </DockPanel>

@@ -1,58 +1,156 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:Sesame.Deck.Views"
              x:Class="Sesame.Deck.Views.SettingsPage">
-  <ScrollViewer>
-    <StackPanel Margin="24" Spacing="14" MaxWidth="720" HorizontalAlignment="Left">
-      <TextBlock Text="Settings" FontSize="26" FontWeight="Bold"/>
-
-      <TextBlock Text="Library folders" FontWeight="SemiBold" Margin="0,12,0,0"/>
-      <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
-                 Text="Set the ROM root and where Hydra, Lutris and other non-Steam games live. SESAME then creates empty system folders and Switch mods/saves for the emulators you use. No game titles are written."/>
-      <TextBlock Text="ROMs" FontWeight="SemiBold"/>
-      <TextBox x:Name="RomsRootBox" Watermark="/home/deck/Emulation/roms"/>
-      <TextBlock Text="Hydra games" FontWeight="SemiBold"/>
-      <TextBox x:Name="HydraRootBox" Watermark="/home/deck/Games/Hydra"/>
-      <TextBlock Text="Lutris games" FontWeight="SemiBold"/>
-      <TextBox x:Name="LutrisRootBox" Watermark="/home/deck/Games/Lutris"/>
-      <TextBlock Text="Other non-Steam games" FontWeight="SemiBold"/>
-      <TextBox x:Name="OtherGamesBox" Watermark="/home/deck/Games/Other"/>
-      <TextBlock Text="Switch emulators" FontWeight="SemiBold" Margin="0,8,0,0"/>
-      <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
-                 Text="Mods and save folders are created only for the Switch emulators you check."/>
-      <StackPanel Spacing="6">
-        <CheckBox x:Name="UseEdenBox" Content="Eden"/>
-        <CheckBox x:Name="UseYuzuBox" Content="Yuzu"/>
-        <CheckBox x:Name="UseRyujinxBox" Content="Ryujinx"/>
-        <CheckBox x:Name="UseCitronBox" Content="Citron"/>
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Classes="accent" Content="Save and create folders" Click="SaveLibrary_Click" HorizontalAlignment="Left"/>
-      </StackPanel>
-      <TextBlock x:Name="LibraryStatus" Foreground="{DynamicResource Accent}" TextWrapping="Wrap"/>
-
-      <TextBlock Text="SteamGridDB API key" FontWeight="SemiBold" Margin="0,12,0,0"/>
-      <TextBox x:Name="KeyBox" PasswordChar="•" Watermark="Paste your key"/>
-      <Button Classes="accent" Content="Save" Click="SaveKey_Click" HorizontalAlignment="Left"/>
-      <TextBlock x:Name="KeyStatus" Foreground="{DynamicResource Accent}"/>
-      <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,12,0,0"/>
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="Dark" Click="Dark_Click"/>
-        <Button Content="Light" Click="Light_Click"/>
-      </StackPanel>
-
-      <TextBlock Text="Updates" FontWeight="SemiBold" Margin="0,12,0,0"/>
-      <TextBlock x:Name="UpdateVersion" TextWrapping="Wrap"/>
-      <TextBlock x:Name="UpdateNotes" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="Check for updates" Click="CheckUpdate_Click"/>
-        <Button x:Name="InstallUpdateBtn" Classes="accent" Content="Install and restart"
-                IsEnabled="False" Click="InstallUpdate_Click"/>
-      </StackPanel>
-      <TextBlock x:Name="UpdateStatus" Foreground="{DynamicResource Accent}" TextWrapping="Wrap"/>
-
-      <Button Content="Switch to Desktop Mode (SteamOS)" Click="Desktop_Click" HorizontalAlignment="Left" Margin="0,12,0,0"/>
-      <TextBlock FontSize="13" Foreground="{DynamicResource Muted}" TextWrapping="Wrap"
-                 Text="Optimize briefly closes Steam. Do that in Desktop Mode if SESAME is running from Game Mode."/>
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Classes="accent" Content="Close" Click="Close_Click" Margin="0"/>
     </StackPanel>
-  </ScrollViewer>
+    <TabControl>
+      <TabItem Header="General">
+        <ScrollViewer>
+          <StackPanel MaxWidth="640" HorizontalAlignment="Left" Margin="4,12,4,4">
+            <TextBlock Text="Appearance" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock Text="Theme" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,24">
+              <RadioButton x:Name="DarkThemeBox" Content="Dark" GroupName="Theme" IsCheckedChanged="Theme_Changed"/>
+              <RadioButton x:Name="LightThemeBox" Content="Light" GroupName="Theme" IsCheckedChanged="Theme_Changed"/>
+            </StackPanel>
+
+            <TextBlock Text="Steam tabs" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,10"
+                       Text="How SESAME groups optimized ROMs in Steam. Hydra games and native apps (Kodi, Stremio, …) get their own tabs (Hydra / Apps). Old SESAME tabs are removed on the next optimize; Hydra, Steam ROM Manager and manual collections stay."/>
+            <RadioButton x:Name="TabsPlatformBox" GroupName="SteamTabs" Margin="0,0,0,6" IsCheckedChanged="SteamTabs_Changed">
+              <TextBlock TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="By platform"/>
+                <Run Text=" — one tab per system (NES, SNES, PSX, PS2, …), including new folders."/>
+              </TextBlock>
+            </RadioButton>
+            <RadioButton x:Name="TabsBrandBox" GroupName="SteamTabs" Margin="0,0,0,6" IsCheckedChanged="SteamTabs_Changed">
+              <TextBlock TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="By brand"/>
+                <Run Text=" — Nintendo, PlayStation, Sega, Arcade, Xbox. Unknown systems go to their brand or their own tab."/>
+              </TextBlock>
+            </RadioButton>
+            <RadioButton x:Name="TabsEmulationBox" GroupName="SteamTabs" Margin="0,0,0,24" IsCheckedChanged="SteamTabs_Changed">
+              <TextBlock TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="One tab: Emulation"/>
+                <Run Text=" — all emulated games in one Steam collection."/>
+              </TextBlock>
+            </RadioButton>
+
+            <TextBlock Text="SteamGridDB" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,10"
+                       Text="The API key is stored for this user account and is never shown on screen."/>
+            <TextBlock Text="API key" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+            <DockPanel Margin="0,0,0,8">
+              <Button DockPanel.Dock="Right" Content="Remove" Click="ClearKey_Click" Margin="8,0,0,0"/>
+              <Button DockPanel.Dock="Right" Classes="accent" Content="Save" Click="SaveKey_Click"/>
+              <TextBox x:Name="KeyBox" PasswordChar="•" Watermark="Paste a new key to replace the stored secret"/>
+            </DockPanel>
+            <Button Content="Create a key" Click="OpenKeyLink_Click" HorizontalAlignment="Left"/>
+            <TextBlock x:Name="KeyStatus" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
+
+            <Button Content="Switch to Desktop Mode (SteamOS)" Click="Desktop_Click"
+                    HorizontalAlignment="Left" Margin="0,24,0,0"/>
+            <TextBlock FontSize="13" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Text="Optimize briefly closes Steam. Do that in Desktop Mode if SESAME is running from Game Mode."/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Covers">
+        <ScrollViewer>
+          <StackPanel Margin="4,12,4,4">
+            <TextBlock Text="Category masks" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
+                       Text="A colored bar with a console logo on top of the cover. Turn this on or off per platform. Hydra is off by default: those games often already have artwork. Apps (Kodi, Stremio, …) are also off by default. The Artwork mask switch is the master: if it is off, nothing gets a mask."/>
+            <CheckBox x:Name="MasksMasterBox" Content="Use category masks"
+                      Margin="0,0,0,14" IsCheckedChanged="MasksMaster_Changed"/>
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+              <Button Content="Defaults" Click="MasksDefault_Click"/>
+              <Button Content="All on" Click="MasksAllOn_Click"/>
+              <Button Content="All off" Click="MasksAllOff_Click"/>
+            </StackPanel>
+            <ItemsControl x:Name="MaskList">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <CheckBox Content="{Binding Name}" IsChecked="{Binding Enabled, Mode=TwoWay}"
+                            Width="170" Margin="0,0,12,10"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Data">
+        <ScrollViewer>
+          <StackPanel MaxWidth="640" HorizontalAlignment="Left" Margin="4,12,4,4">
+            <TextBlock Text="What SESAME stores" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock x:Name="DataIntro" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"/>
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="• secrets/ — SSH, API keys (hidden)"/>
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="• optimizer-cache/ — game list per Deck, without artwork files"/>
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="• art-cache / store-cache — downloaded covers and store thumbnails"/>
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,16"
+                       Text="• optimizer-picks.json — your cover choices (not secrets)"/>
+            <Button Content="Clear artwork and search cache" Click="ClearCaches_Click" HorizontalAlignment="Left"/>
+            <TextBlock x:Name="CacheStatus" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Library">
+        <ScrollViewer>
+          <StackPanel MaxWidth="640" HorizontalAlignment="Left" Margin="4,12,4,4">
+            <TextBlock Text="Library folders" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
+                       Text="ROM, Hydra and other game roots on the Steam Deck. After you save, SESAME creates the empty system folders, Hydra/Lutris/Other dirs, and Switch mods/saves for the emulators you use. No game list is shipped or written."/>
+            <TextBlock Text="ROMs" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+            <TextBox x:Name="RomsRootBox" Margin="0,0,0,12"/>
+            <TextBlock Text="Hydra games" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+            <TextBox x:Name="HydraRootBox" Margin="0,0,0,12"/>
+            <TextBlock Text="Lutris games" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+            <TextBox x:Name="LutrisRootBox" Margin="0,0,0,12"/>
+            <TextBlock Text="Other non-Steam games" Foreground="{DynamicResource Muted}" Margin="0,0,0,6"/>
+            <TextBox x:Name="OtherGamesBox" Margin="0,0,0,16"/>
+            <TextBlock Text="Switch emulators" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,10"
+                       Text="SESAME creates mods and save folders only for the Switch emulators you use (Eden, Yuzu, Ryujinx, Citron)."/>
+            <CheckBox x:Name="UseEdenBox" Content="Eden" Margin="0,0,0,6"/>
+            <CheckBox x:Name="UseYuzuBox" Content="Yuzu" Margin="0,0,0,6"/>
+            <CheckBox x:Name="UseRyujinxBox" Content="Ryujinx" Margin="0,0,0,6"/>
+            <CheckBox x:Name="UseCitronBox" Content="Citron" Margin="0,0,0,16"/>
+            <Button Classes="accent" Content="Save library paths" Click="SaveLibrary_Click" HorizontalAlignment="Left"/>
+            <TextBlock x:Name="LibraryStatus" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Emulators">
+        <views:LaunchersPage x:Name="Launchers" Margin="4,12,4,0"/>
+      </TabItem>
+      <TabItem Header="Updates">
+        <ScrollViewer>
+          <StackPanel MaxWidth="640" HorizontalAlignment="Left" Margin="4,12,4,4">
+            <TextBlock Text="SESAME updates" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock x:Name="UpdateVersion" TextWrapping="Wrap" Margin="0,0,0,12"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,12"
+                       Text="Checks GitHub for a newer release, downloads this build, replaces the installed files and restarts SESAME."/>
+            <TextBlock x:Name="UpdateNotes" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,16"/>
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+              <Button Content="Check for updates" Click="CheckUpdate_Click"/>
+              <Button x:Name="InstallUpdateBtn" Classes="accent" Content="Install and restart"
+                      IsEnabled="False" Click="InstallUpdate_Click"/>
+            </StackPanel>
+            <TextBlock x:Name="UpdateStatus" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
 </UserControl>

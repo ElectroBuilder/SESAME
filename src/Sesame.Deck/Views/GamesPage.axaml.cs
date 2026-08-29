@@ -14,6 +14,8 @@ public partial class GamesPage : UserControl
 
     public event Action<OptimizerGame>? ManualChanged;
     public event Action<string?>? ManualRemoved;
+    public event Action<string>? OpenFolder;
+    public event Action<StoreGame?>? SearchPacks;
     public event Action<string>? StatusChanged;
     public IReadOnlyList<GameEntry> Items => _games;
 
@@ -88,5 +90,36 @@ public partial class GamesPage : UserControl
             ManualRemoved?.Invoke(game.ManualId);
         }
         _games.Remove(game);
+    }
+
+    private void OpenRom_Click(object? sender, RoutedEventArgs e)
+    {
+        if (GameList.SelectedItem is GameEntry { RomPath: var p } && !string.IsNullOrEmpty(p))
+            OpenFolder?.Invoke(DeckClient.Parent(p));
+    }
+
+    private void OpenMods_Click(object? sender, RoutedEventArgs e)
+    {
+        if (GameList.SelectedItem is GameEntry g)
+            OpenFolder?.Invoke(g.ModPath ?? DeckSession.Current.Catalog.EdenMods);
+    }
+
+    private void OpenSaves_Click(object? sender, RoutedEventArgs e)
+    {
+        if (GameList.SelectedItem is not GameEntry g) return;
+        OpenFolder?.Invoke(g.SavePath ?? DeckSession.Current.Library.Eden.Primary?.Folder
+            ?? DeckSession.Current.Catalog.EdenUsersRoot);
+    }
+
+    private void OpenTextures_Click(object? sender, RoutedEventArgs e)
+    {
+        if (GameList.SelectedItem is GameEntry g && !string.IsNullOrEmpty(g.TexturePath))
+            OpenFolder?.Invoke(g.TexturePath);
+    }
+
+    private void SearchPacks_Click(object? sender, RoutedEventArgs e)
+    {
+        var game = GameList.SelectedItem as GameEntry;
+        SearchPacks?.Invoke(game?.Identity);
     }
 }
