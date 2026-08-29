@@ -33,8 +33,10 @@ GC="$HOME/Emulation/tools/launchers/gc.sh"
 WII="$HOME/Emulation/tools/launchers/wii.sh"
 DOL="$HOME/Emulation/tools/launchers/dolphin.sh"
 DOL2="$HOME/Emulation/tools/launchers/dolphin-emu.sh"
+IS_WII=0
 case "$ROM" in
   */roms/wii/*|*/wii/*)
+    IS_WII=1
     # Combined Joy-Cons (L+R) → SDL "Nintendo Switch Joy-Con (L/R)" for Joy2Wii.
     export SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS="${SDL_JOYSTICK_HIDAPI_COMBINED_JOY_CONS:-1}"
     set -- "$WII" "$DOL" "$DOL2" "$GC"
@@ -55,6 +57,48 @@ esac
 if [ -f "$HERE/sesame-dolphin-cfg.py" ]; then
   python3 "$HERE/sesame-dolphin-cfg.py" >/dev/null 2>&1 || true
 fi
+
+WATCH_PID=""
+stop_watch() {
+  if [ -n "$WATCH_PID" ] && kill -0 "$WATCH_PID" 2>/dev/null; then
+    kill "$WATCH_PID" 2>/dev/null || true
+    wait "$WATCH_PID" 2>/dev/null || true
+  fi
+  WATCH_PID=""
+}
+
+# Wii: watch Combined ↔ Right-solo and swap Joy2Wii ↔ Joy2Wii (solo) live.
+if [ "$IS_WII" = "1" ] && [ "${SESAME_JOYCON_WATCH:-1}" = "1" ] && [ -f "$HERE/sesame-joycon-watch.py" ]; then
+  # Replace any previous watcher from a crashed launch.
+  pkill -f "sesame-joycon-watch.py" 2>/dev/null || true
+  python3 "$HERE/sesame-joycon-watch.py" >/dev/null 2>&1 &
+  WATCH_PID=$!
+  trap stop_watch EXIT
+fi
+
+run_emu() {
+  local s
+  for s in "$@"; do
+    [ "$s" = "$HERE/sesame-dolphin.sh" ] && continue
+    [ "$s" = "$HERE/vssh-dolphin.sh" ] && continue
+    if [ -x "$s" ]; then
+      "$s" "$ROM"
+      return $?
+    fi
+  done
+  /usr/bin/flatpak run --filesystem=host --device=all org.DolphinEmu.dolphin-emu -b -e "$ROM"
+  return $?
+}
+
+# Wii keeps this shell as parent so the watcher can be stopped on exit.
+# GC/other still exec (Steam Input PID tracking unchanged for those).
+if [ "$IS_WII" = "1" ] && [ -n "$WATCH_PID" ]; then
+  run_emu "$@"
+  rc=$?
+  stop_watch
+  exit "$rc"
+fi
+
 for s in "$@"; do
   [ "$s" = "$HERE/sesame-dolphin.sh" ] && continue
   [ "$s" = "$HERE/vssh-dolphin.sh" ] && continue

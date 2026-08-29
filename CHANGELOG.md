@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.15 — 2026-08-30
+
+- Wii Joy-Con pair↔solo without Controllers menu: disconnect Left + SL+SR (or ZR+R) on Right → **SESAME - Joy2Wii (solo)** (Wiimote only, `Extension = None`); recombine with L+R → Joy2Wii + Nunchuk again.
+- `sesame-joycon-watch.py` watches Combined vs Right-only, writes the matching profile, and triggers Dolphin’s Next Wiimote Profile (F8) so Extension/Device reload mid-game.
+- Re-pair tip: joycond wants **one shoulder on each** (L+R), not ZL+ZR. Steam Input Off still required in Game Mode.
+- Optimize progress: clear Prepare Steam steps (session check → Desktop switch → close Steam) instead of a long silent wait before “Waiting until Desktop Mode is ready”; faster session detect (bash first).
+- Multiplayer: Wiimote 2–4 enabled with the same Joy2Wii layout on `SDL/1..3` — a second Combined Joy-Con pair is player 2 with no extra setup.
+- Per-game profile fixes: clear `WiimoteProfile*` overrides in Dolphin GameSettings so Joy2Wii from the SESAME launcher actually applies on every Wii title.
+
 ## 0.6.14 — 2026-08-29
 
 - Wii controller default is now **SESAME - Joy2Wii** (your proven Combined SDL Joy-Con L/R layout with Accel R/L + gyro dead zone). Obsolete SESAME-joycon* auto profiles are removed.

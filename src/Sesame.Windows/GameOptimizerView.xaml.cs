@@ -295,17 +295,11 @@ public partial class GameOptimizerView : UserControl
             return;
         }
 
-        var kind = DeckSessionKind.Unknown;
-        try { kind = SteamSession.Detect(_client); } catch { /* onbekend */ }
-        var steamNote = kind switch
-        {
-            DeckSessionKind.GameMode =>
-                "Steam is always paused briefly. SESAME switches to Desktop Mode, writes its own shortcuts and collections only, then turns Game Mode back on.",
-            DeckSessionKind.Desktop =>
-                "Steam is always paused briefly. Steam Desktop stops shortly so shortcuts, artwork and collections can be written.",
-            _ =>
-                "Steam is always paused briefly so shortcuts, artwork and collections can be written safely."
-        };
+        // Do not Detect() on the UI thread here — that used to freeze for many seconds
+        // before the options dialog (or progress UI) appeared.
+        const string steamNote =
+            "Steam is always paused briefly so shortcuts, artwork and collections can be written. " +
+            "If the Deck is in Game Mode, SESAME switches to Desktop Mode, writes, then turns Game Mode back on.";
 
         var dlg = new OptimizeOptionsWindow { Owner = Window.GetWindow(this) };
         dlg.Bind(selected.Count,
@@ -373,8 +367,8 @@ public partial class GameOptimizerView : UserControl
         });
         ShowProgress(new OptimizeProgress
         {
-            Title = "Optimize",
-            Detail = "Working…",
+            Title = "Prepare Steam",
+            Detail = "Starting… checking Deck session and pausing Steam.",
             Indeterminate = true
         });
         OptimizeReport? report = null;

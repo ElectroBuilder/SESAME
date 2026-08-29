@@ -15,28 +15,48 @@ public static class SteamSession
         "export XDG_RUNTIME_DIR=/run/user/$(id -u); " +
         "export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus; ";
 
-    public static DeckSessionKind Detect(DeckClient client)
+    // Avoid repeating slow Detect calls within one Optimize run.
+    private static DeckSessionKind _cachedKind = DeckSessionKind.Unknown;
+    private static long _cachedAt;
+    private static string? _cachedClientId;
+    private const int CacheMs = 2_500;
+
+    public static DeckSessionKind Detect(DeckClient client, IProgress<string>? progress = null)
     {
+        var id = ClientId(client);
+        var now = Environment.TickCount64;
+        if (_cachedClientId == id && now - _cachedAt < CacheMs && _cachedKind != DeckSessionKind.Unknown)
+            return _cachedKind;
+
+        // Bash pgrep is much faster over SSH than scanning all of /proc via Python.
+        progress?.Report("Checking Deck session (Desktop vs Game Mode)…");
         try
         {
-            var result = client.Execute("python3 -c " + DeckClient.ShQuote(DetectPy), 10)
-                .Trim().ToLowerInvariant();
+            var result = client.Execute(Env + DetectBash, 8).Trim().ToLowerInvariant();
             var kind = Parse(result);
             if (kind != DeckSessionKind.Unknown)
+            {
+                Remember(id, kind);
                 return kind;
+            }
         }
         catch
         {
-            /* bash-fallback */
+            /* fall through to Python */
         }
 
+        progress?.Report("Session still unclear — deeper check…");
         try
         {
-            var result = client.Execute(Env + DetectBash, 10).Trim().ToLowerInvariant();
-            return Parse(result);
+            var result = client.Execute("python3 -c " + DeckClient.ShQuote(DetectPy), 12)
+                .Trim().ToLowerInvariant();
+            var kind = Parse(result);
+            Remember(id, kind);
+            return kind;
         }
         catch
         {
+            Remember(id, DeckSessionKind.Unknown);
             return DeckSessionKind.Unknown;
         }
     }
@@ -54,48 +74,86 @@ public static class SteamSession
                 "Open SESAME in Desktop Mode (or over SSH from another PC) to optimize.");
         }
 
-        var kind = Detect(client);
+        InvalidateCache();
+        progress?.Report("Step 1/4 — Checking whether the Deck is in Game Mode or Desktop…");
+        var kind = Detect(client, progress);
         var gameMode = kind != DeckSessionKind.Desktop;
+
         if (gameMode)
         {
             progress?.Report(kind == DeckSessionKind.Unknown
-                ? "Session unclear — assuming Game Mode, switching to Desktop Mode…"
-                : "Game Mode detected — switching to Desktop Mode…");
+                ? "Step 2/4 — Session unclear; switching to Desktop Mode (Plasma)…"
+                : "Step 2/4 — Game Mode detected; switching to Desktop Mode (Plasma)…");
             Try(client, "steamos-session-select plasma");
-            WaitUntil(() => Detect(client) == DeckSessionKind.Desktop, 25_000, 400,
-                progress, "Waiting until Desktop Mode is ready");
+            WaitUntil(
+                () =>
+                {
+                    InvalidateCache();
+                    return Detect(client) == DeckSessionKind.Desktop;
+                },
+                25_000,
+                500,
+                progress,
+                "Step 2/4 — Waiting for Desktop Mode (Plasma starting)");
+            InvalidateCache();
             if (Detect(client) == DeckSessionKind.Desktop)
-                progress?.Report("Desktop Mode detected.");
+                progress?.Report("Step 2/4 — Desktop Mode is ready.");
             else
-                progress?.Report("Desktop Mode not confirmed — closing Steam anyway…");
+                progress?.Report("Step 2/4 — Desktop not confirmed yet; continuing so Steam can still be closed…");
         }
         else
-            progress?.Report("Desktop Mode detected — closing Steam…");
+            progress?.Report("Step 2/4 — Already in Desktop Mode.");
 
-        progress?.Report("Closing Steam…");
-        CloseSteam(client);
+        progress?.Report("Step 3/4 — Closing Steam so shortcut files unlock…");
+        CloseSteam(client, progress);
+
+        progress?.Report("Step 4/4 — Steam paused; writing shortcuts next…");
         return gameMode;
     }
 
     public static void RestoreGameMode(DeckClient client, bool wasGameMode, IProgress<string>? progress)
     {
         if (!wasGameMode) return;
-        progress?.Report("Starting Game Mode again…");
+        progress?.Report("Switching the Deck back to Game Mode…");
+        InvalidateCache();
         Try(client, "steamos-session-select gamescope");
     }
 
     public static bool IsSteamRunning(DeckClient client) => SteamRunning(client);
 
-    public static void CloseSteam(DeckClient client)
+    public static void CloseSteam(DeckClient client, IProgress<string>? progress = null)
     {
         Try(client, "steam -shutdown");
-        WaitUntil(() => !SteamRunning(client), 8_000, 400, null, "");
+        WaitUntil(() => !SteamRunning(client), 8_000, 400, progress,
+            "Waiting for Steam to exit");
 
         if (SteamRunning(client) && Detect(client) != DeckSessionKind.GameMode)
         {
+            progress?.Report("Steam still running — forcing exit…");
             Try(client, "killall -9 steam steamwebhelper steam.sh");
             Thread.Sleep(400);
         }
+
+        if (!SteamRunning(client))
+            progress?.Report("Steam has exited.");
+        else
+            progress?.Report("Steam may still be running — continuing anyway…");
+    }
+
+    private static string ClientId(DeckClient client) =>
+        client.IsLocal ? "local" : (client.ActiveProfile?.Id ?? client.ActiveProfile?.Host ?? "ssh");
+
+    private static void Remember(string id, DeckSessionKind kind)
+    {
+        _cachedClientId = id;
+        _cachedKind = kind;
+        _cachedAt = Environment.TickCount64;
+    }
+
+    private static void InvalidateCache()
+    {
+        _cachedKind = DeckSessionKind.Unknown;
+        _cachedAt = 0;
     }
 
     private static DeckSessionKind Parse(string result)
@@ -122,13 +180,18 @@ public static class SteamSession
         IProgress<string>? progress, string message)
     {
         var started = Environment.TickCount64;
+        var lastReport = -1;
         while (Environment.TickCount64 - started < timeoutMs)
         {
             if (done()) return;
             if (!string.IsNullOrEmpty(message))
             {
-                var sec = (Environment.TickCount64 - started) / 1000.0;
-                progress?.Report(message + " (" + sec.ToString("0") + "s)");
+                var sec = (int)((Environment.TickCount64 - started) / 1000);
+                if (sec != lastReport)
+                {
+                    lastReport = sec;
+                    progress?.Report(message + "… " + sec + "s");
+                }
             }
             Thread.Sleep(stepMs);
         }

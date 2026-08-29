@@ -8,17 +8,21 @@ public static class DolphinInput
     public const string WrapperName = "sesame-dolphin.sh";
     public const string LegacyWrapperName = "vssh-dolphin.sh";
     public const string CfgName = "sesame-dolphin-cfg.py";
+    public const string WatchName = "sesame-joycon-watch.py";
     public const string JoyConDsuName = "sesame-joycon-dsu.sh";
     public const string InstallJoyCondName = "sesame-install-joycond.sh";
     public const string ProfileName = "SESAME-gyro";
     public const string Joy2WiiName = "SESAME - Joy2Wii";
     public const string Joy2WiiBareName = "SESAME - Joy2Wii (no nunchuk)";
+    public const string Joy2WiiSoloName = "SESAME - Joy2Wii (solo)";
 
     public const string DutchGyroHint =
         "Wii Joy-Cons (SESAME - Joy2Wii):\n" +
-        "• Combine with L+R · Steam Input Off on the Wii shortcut (required in Game Mode)\n" +
-        "• Profile: SESAME - Joy2Wii (Nunchuk) · bare: SESAME - Joy2Wii (no nunchuk)\n" +
-        "• Games that demand “remove Nunchuk”: cycle Wiimote profile hotkey, or launch with SESAME_WII_NUNCHUK=0\n" +
+        "• Pair each set with L+R (one shoulder each) · Steam Input Off (required in Game Mode)\n" +
+        "• 2nd / 3rd / 4th Combined pair → player 2–4 automatically (same Joy2Wii layout)\n" +
+        "• Remove Nunchuk in-game: power off Left, then SL+SR (or ZR+R) on Right → solo Wiimote\n" +
+        "• Re-pair: reconnect Left, then L+R again · SESAME switches Extension automatically\n" +
+        "• If input stays stuck after a swap: press F8 (Next Wiimote Profile)\n" +
         "• Home / Button N recenters · gyro dead zone from your layout\n\n" +
         "Re-Optimize Wii after update so wrappers refresh. Launch via the SESAME Steam shortcut.";
 
@@ -27,6 +31,9 @@ public static class DolphinInput
 
     public static string CfgPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, CfgName);
+
+    public static string WatchPath =>
+        DeckClient.Combine(EmulatorProbe.WrapperDir, WatchName);
 
     public static string JoyConDsuPath =>
         DeckClient.Combine(EmulatorProbe.WrapperDir, JoyConDsuName);
@@ -107,9 +114,11 @@ public static class DolphinInput
     {
         var nunchuk = LoadScript("Sesame.sesame-joy2wii.ini");
         var bare = StripNunchukProfile(nunchuk);
+        var solo = LoadScript("Sesame.sesame-joy2wii-solo.ini");
         var wiimoteDir = DeckClient.Combine(dir, "Profiles/Wiimote");
         client.WriteText(DeckClient.Combine(wiimoteDir, Joy2WiiName + ".ini"), nunchuk);
         client.WriteText(DeckClient.Combine(wiimoteDir, Joy2WiiBareName + ".ini"), bare);
+        client.WriteText(DeckClient.Combine(wiimoteDir, Joy2WiiSoloName + ".ini"), solo);
         // Active layout for all Wii games unless a game overrides Extension.
         client.WriteText(DeckClient.Combine(dir, "WiimoteNew.ini"), ProfileToWiimoteIni(nunchuk));
     }
@@ -154,14 +163,19 @@ public static class DolphinInput
 
     private static string ProfileToWiimoteIni(string profile)
     {
-        var body = profile.Replace("[Profile]\n", "[Wiimote1]\n", StringComparison.Ordinal)
-            .Replace("[Profile]\r\n", "[Wiimote1]\r\n", StringComparison.Ordinal);
-        if (!body.Contains("Source =", StringComparison.OrdinalIgnoreCase))
-            body = body.Replace("[Wiimote1]\n", "[Wiimote1]\nSource = 1\n", StringComparison.Ordinal);
-        if (!body.EndsWith('\n')) body += "\n";
-        return body +
-               "[Wiimote2]\nSource = 0\n[Wiimote3]\nSource = 0\n[Wiimote4]\nSource = 0\n" +
-               "[BalanceBoard]\nSource = 0\n";
+        var sb = new StringBuilder();
+        for (var slot = 0; slot < 4; slot++)
+        {
+            var body = profile.Replace("[Profile]\n", "", StringComparison.Ordinal)
+                .Replace("[Profile]\r\n", "", StringComparison.Ordinal);
+            if (slot > 0)
+                body = body.Replace("SDL/0/", "SDL/" + slot + "/", StringComparison.Ordinal);
+            body = System.Text.RegularExpressions.Regex.Replace(body, @"(?m)^Source\s*=.*\r?\n?", "");
+            if (!body.EndsWith('\n')) body += "\n";
+            sb.Append("[Wiimote").Append(slot + 1).Append("]\nSource = 1\n").Append(body);
+        }
+        sb.Append("[BalanceBoard]\nSource = 0\n");
+        return sb.ToString();
     }
 
     public static void Bind(OptimizerGame game)
@@ -179,6 +193,10 @@ public static class DolphinInput
         client.EnsureDirectory(EmulatorProbe.WrapperDir);
         client.WriteText(WrapperPath, LoadScript("Sesame.sesame-dolphin.sh"));
         client.WriteText(CfgPath, LoadScript("Sesame.sesame-dolphin-cfg.py"));
+        client.WriteText(WatchPath, LoadScript("Sesame.sesame-joycon-watch.py"));
+        client.WriteText(
+            DeckClient.Combine(EmulatorProbe.WrapperDir, "sesame-joy2wii-solo.ini"),
+            LoadScript("Sesame.sesame-joy2wii-solo.ini"));
         client.WriteText(JoyConDsuPath, LoadScript("Sesame.sesame-joycon-dsu.sh"));
         try
         {
@@ -194,6 +212,8 @@ public static class DolphinInput
                 " " + DeckClient.ShQuote(DeckClient.Combine(EmulatorProbe.WrapperDir, "install-joycond.sh")) +
                 " ; sed -i 's/\\r$//' " + DeckClient.ShQuote(WrapperPath) +
                 " " + DeckClient.ShQuote(CfgPath) +
+                " " + DeckClient.ShQuote(WatchPath) +
+                " " + DeckClient.ShQuote(DeckClient.Combine(EmulatorProbe.WrapperDir, "sesame-joy2wii-solo.ini")) +
                 " " + DeckClient.ShQuote(JoyConDsuPath) +
                 " " + DeckClient.ShQuote(InstallJoyCondPath) +
                 " " + DeckClient.ShQuote(DeckClient.Combine(EmulatorProbe.WrapperDir, "install-joycond.sh")) +
@@ -236,9 +256,9 @@ public static class DolphinInput
             text = "[Core]\nSIDevice0 = 6\nWiimoteSource0 = 1\n[Input]\nBackgroundInput = True\n";
         text = SetIni(text, "Core", "SIDevice0", "6");
         text = SetIni(text, "Core", "WiimoteSource0", "1");
-        text = SetIni(text, "Core", "WiimoteSource1", "0");
-        text = SetIni(text, "Core", "WiimoteSource2", "0");
-        text = SetIni(text, "Core", "WiimoteSource3", "0");
+        text = SetIni(text, "Core", "WiimoteSource1", "1");
+        text = SetIni(text, "Core", "WiimoteSource2", "1");
+        text = SetIni(text, "Core", "WiimoteSource3", "1");
         text = SetIni(text, "Input", "BackgroundInput", "True");
         client.WriteText(path, text);
     }

@@ -4,17 +4,18 @@
 Canonical profile name: "SESAME - Joy2Wii"
   - Based on the working Desktop Mode layout (Combined SDL Joy-Con L/R,
     Accel R / Gyro R for Wiimote, Accel L for Nunchuk, gyro dead zone).
-  - Companion: "SESAME - Joy2Wii (no nunchuk)" with Extension = None for
-    games that refuse to continue until the Nunchuk is removed.
+  - Companion: "SESAME - Joy2Wii (no nunchuk)" — Combined + Extension=None
+  - Solo: "SESAME - Joy2Wii (solo)" — Device Joy-Con (R), Extension=None
+    for the physical Left-disconnect + SL+SR workflow (see joycon-watch).
 
 This script does NOT invent IMU axis maps. It only:
   1) Ensures Joy2Wii profiles exist (migrate mike.ini if present)
-  2) Writes WiimoteNew.ini from the chosen profile
-  3) Removes obsolete SESAME-joycon* auto profiles
-  4) Optionally sets Extension=None via SESAME_WII_NUNCHUK=0 / --no-nunchuk
+  2) Writes WiimoteNew.ini for Wiimote1–4 (SDL/0..3 Combined pairs)
+  3) Clears per-game WiimoteProfile* overrides in GameSettings
+  4) Removes obsolete SESAME-joycon* auto profiles
+  5) Optionally sets Extension=None via SESAME_WII_NUNCHUK=0 / --no-nunchuk
 
-Hotkey: Dolphin "Next/Previous Wiimote Profile" cycles Joy2Wii ↔ no-nunchuk
-while a game is running (configure under Options → Hotkey Settings).
+Live pair↔solo: sesame-joycon-watch.py (started by sesame-dolphin.sh for Wii).
 
 Game Mode: Steam Input must be Off on the Wii shortcut so SDL still sees
 Nintendo Switch Joy-Con (L/R). SESAME Optimize ForceOff handles that.
@@ -28,6 +29,7 @@ import sys
 
 PROFILE_NUNCHUK = "SESAME - Joy2Wii"
 PROFILE_BARE = "SESAME - Joy2Wii (no nunchuk)"
+PROFILE_SOLO = "SESAME - Joy2Wii (solo)"
 OLD_AUTO = (
     "SESAME-joycon.ini",
     "SESAME-joycon-nunchuk.ini",
@@ -112,18 +114,54 @@ def ensure_source(wiimote_body: str) -> str:
     return wiimote_body.replace("[Wiimote1]\n", "[Wiimote1]\nSource = 1\n", 1)
 
 
-def profile_to_wiimote(profile_text: str) -> str:
-    body = re.sub(r"^\[Profile\]\s*", "[Wiimote1]\n", profile_text, count=1, flags=re.I)
-    body = ensure_source(body)
+def remap_sdl_index(text: str, index: int) -> str:
+    """Profiles are authored for SDL/0/; remap to SDL/{index}/ for Wiimote slots."""
+    if index == 0:
+        return text
+    return text.replace("SDL/0/", "SDL/%d/" % index)
+
+
+def wiimote_section(profile_text: str, slot: int) -> str:
+    """Build [WiimoteN] from a [Profile] body for SDL slot 0..3."""
+    body = re.sub(r"^\[Profile\]\s*", "", profile_text.strip() + "\n", count=1, flags=re.I)
+    body = remap_sdl_index(body, slot)
+    body = re.sub(r"(?m)^Source\s*=.*\n?", "", body)
     if not body.endswith("\n"):
         body += "\n"
-    body += (
-        "[Wiimote2]\nSource = 0\n"
-        "[Wiimote3]\nSource = 0\n"
-        "[Wiimote4]\nSource = 0\n"
-        "[BalanceBoard]\nSource = 0\n"
-    )
-    return body
+    return "[Wiimote%d]\nSource = 1\n%s" % (slot + 1, body)
+
+
+def profile_to_wiimote(profile_text: str, other_slots_text: str | None = None) -> str:
+    """Wiimote1–4 emulated: each Combined Joy-Con pair = one player (SDL/0..3)."""
+    other = other_slots_text if other_slots_text is not None else profile_text
+    parts = [wiimote_section(profile_text if i == 0 else other, i) for i in range(4)]
+    parts.append("[BalanceBoard]\nSource = 0\n")
+    return "".join(parts)
+
+
+def clear_game_wiimote_profile_overrides() -> int:
+    """Remove per-game WiimoteProfile* so WiimoteNew.ini (Joy2Wii) actually applies.
+
+    EmuDeck / older Dolphin GameSettings often pin another profile per title; that
+    silently overrides our launch-time WiimoteNew.ini for those games only.
+    """
+    rx = re.compile(r"(?im)^WiimoteProfile\d*\s*=.*\n?")
+    changed = 0
+    for base in dirs():
+        gs = base / "GameSettings"
+        if not gs.is_dir():
+            continue
+        for path in gs.glob("*.ini"):
+            cur = read_text(path)
+            if not cur or "WiimoteProfile" not in cur:
+                continue
+            new = rx.sub("", cur)
+            if new != cur:
+                write_text(path, new)
+                changed += 1
+    if changed:
+        log("cleared WiimoteProfile overrides in %d GameSettings file(s)" % changed)
+    return changed
 
 
 def patch_dolphin_ini(path: pathlib.Path) -> None:
@@ -149,15 +187,71 @@ def patch_dolphin_ini(path: pathlib.Path) -> None:
             body = "\n" + line + body
         return text[:start] + body + text[end:]
 
-    cur = set_key(cur, "Core", "WiimoteSource0", "1")
-    for i in range(1, 4):
-        cur = set_key(cur, "Core", "WiimoteSource%d" % i, "0")
+    # All four emulated Wiimotes on — 2nd Combined pair = player 2, etc.
+    for i in range(4):
+        cur = set_key(cur, "Core", "WiimoteSource%d" % i, "1")
     cur = set_key(cur, "Input", "BackgroundInput", "True")
     write_text(path, cur)
 
 
+def script_dir() -> pathlib.Path:
+    return pathlib.Path(__file__).resolve().parent
+
+
+def load_bundled_solo() -> str:
+    """Prefer sesame-joy2wii-solo.ini next to this script (deployed by Optimize)."""
+    path = script_dir() / "sesame-joy2wii-solo.ini"
+    text = read_text(path)
+    if text.strip():
+        return text
+    return ""
+
+
+def restore_stashed_profiles() -> None:
+    """Undo a crashed joycon-watch stash (*.ini.sesame_stash)."""
+    for base in dirs():
+        prof = base / "Profiles" / "Wiimote"
+        if not prof.is_dir():
+            continue
+        for stash in prof.glob("*.ini.sesame_stash"):
+            orig = pathlib.Path(str(stash)[: -len(".sesame_stash")])
+            try:
+                if not orig.exists():
+                    stash.rename(orig)
+                    log("restored stashed profile %s" % orig.name)
+                else:
+                    stash.unlink()
+            except Exception as ex:
+                log("stash restore failed %s: %s" % (stash, ex))
+
+
+def ensure_solo_profile() -> None:
+    solo = find_profile_file(PROFILE_SOLO)
+    if solo is not None and read_text(solo).strip():
+        # Mirror to the other config root if needed.
+        text = read_text(solo)
+        for base in dirs():
+            dest = base / "Profiles" / "Wiimote" / (PROFILE_SOLO + ".ini")
+            if dest == solo:
+                continue
+            if base.exists() or base == dirs()[0]:
+                if not dest.exists() or read_text(dest) != text:
+                    write_text(dest, text)
+        return
+    text = load_bundled_solo()
+    if not text.strip():
+        log("no bundled solo profile — place sesame-joy2wii-solo.ini next to cfg")
+        return
+    for base in dirs():
+        if not base.exists() and base != dirs()[0]:
+            continue
+        write_text(base / "Profiles" / "Wiimote" / (PROFILE_SOLO + ".ini"), text)
+    log("seeded %s" % PROFILE_SOLO)
+
+
 def migrate_and_seed() -> pathlib.Path | None:
     """Ensure Joy2Wii profiles exist; seed from mike.ini when needed."""
+    restore_stashed_profiles()
     nunchuk = find_profile_file(PROFILE_NUNCHUK)
     bare = find_profile_file(PROFILE_BARE)
     mike = find_mike()
@@ -194,8 +288,10 @@ def migrate_and_seed() -> pathlib.Path | None:
         bare = find_profile_file(PROFILE_BARE)
         log("created bare profile from Joy2Wii")
 
+    ensure_solo_profile()
+
     # Mirror profiles across both config roots when only one side has them.
-    for name in (PROFILE_NUNCHUK, PROFILE_BARE):
+    for name in (PROFILE_NUNCHUK, PROFILE_BARE, PROFILE_SOLO):
         src = find_profile_file(name)
         if src is None:
             continue
@@ -234,6 +330,7 @@ def apply_profile(profile_path: pathlib.Path) -> None:
     # If user asked for bare but we loaded nunchuk file, strip.
     if not want_nunchuk() and "Extension = Nunchuk" in text:
         text = strip_nunchuk(text)
+    clear_game_wiimote_profile_overrides()
     wiimote = profile_to_wiimote(text)
     for base in dirs():
         if not base.exists() and base != dirs()[0]:
@@ -241,7 +338,7 @@ def apply_profile(profile_path: pathlib.Path) -> None:
         write_text(base / "WiimoteNew.ini", wiimote)
         patch_dolphin_ini(base / "Dolphin.ini")
     log(
-        "applied %s → WiimoteNew.ini (nunchuk=%s)"
+        "applied %s → Wiimote1–4 (nunchuk=%s)"
         % (profile_path.name, "yes" if want_nunchuk() else "no")
     )
 

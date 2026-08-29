@@ -161,6 +161,9 @@ public static class GameOptimizerService
             return report;
         }
 
+        Report(progress, "Prepare Steam",
+            "Steam must pause briefly so shortcut files can be written…", 2, indeterminate: true);
+
         var restoreGameMode = SteamSession.PrepareForWrite(client, SteamProgress(progress, 5));
 
         try
@@ -366,7 +369,7 @@ public static class GameOptimizerService
                          (stripped > 0 ? $", {stripped} oude scripts vervangen" : "") +
                          (string.IsNullOrEmpty(collectionError) ? "" : ", collections partly failed") +
                          (dolphinIds.Count > 0
-                             ? ". Wii Joy-Con: Combined (L+R) = Wiimote+Nunchuk + Right motion. See the Optimize hint."
+                             ? ". Wii Joy-Con: L+R to pair · Left off + SL+SR for solo Wiimote. See the Optimize hint."
                              : "") +
                          (restoreGameMode
                              ? " Game Mode wordt weer gestart."
@@ -558,7 +561,7 @@ public static class GameOptimizerService
     }
 
     private static void Report(IProgress<OptimizeProgress>? progress, string title, string detail,
-        double percent, int current = 0, int total = 0)
+        double percent, int current = 0, int total = 0, bool indeterminate = false)
     {
         progress?.Report(new OptimizeProgress
         {
@@ -566,7 +569,8 @@ public static class GameOptimizerService
             Detail = detail,
             Percent = percent,
             Current = current,
-            Total = total
+            Total = total,
+            Indeterminate = indeterminate
         });
     }
 
@@ -587,8 +591,8 @@ public static class GameOptimizerService
         public void Report(string value) =>
             _inner.Report(new OptimizeProgress
             {
-                Title = value,
-                Detail = "Pause Steam briefly so shortcuts can be written safely.",
+                Title = "Prepare Steam",
+                Detail = value,
                 Percent = _percent,
                 Indeterminate = true
             });

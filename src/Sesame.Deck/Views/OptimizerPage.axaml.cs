@@ -171,13 +171,16 @@ public partial class OptimizerPage : UserControl
         }
 
         _busy = true;
-        ShowBusy("Optimize", "Writing shortcuts and covers…");
+        ShowBusy("Prepare Steam", "Checking Deck session and pausing Steam…");
         try
         {
             var report = await GameOptimizerService.ApplyAsync(
                 session.Client, session.Catalog, _games,
                 new Progress<OptimizeProgress>(p =>
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowBusy(p.Title, p.Detail))),
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        ShowBusy(
+                            string.IsNullOrWhiteSpace(p.Title) ? "Optimize" : p.Title,
+                            string.IsNullOrWhiteSpace(p.Detail) ? "Working…" : p.Detail))),
                 CancellationToken.None);
             await Task.Run(() => SteamGridArt.AttachAll(session.Client, _games));
             foreach (var game in _games)
