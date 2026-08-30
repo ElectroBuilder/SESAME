@@ -11,6 +11,7 @@ public sealed class OptimizerPick
     public string RomPath { get; set; } = "";
     public string PickKey { get; set; } = "";
     public bool Selected { get; set; } = true;
+    public bool OptimizeLocked { get; set; }
     public string DisplayName { get; set; } = "";
     public string SearchQuery { get; set; } = "";
     public int? SteamGridDbId { get; set; }
@@ -39,7 +40,8 @@ public static class OptimizerPicks
         EnsureLoaded();
         if (!TryFind(game, out var pick) || pick is null)
             return;
-        game.Selected = pick.Selected;
+        game.OptimizeLocked = pick.OptimizeLocked;
+        game.Selected = pick.OptimizeLocked ? false : pick.Selected;
         if (!string.IsNullOrWhiteSpace(pick.DisplayName) && AllowRename(game, pick.DisplayName))
             game.DisplayName = pick.DisplayName;
         if (AllowArtwork(game, pick))
@@ -95,6 +97,7 @@ public static class OptimizerPicks
             RomPath = game.IsRom ? game.RomPath : "",
             PickKey = key,
             Selected = game.Selected,
+            OptimizeLocked = game.OptimizeLocked,
             DisplayName = game.DisplayName,
             SearchQuery = game.ShortcutKind == ShortcutKind.App &&
                           DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var app)

@@ -32,7 +32,9 @@ public partial class GameOptimizerView : UserControl
 
     public int Count => _games.Count;
     public int InSteamCount => _games.Count(g => g.InSteam);
-    public int SelectedCount => _games.Count(g => g.Selected);
+    public int SelectedCount => _games.Count(g => g.Selected && !g.OptimizeLocked);
+    public int LockedCount => _games.Count(g => g.OptimizeLocked);
+    public int MissingArtworkCount => _games.Count(g => !g.HasArtwork && !g.OptimizeLocked);
 
     public GameOptimizerView()
     {
@@ -40,7 +42,7 @@ public partial class GameOptimizerView : UserControl
         _view = (ListCollectionView)CollectionViewSource.GetDefaultView(_games);
         _view.Filter = FilterGame;
         GameList.ItemsSource = _view;
-        ListColumns.Attach(GameList, _view, properties: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        ListColumns.Attach(GameList, _view, filterBoxes: false, properties: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["FPS"] = nameof(OptimizerGame.Fps)
         });
@@ -231,8 +233,9 @@ public partial class GameOptimizerView : UserControl
             {
                 ExtraShortcuts.UnionChoices(game, olds);
                 var old = olds[0];
-                // In-session checkbox wins over disk when both exist.
-                game.Selected = old.Selected;
+                // In-session checkbox / lock wins over disk when both exist.
+                game.OptimizeLocked = old.OptimizeLocked;
+                game.Selected = old.OptimizeLocked ? false : old.Selected;
                 CopyPreview(old, game);
             }
             game.PropertyChanged += Game_PropertyChanged;
@@ -277,16 +280,19 @@ public partial class GameOptimizerView : UserControl
 
     public async Task RunOptimizeInteractiveAsync(bool selectAllIfEmpty = false)
     {
-        if (selectAllIfEmpty && !_games.Any(g => g.Selected))
+        if (selectAllIfEmpty && !_games.Any(g => g.Selected && !g.OptimizeLocked))
         {
             foreach (var game in _games)
-                game.Selected = true;
+            {
+                if (!game.OptimizeLocked)
+                    game.Selected = true;
+            }
         }
 
-        var selected = _games.Where(g => g.Selected).ToList();
+        var selected = _games.Where(g => g.Selected && !g.OptimizeLocked).ToList();
         if (selected.Count == 0)
         {
-            MessageBox.Show("Select at least one game.", "Optimize");
+            MessageBox.Show("Select at least one unlocked game.", "Optimize");
             return;
         }
         if (_client is not { IsConnected: true })
@@ -450,7 +456,8 @@ public partial class GameOptimizerView : UserControl
         if (existing is not null)
         {
             ExtraShortcuts.UnionChoices(game, [existing]);
-            game.Selected = existing.Selected;
+            game.OptimizeLocked = existing.OptimizeLocked;
+            game.Selected = existing.OptimizeLocked ? false : existing.Selected;
             CopyPreview(existing, game);
             existing.PropertyChanged -= Game_PropertyChanged;
             var i = _games.IndexOf(existing);
@@ -504,6 +511,17 @@ public partial class GameOptimizerView : UserControl
 
     private void Filter_Changed(object sender, SelectionChangedEventArgs e) => _view.Refresh();
 
+    private void SelectAll_Click(object sender, RoutedEventArgs e)
+    {
+        var on = SelectAllBox.IsChecked == true;
+        foreach (var item in _view.Cast<object>())
+        {
+            if (item is not OptimizerGame game || game.OptimizeLocked) continue;
+            game.Selected = on;
+        }
+        Persist();
+    }
+
     private void Search_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter) _view.Refresh();
@@ -530,7 +548,7 @@ public partial class GameOptimizerView : UserControl
 
     private void Name_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (GameList.SelectedItem is not OptimizerGame game) return;
+        if (GameList.SelectedItem is not OptimizerGame game || game.OptimizeLocked) return;
         var name = NameBox.Text?.Trim();
         if (!string.IsNullOrEmpty(name))
             game.DisplayName = name;
@@ -550,6 +568,10 @@ public partial class GameOptimizerView : UserControl
         {
             NameBox.Text = "";
             QueryBox.Text = "";
+            NameBox.IsEnabled = false;
+            QueryBox.IsEnabled = false;
+            SearchArtBtn.IsEnabled = false;
+            ArtTabs.IsEnabled = false;
             MetaText.Text = "";
             NoteText.Text = "";
             ClearArtLists();
@@ -558,10 +580,16 @@ public partial class GameOptimizerView : UserControl
 
         NameBox.Text = game.DisplayName;
         QueryBox.Text = string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery;
+        NameBox.IsEnabled = !game.OptimizeLocked;
+        QueryBox.IsEnabled = !game.OptimizeLocked;
+        SearchArtBtn.IsEnabled = !game.OptimizeLocked;
+        ArtTabs.IsEnabled = !game.OptimizeLocked;
         MetaText.Text = string.IsNullOrEmpty(game.Target)
             ? $"{game.SystemName} · {game.FpsText} · geen emulator"
             : $"{game.SystemName} · {game.FpsText} · {game.EmulatorName}\n{game.Target}";
-        NoteText.Text = game.Note;
+        NoteText.Text = game.OptimizeLocked
+            ? (string.IsNullOrWhiteSpace(game.Note) ? "Locked — skipped by Optimize." : game.Note + " · Locked")
+            : game.Note;
 
         var cts = new CancellationTokenSource();
         _coverCts = cts;
@@ -737,7 +765,7 @@ public partial class GameOptimizerView : UserControl
 
     private async void SearchArt_Click(object sender, RoutedEventArgs e)
     {
-        if (GameList.SelectedItem is not OptimizerGame game) return;
+        if (GameList.SelectedItem is not OptimizerGame game || game.OptimizeLocked) return;
         game.SearchQuery = QueryBox.Text?.Trim() ?? game.DisplayName;
         game.SteamGridDbId = null;
         game.SelectedGridUrl = null;
@@ -764,19 +792,29 @@ public partial class GameOptimizerView : UserControl
     private async Task LoadChoicesAsync(OptimizerGame game, CancellationToken ct)
     {
         var profile = ProfileOf(game);
-        if (profile is null || !OptimizerSettings.HasSteamGridDb) return;
+        if (profile is null) return;
         try
         {
-            var id = game.SteamGridDbId ??
-                     await ArtworkClient.FindGameIdAsync(
-                         string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery,
-                         profile, ct);
-            if (id is null || ct.IsCancellationRequested) return;
-            game.SteamGridDbId = id;
-            var choices = await ArtworkClient.ListAllAsync(id.Value, ct);
-            if (ct.IsCancellationRequested) return;
+            var choices = new List<ArtworkChoice>();
+            var query = ArtworkClient.ArtworkSearchQuery(game);
+            var steamId = await ArtworkClient.ResolveSteamStoreIdAsync(query, game.SteamGridDbId, ct);
+            if (steamId is int sid && !ct.IsCancellationRequested)
+                choices.AddRange(await ArtworkClient.ListSteamStoreAsync(sid, ct));
+
+            if (OptimizerSettings.HasSteamGridDb)
+            {
+                var id = game.SteamGridDbId ??
+                         await ArtworkClient.FindGameIdAsync(query, profile, ct);
+                if (id is int sgdb && !ct.IsCancellationRequested)
+                {
+                    game.SteamGridDbId = sgdb;
+                    choices.AddRange(await ArtworkClient.ListAllAsync(sgdb, ct));
+                }
+            }
+
+            if (choices.Count == 0 || ct.IsCancellationRequested) return;
             game.ArtworkChoices.Clear();
-            game.ArtworkChoices.AddRange(choices.Take(80));
+            game.ArtworkChoices.AddRange(choices.Take(100));
             Dispatcher.Invoke(() => BindArtTabs(game));
             foreach (var choice in game.ArtworkChoices)
             {
@@ -847,7 +885,7 @@ public partial class GameOptimizerView : UserControl
 
     private async Task ApplyPackAsync(ArtworkPack pack)
     {
-        if (GameList.SelectedItem is not OptimizerGame game) return;
+        if (GameList.SelectedItem is not OptimizerGame game || game.OptimizeLocked) return;
         foreach (var piece in pack.Pieces)
             await ApplyChoiceAsync(game, piece);
     }
@@ -856,12 +894,13 @@ public partial class GameOptimizerView : UserControl
     {
         if (_bindingArt) return;
         if (sender is not ListBox box || box.SelectedItem is not ArtworkChoice choice) return;
-        if (GameList.SelectedItem is not OptimizerGame game) return;
+        if (GameList.SelectedItem is not OptimizerGame game || game.OptimizeLocked) return;
         await ApplyChoiceAsync(game, choice);
     }
 
     private async Task ApplyChoiceAsync(OptimizerGame game, ArtworkChoice choice)
     {
+        if (game.OptimizeLocked) return;
         var bytes = await ArtworkClient.DownloadAsync(choice.Url, CancellationToken.None);
         switch (choice.Kind)
         {
@@ -928,11 +967,16 @@ public partial class GameOptimizerView : UserControl
 
     private void Game_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(OptimizerGame.Selected) or nameof(OptimizerGame.DisplayName))
+        if (e.PropertyName is nameof(OptimizerGame.Selected) or nameof(OptimizerGame.DisplayName)
+            or nameof(OptimizerGame.OptimizeLocked))
         {
             if (sender is OptimizerGame game)
                 OptimizerPicks.Remember(game);
             Persist();
+            if (e.PropertyName == nameof(OptimizerGame.OptimizeLocked) &&
+                sender is OptimizerGame locked &&
+                ReferenceEquals(GameList.SelectedItem, locked))
+                ShowGame(locked);
         }
     }
 

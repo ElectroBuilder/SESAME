@@ -74,6 +74,7 @@ public partial class MainWindow : Window
         DashPanel.OpenTab += OpenDashboardTab;
         DashPanel.ScanRequested += () => _ = DashboardScanAsync();
         DashPanel.OptimizeRequested += () => _ = DashboardOptimizeAsync();
+        DashPanel.SettingsRequested += () => Settings_Click(this, new RoutedEventArgs());
         StorePanel.InstallRequested += EnqueueStoreInstall;
         StorePanel.DeleteRequested += hit => _ = DeletePackAsync(hit);
         StorePanel.ToggleRequested += (hit, enabled) => _ = TogglePackAsync(hit, enabled);
@@ -2225,6 +2226,8 @@ public partial class MainWindow : Window
             OptimizeCount = OptimizerPanel.Count,
             InSteamCount = OptimizerPanel.InSteamCount,
             SelectedCount = OptimizerPanel.SelectedCount,
+            LockedCount = OptimizerPanel.LockedCount,
+            MissingArtworkCount = OptimizerPanel.MissingArtworkCount,
             StoreCount = _catalog.StoreGames.Count
         });
     }

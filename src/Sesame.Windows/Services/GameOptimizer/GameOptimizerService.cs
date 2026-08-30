@@ -162,7 +162,7 @@ public static class GameOptimizerService
         IReadOnlyList<OptimizerGame> games, IProgress<OptimizeProgress>? progress, CancellationToken ct)
     {
         var report = new OptimizeReport();
-        var selected = games.Where(g => g.Selected).ToList();
+        var selected = games.Where(g => g.Selected && !g.OptimizeLocked).ToList();
         if (selected.Count == 0)
         {
             report.Summary = "No games selected.";

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.23 — 2026-08-30
+
+- Optimize: lock titles so they stay out of Optimize and cannot be edited until unlocked; header checkbox selects/deselects all visible unlocked rows; remove per-column filter boxes (sorting stays).
+- Artwork: official Steam store covers (library capsule, header, hero, logo) in the picker and as fallback when SteamGridDB has no match.
+- Dashboard: richer tiles with badges and extra Optimize stats (locked / missing art); sixth tile with version, Check update / Install, and Settings.
+
 ## 0.6.22 — 2026-08-30
 
 - Covers with category masks: fill the art under the bar again (no black side bars). Hydra/apps still use contain so titles are not cropped. Strip stacked **NL Vertaling** / ROM-hack footers before redrawing.
