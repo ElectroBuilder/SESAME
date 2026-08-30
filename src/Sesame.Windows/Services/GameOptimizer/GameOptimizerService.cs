@@ -224,6 +224,8 @@ public static class GameOptimizerService
                 EnsureExecutable(client, LaunchComposer.ExePath(game.Target));
                 var shortcut = SteamShortcuts.Build(game);
                 SteamShortcuts.Upsert(shortcuts, shortcut, overwrite: OptimizerSettings.OverwriteShortcuts);
+                // Upsert may keep a prior AppId so Proton/artwork stay linked.
+                game.SteamAppId = shortcut.AppId;
                 written.Add(shortcut);
                 game.Note = string.IsNullOrWhiteSpace(game.Note) ? game.Target : game.Note;
 
@@ -350,16 +352,27 @@ public static class GameOptimizerService
         if (!string.IsNullOrEmpty(collectionError))
             report.Errors.Add("Collecties: " + collectionError);
 
+        string? protonTool = null;
         var protonGames = written
-            .Select(s => selected.FirstOrDefault(g => g.SteamAppId == s.AppId))
+            .Select(s =>
+            {
+                var g = selected.FirstOrDefault(x => x.SteamAppId == s.AppId) ??
+                        selected.FirstOrDefault(x =>
+                            string.Equals(x.DisplayName, s.AppName, StringComparison.OrdinalIgnoreCase));
+                if (g is null) return null;
+                g.SteamAppId = s.AppId;
+                return g;
+            })
             .Where(g => g is not null)
             .Cast<OptimizerGame>()
             .Where(SteamCompat.NeedsProton)
             .ToList();
         if (protonGames.Count > 0)
         {
-            Report(progress, "UMU Proton", "Set compatibility for Windows games…", 95);
-            SteamCompat.Apply(client, protonGames);
+            Report(progress, "UMU Proton", "Force UMU / Proton for Windows games…", 95);
+            protonTool = SteamCompat.Apply(client, protonGames);
+            if (string.IsNullOrEmpty(protonTool))
+                report.Errors.Add("UMU/Proton could not be set — enable it once in Steam for a Hydra game, then re-Optimize.");
         }
 
         if (configs.Count > 1)
@@ -387,6 +400,7 @@ public static class GameOptimizerService
                          (dolphinIds.Count > 0
                              ? ". Wii Joy-Con: L+R to pair · Left off + SL+SR for solo Wiimote. See the Optimize hint."
                              : "") +
+                         (string.IsNullOrEmpty(protonTool) ? "" : $". Proton: {protonTool}") +
                          (restoreGameMode
                              ? " Game Mode wordt weer gestart."
                              : " Open daarna Game Mode opnieuw.");
@@ -433,28 +447,42 @@ public static class GameOptimizerService
     {
         if (appId == 0) return false;
         var id = appId.ToString();
-        foreach (var name in new[] { id + "p.png", id + "_p.png", id + ".png" })
+        var hasPortrait = false;
+        foreach (var name in new[] { id + "p.png", id + "_p.png" })
         {
             try
             {
                 if (client.FileLength(DeckClient.Combine(gridDir, name)) > 200)
-                    return true;
+                {
+                    hasPortrait = true;
+                    break;
+                }
             }
             catch
             {
                 /* try next */
             }
         }
-
-        return false;
+        if (!hasPortrait) return false;
+        // Missing hero is why Hydra capsules look blown-up — rewrite until hero exists.
+        try
+        {
+            return client.FileLength(DeckClient.Combine(gridDir, id + "_hero.png")) > 200;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static (int Written, int Skipped) WriteArtwork(DeckClient client, string gridDir, OptimizerGame game,
         SystemProfile profile, ArtworkSet? art)
     {
         var id = game.SteamAppId.ToString();
-        var portraitSrc = art?.Grid ?? art?.Wide;
-        var landscapeSrc = art?.Wide ?? art?.Grid;
+        // Portrait capsule must stay a vertical cover — never force a wide banner into it
+        // (that caused black bars top/bottom after contain-fit).
+        var portraitSrc = art?.Grid;
+        var landscapeSrc = art?.Wide ?? art?.Hero ?? art?.Grid;
         var portrait = CoverMask.Portrait(portraitSrc, profile, game.IsRomHack, game.IsTranslation);
         var landscape = CoverMask.Landscape(landscapeSrc, profile, game.IsRomHack, game.IsTranslation);
         var files = new List<(string Path, byte[] Data)>

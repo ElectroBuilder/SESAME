@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using Sesame.Models;
 
 namespace Sesame.Services.GameOptimizer;
@@ -10,7 +11,8 @@ namespace Sesame.Services.GameOptimizer;
 /// </summary>
 public static class SteamCompat
 {
-    public static void Apply(DeckClient client, IEnumerable<OptimizerGame> games)
+    /// <summary>Returns the tool id written into CompatToolMapping, or empty on failure.</summary>
+    public static string Apply(DeckClient client, IEnumerable<OptimizerGame> games)
     {
         var ids = games
             .Where(NeedsProton)
@@ -18,13 +20,13 @@ public static class SteamCompat
             .Where(id => id != 0)
             .Distinct()
             .ToList();
-        if (ids.Count == 0) return;
+        if (ids.Count == 0) return "";
 
         var tool = ResolveTool(client);
-        if (string.IsNullOrEmpty(tool)) return;
+        if (string.IsNullOrEmpty(tool)) return "";
 
         var path = ConfigPath(client);
-        if (string.IsNullOrEmpty(path)) return;
+        if (string.IsNullOrEmpty(path)) return "";
 
         // Shortcut appids always have the high bit set; Steam stores them as signed ints
         // in CompatToolMapping (same as Steam Input / collections). Unsigned keys miss.
@@ -37,10 +39,11 @@ public static class SteamCompat
             var args = DeckClient.ShQuote(path) + " " + DeckClient.ShQuote(tool) + " " +
                        string.Join(" ", keys.Select(DeckClient.ShQuote));
             client.Execute("python3 -c " + DeckClient.ShQuote(PatchPy) + " " + args, 25);
+            return tool;
         }
         catch
         {
-            /* Proton remains settable by hand in Steam */
+            return "";
         }
     }
 
@@ -56,9 +59,9 @@ public static class SteamCompat
     public static string ResolveTool(DeckClient client)
     {
         var installed = ListTools(client);
-        var umu = Pick(installed, n => n.Contains("umu", StringComparison.OrdinalIgnoreCase));
+        var umu = PickNewest(installed, n => n.Contains("umu", StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrEmpty(umu)) return umu;
-        var ge = Pick(installed, n =>
+        var ge = PickNewest(installed, n =>
             n.Contains("ge-proton", StringComparison.OrdinalIgnoreCase) ||
             n.Contains("proton-ge", StringComparison.OrdinalIgnoreCase) ||
             n.StartsWith("GE-Proton", StringComparison.OrdinalIgnoreCase));
@@ -66,10 +69,23 @@ public static class SteamCompat
         return "proton_experimental";
     }
 
-    private static string Pick(IReadOnlyList<string> names, Func<string, bool> match)
+    private static string PickNewest(IReadOnlyList<string> names, Func<string, bool> match)
     {
-        var hits = names.Where(match).OrderByDescending(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-        return hits.Count == 0 ? "" : hits[0];
+        var hits = names.Where(match).ToList();
+        if (hits.Count == 0) return "";
+        return hits
+            .OrderByDescending(VersionKey)
+            .ThenByDescending(n => n, StringComparer.OrdinalIgnoreCase)
+            .First();
+    }
+
+    /// <summary>Order UMU-Proton-10.0.4 above UMU-Proton-9.x (string sort alone does not).</summary>
+    private static Version VersionKey(string name)
+    {
+        var m = Regex.Match(name ?? "", @"(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?");
+        if (!m.Success) return new Version(0, 0);
+        int N(int g) => int.TryParse(m.Groups[g].Value, out var n) ? n : 0;
+        return new Version(N(1), N(2), N(3), N(4));
     }
 
     private static List<string> ListTools(DeckClient client)
@@ -124,7 +140,7 @@ public static class SteamCompat
     }
 
     private const string ListPy =
-        "import os,re,glob\n" +
+        "import os,re\n" +
         "home=os.path.expanduser('~')\n" +
         "roots=[os.path.join(home,'.local','share','Steam','compatibilitytools.d')," +
         "os.path.join(home,'.steam','root','compatibilitytools.d')," +
@@ -134,7 +150,11 @@ public static class SteamCompat
         "    if not os.path.isdir(root): continue\n" +
         "    for name in os.listdir(root):\n" +
         "        p=os.path.join(root,name,'compatibilitytool.vdf')\n" +
-        "        if not os.path.isfile(p): continue\n" +
+        "        if not os.path.isfile(p):\n" +
+        "            # Folder name is the Steam tool id when the vdf is missing.\n" +
+        "            if os.path.isdir(os.path.join(root,name)) and name not in seen:\n" +
+        "                seen.add(name); print(name)\n" +
+        "            continue\n" +
         "        try: text=open(p,encoding='utf-8',errors='ignore').read()\n" +
         "        except Exception: continue\n" +
         "        ids=re.findall(r'\"compat_tools\"\\s*\\{[^{]*\"([^\"]+)\"\\s*\\{',text)\n" +
@@ -177,11 +197,11 @@ public static class SteamCompat
         "hit=find_block(text,'CompatToolMapping')\n" +
         "if hit is None:\n" +
         "    steam=find_block(text,'Steam')\n" +
-        "    if steam is None: sys.exit(0)\n" +
+        "    if steam is None: sys.exit(1)\n" +
         "    inner='\\n\\t\\t\\t\"CompatToolMapping\"\\n\\t\\t\\t{\\n\\t\\t\\t}\\n'\n" +
         "    text=text[:steam[1]-1]+inner+text[steam[1]-1:]\n" +
         "    hit=find_block(text,'CompatToolMapping')\n" +
-        "    if hit is None: sys.exit(0)\n" +
+        "    if hit is None: sys.exit(1)\n" +
         "s,e,inner=hit\n" +
         "for k in keys:\n" +
         "    inner=upsert(inner,k,tool)\n" +

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.19 — 2026-08-30
+
+- Hydra Optimize: replace existing shortcuts (by game folder / name), keep the Steam AppId so artwork and Proton stay linked — no more duplicate tiles when the exe path is fixed.
+- Always force the newest installed UMU Proton (e.g. UMU-Proton-10.0.4) into CompatToolMapping; report if it fails.
+- Covers: fill the capsule again (no black letterbox bars); portrait uses the vertical grid only; write a hero so Steam does not blow up the cover.
+
 ## 0.6.18 — 2026-08-30
 
 - Hydra shortcuts: Target no longer splits on spaces (`"/home/deck/Hydra/Black" Jacket/...` → `"/home/deck/Hydra/Black Jacket/BlackJacket.exe"`); Start in = game folder.

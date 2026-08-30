@@ -154,7 +154,17 @@ public static class SteamShortcuts
     {
         var rom = NormalizeRom(romPath);
         if (rom.Length < 8) return false;
-        return Hay(shortcut).Contains(rom, StringComparison.OrdinalIgnoreCase);
+        var hay = NormalizeRom(Hay(shortcut));
+        if (hay.Contains(rom, StringComparison.OrdinalIgnoreCase)) return true;
+        // Broken quotes: "/home/.../Black" Jacket/game.exe vs /home/.../Black Jacket/game.exe
+        var looseHay = hay.Replace("\"", "");
+        var looseRom = rom.Replace("\"", "");
+        if (looseHay.Contains(looseRom, StringComparison.OrdinalIgnoreCase)) return true;
+        var folder = GameFolderKey(rom);
+        var other = GameFolderKey(LaunchComposer.ExePath(shortcut.Exe)) ??
+                    GameFolderKey(ExtractRom(shortcut) ?? "");
+        return !string.IsNullOrEmpty(folder) &&
+               string.Equals(folder, other, StringComparison.OrdinalIgnoreCase);
     }
 
     public static SteamShortcut Build(OptimizerGame game)
@@ -184,17 +194,24 @@ public static class SteamShortcuts
 
     public static void Upsert(List<SteamShortcut> shortcuts, SteamShortcut item, bool overwrite)
     {
-        var rom = string.IsNullOrWhiteSpace(item.RomPath) ? ExtractRom(item) ?? "" : item.RomPath;
-        var matches = shortcuts.Where(s => IsOwned(s) && MentionsRom(s, rom)).ToList();
+        var matches = FindReplaceCandidates(shortcuts, item).ToList();
         if (matches.Count == 0)
         {
             shortcuts.Add(item);
             return;
         }
 
-        var existing = matches[0];
-        foreach (var extra in matches.Skip(1))
+        // Keep the oldest AppId so Steam artwork + CompatToolMapping stay attached
+        // when we only fix Exe quoting / StartDir.
+        var existing = matches
+            .OrderByDescending(s => IsOwned(s))
+            .ThenBy(s => s.AppId == 0 ? uint.MaxValue : s.AppId)
+            .First();
+        foreach (var extra in matches.Where(s => !ReferenceEquals(s, existing)))
             shortcuts.Remove(extra);
+
+        if (existing.AppId != 0)
+            item.AppId = existing.AppId;
 
         existing.Exe = item.Exe;
         existing.StartDir = item.StartDir;
@@ -211,6 +228,81 @@ public static class SteamShortcuts
         existing.Icon = string.IsNullOrEmpty(item.Icon) ? existing.Icon : item.Icon;
         existing.Tags.Clear();
         existing.Tags.AddRange(item.Tags);
+        if (!existing.Tags.Any(t => t.Equals(OwnerTag, StringComparison.OrdinalIgnoreCase)))
+            existing.Tags.Insert(0, OwnerTag);
+    }
+
+    /// <summary>
+    /// Match SESAME-owned rows by ROM path, and also orphan/broken Hydra duplicates
+    /// by game folder or display name so Optimize never leaves two tiles.
+    /// </summary>
+    private static IEnumerable<SteamShortcut> FindReplaceCandidates(
+        IEnumerable<SteamShortcut> shortcuts, SteamShortcut item)
+    {
+        var rom = NormalizeRom(item.RomPath);
+        var folder = GameFolderKey(rom);
+        var name = NormalizeName(item.AppName);
+        var pc = LooksPcExe(item.Exe) || LooksPcExe(rom);
+
+        foreach (var s in shortcuts)
+        {
+            if (IsSesameLauncher(s)) continue;
+
+            if (IsOwned(s) && !string.IsNullOrEmpty(rom) && MentionsRom(s, rom))
+            {
+                yield return s;
+                continue;
+            }
+
+            if (!pc) continue;
+
+            // Broken quoted paths still share the game folder name.
+            if (!string.IsNullOrEmpty(folder) &&
+                string.Equals(folder, GameFolderKey(LaunchComposer.ExePath(s.Exe)) ??
+                                      GameFolderKey(ExtractRom(s) ?? "") ??
+                                      GameFolderKey(s.StartDir), StringComparison.OrdinalIgnoreCase))
+            {
+                yield return s;
+                continue;
+            }
+
+            if (!string.IsNullOrEmpty(name) &&
+                string.Equals(name, NormalizeName(s.AppName), StringComparison.OrdinalIgnoreCase) &&
+                (LooksPcExe(s.Exe) || Hay(s).Contains("/Hydra/", StringComparison.OrdinalIgnoreCase) ||
+                 Hay(s).Contains("/hydra/", StringComparison.OrdinalIgnoreCase) ||
+                 Hay(s).Contains("/Lutris/", StringComparison.OrdinalIgnoreCase) ||
+                 IsOwned(s)))
+                yield return s;
+        }
+    }
+
+    private static string NormalizeName(string? name) =>
+        ManualShortcutStore.Normalize(name ?? "");
+
+    private static string? GameFolderKey(string? path)
+    {
+        var p = NormalizeRom(path ?? "");
+        if (p.Length < 3) return null;
+        // .../Hydra/Black Jacket/game.exe → blackjacket
+        var dir = p;
+        if (Path.HasExtension(dir) &&
+            Path.GetExtension(dir).Equals(".exe", StringComparison.OrdinalIgnoreCase))
+            dir = DeckClient.Parent(dir);
+        var folder = Path.GetFileName(dir.TrimEnd('/'));
+        if (string.IsNullOrWhiteSpace(folder)) return null;
+        if (folder.Equals("Hydra", StringComparison.OrdinalIgnoreCase) ||
+            folder.Equals("Lutris", StringComparison.OrdinalIgnoreCase) ||
+            folder.Equals("Other", StringComparison.OrdinalIgnoreCase) ||
+            folder.Equals("Games", StringComparison.OrdinalIgnoreCase))
+            return null;
+        return ManualShortcutStore.Normalize(folder);
+    }
+
+    private static bool LooksPcExe(string? path)
+    {
+        var exe = LaunchComposer.ExePath(path ?? "");
+        var ext = Path.GetExtension(exe).ToLowerInvariant();
+        return ext is ".exe" or ".bat" or ".cmd" or ".msi";
     }
 
     private static void EnsureCollectionTag(SteamShortcut existing, IReadOnlyList<string> tags)
