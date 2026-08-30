@@ -220,6 +220,7 @@ public static class GameOptimizerService
             Report(progress, "Write shortcut", game.DisplayName, pct, i + 1, n);
             try
             {
+                RepairPcGameLaunch(game);
                 EnsureExecutable(client, LaunchComposer.ExePath(game.Target));
                 var shortcut = SteamShortcuts.Build(game);
                 SteamShortcuts.Upsert(shortcuts, shortcut, overwrite: OptimizerSettings.OverwriteShortcuts);
@@ -230,7 +231,20 @@ public static class GameOptimizerService
                     ?? SystemCatalog.All.FirstOrDefault(p => p.Id == game.SystemId)
                     ?? SystemCatalog.Unknown(game.FolderName);
                 var query = string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery;
-                ArtworkSet? art;
+                ArtworkSet? art = null;
+                var keptExisting = !OptimizerSettings.OverwriteArtwork &&
+                                   ArtworkAlreadyOnDeck(client, gridDir, game.SteamAppId);
+                if (keptExisting)
+                {
+                    Report(progress, "Keep artwork", game.DisplayName,
+                        12 + 75.0 * (i + 0.75) / n, i + 1, n);
+                    report.ArtworkKept++;
+                    game.HasArtwork = true;
+                    if (string.IsNullOrEmpty(game.ArtworkSource) || game.ArtworkSource == "—")
+                        game.ArtworkSource = "Steam (kept)";
+                }
+                else
+                {
                 Report(progress, "Fetch cover", game.DisplayName,
                     12 + 75.0 * (i + 0.4) / n, i + 1, n);
                 if (!string.IsNullOrEmpty(game.SelectedGridUrl) || game.GridBytes is { Length: > 0 })
@@ -282,6 +296,8 @@ public static class GameOptimizerService
                 if (!string.IsNullOrEmpty(ArtworkClient.LastError) && art is null)
                     game.Note = ArtworkClient.LastError;
                 game.CoverUrl = art?.GridUrl;
+                }
+
                 shortcut.Icon = DeckClient.Combine(gridDir, game.SteamAppId + "_icon.png");
 
                 SteamPerf.Apply(client, game.SteamAppId, game.Fps, game.Fps >= 60 ? 60 : game.Fps);
@@ -391,6 +407,48 @@ public static class GameOptimizerService
     private static void BindEmulator(OptimizerGame game, SystemProfile profile, EmulatorLayout layout) =>
         LaunchComposer.Bind(game, profile, layout);
 
+    /// <summary>
+    /// Hydra/Lutris paths often contain spaces; rebuild Target/StartDir from RomPath so
+    /// Steam gets "/home/deck/Hydra/Black Jacket/game.exe" with StartDir = that folder.
+    /// </summary>
+    private static void RepairPcGameLaunch(OptimizerGame game)
+    {
+        if (game.ShortcutKind is not (ShortcutKind.Hydra or ShortcutKind.Game)) return;
+        var exe = (game.RomPath ?? "").Trim().Trim('"').Replace('\\', '/');
+        if (string.IsNullOrWhiteSpace(exe) ||
+            !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            exe = LaunchComposer.ExePath(game.Target);
+        if (string.IsNullOrWhiteSpace(exe)) return;
+        exe = exe.Trim().Trim('"').Replace('\\', '/');
+        var start = DeckClient.Parent(exe);
+        var steam = LaunchComposer.ForSteam(exe, start, "");
+        game.RomPath = exe;
+        game.Target = steam.Exe;
+        game.StartDir = steam.StartDir;
+        game.LaunchOptions = steam.LaunchOptions;
+        game.FileName = Path.GetFileName(exe);
+    }
+
+    private static bool ArtworkAlreadyOnDeck(DeckClient client, string gridDir, uint appId)
+    {
+        if (appId == 0) return false;
+        var id = appId.ToString();
+        foreach (var name in new[] { id + "p.png", id + "_p.png", id + ".png" })
+        {
+            try
+            {
+                if (client.FileLength(DeckClient.Combine(gridDir, name)) > 200)
+                    return true;
+            }
+            catch
+            {
+                /* try next */
+            }
+        }
+
+        return false;
+    }
+
     private static (int Written, int Skipped) WriteArtwork(DeckClient client, string gridDir, OptimizerGame game,
         SystemProfile profile, ArtworkSet? art)
     {
@@ -407,6 +465,9 @@ public static class GameOptimizerService
         };
         if (art?.Hero is { Length: > 0 })
             files.Add((DeckClient.Combine(gridDir, id + "_hero.png"), art.Hero));
+        else if (landscape is { Length: > 0 })
+            // Steam zooms the capsule when hero is missing — reuse the fitted landscape.
+            files.Add((DeckClient.Combine(gridDir, id + "_hero.png"), landscape));
         if (art?.Logo is { Length: > 0 })
             files.Add((DeckClient.Combine(gridDir, id + "_logo.png"), art.Logo));
         var icon = art?.Icon ?? portrait;

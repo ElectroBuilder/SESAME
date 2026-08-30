@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.18 — 2026-08-30
+
+- Hydra shortcuts: Target no longer splits on spaces (`"/home/deck/Hydra/Black" Jacket/...` → `"/home/deck/Hydra/Black Jacket/BlackJacket.exe"`); Start in = game folder.
+- Optimize skips SteamGridDB download/write when covers already exist and **Overwrite artwork** is off (now the default).
+- Covers fit entirely in the capsule (contain, not crop/zoom); missing hero uses the landscape image so Steam does not blow up the cover.
+
 ## 0.6.17 — 2026-08-30
 
 - Fix Scan freeze after Hydra path fix: RomScan no longer recursively walks `/home/deck/Hydra` (full Windows game trees). That walk made “Reading ROM folders and mods…” hang and blocked the UI.

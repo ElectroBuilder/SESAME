@@ -218,7 +218,7 @@ public static class CoverMask
         {
             using var src = Image.Load<Rgba32>(source);
             var area = slot ?? new Rectangle(0, 0, canvas.Width, canvas.Height);
-            var scale = Math.Max(area.Width / (float)src.Width, area.Height / (float)src.Height);
+            var scale = Math.Min(area.Width / (float)src.Width, area.Height / (float)src.Height);
             var w = Math.Max(1, (int)Math.Ceiling(src.Width * scale));
             var h = Math.Max(1, (int)Math.Ceiling(src.Height * scale));
             src.Mutate(c => c.Resize(new ResizeOptions

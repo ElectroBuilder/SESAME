@@ -13,7 +13,7 @@
         <TextBlock x:Name="CountText" Foreground="{DynamicResource Muted}" Margin="0,6,0,14" TextWrapping="Wrap"/>
         <CheckBox x:Name="OverwriteBox" Content="Update existing shortcuts" Margin="0,0,0,8"/>
         <CheckBox x:Name="ArtworkBox" Content="Overwrite artwork" Margin="0,0,0,8"
-                  ToolTip="Replace existing Steam covers. Unchanged files are skipped."/>
+                  ToolTip="Off (default): keep existing Steam covers and skip downloads. On: replace covers; identical files are still skipped."/>
         <CheckBox x:Name="MaskBox" Content="Use category masks"
                   ToolTip="Master switch. Per platform (Hydra off by default) you set masks in Settings → Covers."/>
         <Border x:Name="GyroBox" Margin="0,14,0,0" Padding="12,10"

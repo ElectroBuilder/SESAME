@@ -17,7 +17,7 @@ public static class OptimizerSettings
 
     public static string SteamGridDbKey { get; private set; } = "";
     public static bool OverwriteShortcuts { get; set; } = true;
-    public static bool OverwriteArtwork { get; set; } = true;
+    public static bool OverwriteArtwork { get; set; } = false;
     public static bool UseMasks { get; set; } = true;
     public static SteamTabScheme SteamTabScheme { get; set; } = SteamTabScheme.Platform;
     public static List<string> SteamTabIds { get; private set; } = new();

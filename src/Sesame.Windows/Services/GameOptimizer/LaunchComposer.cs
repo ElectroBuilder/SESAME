@@ -91,6 +91,13 @@ public static class LaunchComposer
 
         var (exePath, args) = SplitCommand(target);
         exePath = StripQuotes(exePath);
+        // Repair targets split on spaces inside a path ("/home/.../Black" Jacket/game.exe).
+        if (LooksLikePathContinuation(exePath, args))
+        {
+            exePath = (exePath + " " + args).Trim();
+            args = "";
+        }
+
         if (string.IsNullOrEmpty(exePath))
             return ("", string.IsNullOrEmpty(startDir) ? "" : SteamCrc.Quote(WithSlash(startDir)), "");
 
@@ -274,9 +281,36 @@ public static class LaunchComposer
             if (end > 0)
                 return (target[1..end], target[(end + 1)..].Trim());
         }
+
+        // Absolute path with spaces: /home/deck/Hydra/Black Jacket/BlackJacket.exe
+        if (IsSingleAbsolutePath(target))
+            return (target, "");
+
         var space = target.IndexOf(' ');
         if (space < 0) return (target, "");
         return (target[..space], target[(space + 1)..].Trim());
+    }
+
+    private static bool IsSingleAbsolutePath(string target)
+    {
+        if (string.IsNullOrEmpty(target)) return false;
+        if (target.Contains(" -", StringComparison.Ordinal) ||
+            target.Contains(" --", StringComparison.Ordinal))
+            return false;
+        var unix = target.StartsWith('/');
+        var win = target.Length >= 3 && char.IsLetter(target[0]) && target[1] == ':' &&
+                  (target[2] == '/' || target[2] == '\\');
+        if (!unix && !win) return false;
+        var ext = Path.GetExtension(target.Replace('\\', '/'));
+        return ext.Length is >= 2 and <= 8;
+    }
+
+    private static bool LooksLikePathContinuation(string exe, string rest)
+    {
+        if (string.IsNullOrEmpty(exe) || string.IsNullOrEmpty(rest)) return false;
+        if (rest.StartsWith('-')) return false;
+        if (!exe.Contains('/') && !exe.Contains('\\')) return false;
+        return IsWindowsExe(exe + " " + rest) || IsSingleAbsolutePath(exe + " " + rest);
     }
 
     private static string FirstToken(string target)
