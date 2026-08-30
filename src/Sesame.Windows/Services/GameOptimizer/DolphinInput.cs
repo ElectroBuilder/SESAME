@@ -97,7 +97,7 @@ public static class DolphinInput
                 PatchIni(client, DeckClient.Combine(dir, "Dolphin.ini"));
                 WriteJoy2WiiProfiles(client, dir);
                 client.WriteText(DeckClient.Combine(dir, "Profiles/GCPad/" + ProfileName + ".ini"),
-                    GcProfile("SDL/0/Steam Virtual Gamepad"));
+                    GcProfile(GcPadDevice));
                 EnsureGcPad(client, DeckClient.Combine(dir, "GCPadNew.ini"));
                 // DSU optional — Joy2Wii uses SDL Accel R/L; keep Alternate Input Sources harmless.
                 EnsureDsu(client, DeckClient.Combine(dir, "DSUClient.ini"));
@@ -263,18 +263,25 @@ public static class DolphinInput
         client.WriteText(path, text);
     }
 
+    /// <summary>
+    /// Game Mode exposes the Deck pad as "Steam Deck Controller". "Steam Virtual Gamepad"
+    /// is often listed but disconnected — GC games then get no input.
+    /// </summary>
+    private const string GcPadDevice = "SDL/0/Steam Deck Controller";
+
     private static void MergeWiimote(DeckClient client, string path)
     {
         var text = ReadUtf8(client, path);
         if (string.IsNullOrWhiteSpace(text) || !text.Contains("[Wiimote1]", StringComparison.OrdinalIgnoreCase))
         {
-            client.WriteText(path, WiiPad("SDL/0/Steam Virtual Gamepad"));
+            client.WriteText(path, WiiPad(GcPadDevice));
             return;
         }
 
         text = SetIni(text, "Wiimote1", "Source", "1");
-        if (string.IsNullOrWhiteSpace(GetIni(text, "Wiimote1", "Device")))
-            text = SetIni(text, "Wiimote1", "Device", "SDL/0/Steam Virtual Gamepad");
+        if (string.IsNullOrWhiteSpace(GetIni(text, "Wiimote1", "Device")) ||
+            IsDisconnectedVirtualPad(GetIni(text, "Wiimote1", "Device")))
+            text = SetIni(text, "Wiimote1", "Device", GcPadDevice);
 
         foreach (var (key, value) in ImuKeys())
         {
@@ -301,19 +308,33 @@ public static class DolphinInput
 
     private static void EnsureGcPad(DeckClient client, string path)
     {
-        const string safe = "SDL/0/Steam Virtual Gamepad";
         var text = ReadUtf8(client, path);
         if (string.IsNullOrWhiteSpace(text) || !text.Contains("[GCPad1]", StringComparison.OrdinalIgnoreCase))
         {
-            client.WriteText(path, "[GCPad1]\nDevice = " + safe + "\nSource = 0\n");
+            client.WriteText(path, GcPad(GcPadDevice));
             return;
         }
 
         var device = GetIni(text, "GCPad1", "Device");
-        text = SetIni(text, "GCPad1", "Device", safe);
+        // Keep a real external pad; replace empty / Virtual Gamepad / Deck naming drift.
+        if (string.IsNullOrWhiteSpace(device) ||
+            IsDisconnectedVirtualPad(device) ||
+            IsSteamDeckPad(device) ||
+            IsJoyConDevice(device))
+            text = SetIni(text, "GCPad1", "Device", GcPadDevice);
         if (IsJoyConDevice(device))
             text = SetIni(text, "GCPad1", "Source", "0");
         client.WriteText(path, text);
+    }
+
+    private static bool IsDisconnectedVirtualPad(string? device) =>
+        (device ?? "").Contains("Virtual Gamepad", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSteamDeckPad(string? device)
+    {
+        var d = device ?? "";
+        return d.Contains("Steam Deck", StringComparison.OrdinalIgnoreCase) ||
+               d.Contains("SteamDeck", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsJoyConDevice(string? device)

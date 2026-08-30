@@ -98,10 +98,7 @@ public static class GameOptimizerService
             }));
         foreach (var extra in ExtraShortcuts.Scan(client, steam, ExtraScanMode.All, extraProgress))
         {
-            var existing = extra.SteamAppId != 0
-                ? steam.FirstOrDefault(s => s.AppId == extra.SteamAppId)
-                : SteamShortcuts.FindOwnedByRom(steam, extra.RomPath)
-                  ?? SteamShortcuts.FindByRom(steam, extra.RomPath);
+            var existing = ResolveExistingShortcut(steam, extra);
             if (existing is not null)
             {
                 extra.InSteam = SteamShortcuts.IsOwned(existing);
@@ -131,10 +128,7 @@ public static class GameOptimizerService
             .ToList();
         foreach (var extra in apps)
         {
-            var existing = extra.SteamAppId != 0
-                ? steam.FirstOrDefault(s => s.AppId == extra.SteamAppId)
-                : SteamShortcuts.FindOwnedByRom(steam, extra.RomPath)
-                  ?? SteamShortcuts.FindByRom(steam, extra.RomPath);
+            var existing = ResolveExistingShortcut(steam, extra);
             if (existing is not null)
             {
                 extra.InSteam = SteamShortcuts.IsOwned(existing);
@@ -148,6 +142,20 @@ public static class GameOptimizerService
         }
 
         return apps;
+    }
+
+    private static SteamShortcut? ResolveExistingShortcut(IReadOnlyList<SteamShortcut> steam,
+        OptimizerGame extra)
+    {
+        if (extra.ShortcutKind == ShortcutKind.App)
+            return SteamShortcuts.FindOwnedApp(steam, extra) ?? SteamShortcuts.FindApp(steam, extra);
+        if (extra.SteamAppId != 0)
+        {
+            var byId = steam.FirstOrDefault(s => s.AppId == extra.SteamAppId);
+            if (byId is not null) return byId;
+        }
+        return SteamShortcuts.FindOwnedByRom(steam, extra.RomPath)
+               ?? SteamShortcuts.FindByRom(steam, extra.RomPath);
     }
 
     public static async Task<OptimizeReport> ApplyAsync(DeckClient client, AppCatalog catalog,

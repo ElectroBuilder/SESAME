@@ -101,7 +101,7 @@ public static class CoverMask
     {
         using var canvas = new Image<Rgba32>(width, height, backdrop);
         if (source is { Length: > 0 })
-            TryDrawCover(canvas, source);
+            TryDrawCover(canvas, source, contain: true);
         using var ms = new MemoryStream();
         canvas.SaveAsPng(ms);
         return ms.ToArray();
@@ -112,8 +112,8 @@ public static class CoverMask
         FitOnly(source, width, height, Color.FromRgb(16, 16, 20));
 
     /// <summary>
-    /// Remove stacked SESAME category bars (solid top strip + 5px accent line) so
-    /// re-Optimize / Steam round-trips never draw Nintendo Switch / GameCube twice.
+    /// Remove stacked SESAME category bars (solid top strip + 5px accent line) and
+    /// ROM-hack / NL Vertaling footers so re-Optimize never stacks labels.
     /// </summary>
     public static byte[]? StripSesameBars(byte[]? source)
     {
@@ -125,8 +125,10 @@ public static class CoverMask
             for (var pass = 0; pass < 6; pass++)
             {
                 var bar = DetectTopBarHeight(img);
-                if (bar <= 0) break;
                 var bottom = DetectBottomBarHeight(img);
+                // Top and bottom must be stripable independently — otherwise an orphan
+                // NL Vertaling footer survives after the category header is removed.
+                if (bar <= 0 && bottom <= 0) break;
                 var keepH = img.Height - bar - bottom;
                 if (keepH < img.Height / 3) break;
                 img.Mutate(c => c.Crop(new Rectangle(0, bar, img.Width, keepH)));
@@ -164,10 +166,42 @@ public static class CoverMask
     private static int DetectBottomBarHeight(Image<Rgba32> img)
     {
         var guess = Math.Max(48, (int)Math.Round(img.Height * (img.Height > img.Width ? 0.14 : 0.22)));
+        var maxH = Math.Min(guess + 16, img.Height / 3);
+        // Prefer the bright ROM-hack / NL Vertaling footers (pink / orange).
+        for (var h = maxH; h >= 40; h--)
+        {
+            var y0 = img.Height - h;
+            if (y0 < img.Height / 2) continue;
+            if (!RowLooksLikeKindBar(img, y0 + 6, img.Height - 4)) continue;
+            // Row just above the footer should not be the same solid kind color.
+            if (RowLooksLikeKindBar(img, Math.Max(0, y0 - 18), y0 - 4)) continue;
+            return h;
+        }
+
         var start = img.Height - guess - 8;
         if (start < img.Height / 2) return 0;
         if (!RowMostlyUniform(img, start + 8, img.Height - 4, 0.80f)) return 0;
         return Math.Min(guess + 8, img.Height / 4);
+    }
+
+    private static bool RowLooksLikeKindBar(Image<Rgba32> img, int y0, int y1)
+    {
+        y0 = Math.Clamp(y0, 0, img.Height - 1);
+        y1 = Math.Clamp(y1, y0, img.Height - 1);
+        var kind = 0;
+        var n = 0;
+        for (var y = y0; y <= y1; y += 2)
+        for (var x = 0; x < img.Width; x += 4)
+        {
+            n++;
+            var p = img[x, y];
+            if (p.A < 200) continue;
+            // NL Vertaling orange #FF6B00 / ROM-hack pink #C2185B
+            var orange = p.R > 200 && p.G is > 60 and < 160 && p.B < 80;
+            var pink = p.R > 160 && p.G < 90 && p.B is > 60 and < 140;
+            if (orange || pink) kind++;
+        }
+        return n > 0 && kind / (float)n >= 0.55f;
     }
 
     private static bool RowMostlyUniform(Image<Rgba32> img, int y0, int y1, float minRatio)
@@ -216,14 +250,20 @@ public static class CoverMask
     private static bool Near(Rgba32 a, Rgba32 b, int tol) =>
         Math.Abs(a.R - b.R) <= tol && Math.Abs(a.G - b.G) <= tol && Math.Abs(a.B - b.B) <= tol;
 
-    private static void TryDrawCover(Image<Rgba32> canvas, byte[] source, Rectangle? slot = null)
+    /// <param name="contain">
+    /// True = letterbox (Hydra/apps). False = cover-fill the slot under category masks
+    /// (mask bars change the aspect ratio; contain would leave black side bars).
+    /// </param>
+    private static void TryDrawCover(Image<Rgba32> canvas, byte[] source, Rectangle? slot = null,
+        bool contain = false)
     {
         try
         {
             using var src = Image.Load<Rgba32>(source);
             var area = slot ?? new Rectangle(0, 0, canvas.Width, canvas.Height);
-            // Contain: full cover visible (no crop/zoom). Letterbox bars beat cutting the title.
-            var scale = Math.Min(area.Width / (float)src.Width, area.Height / (float)src.Height);
+            var scale = contain
+                ? Math.Min(area.Width / (float)src.Width, area.Height / (float)src.Height)
+                : Math.Max(area.Width / (float)src.Width, area.Height / (float)src.Height);
             var w = Math.Max(1, (int)Math.Ceiling(src.Width * scale));
             var h = Math.Max(1, (int)Math.Ceiling(src.Height * scale));
             src.Mutate(c => c.Resize(new ResizeOptions

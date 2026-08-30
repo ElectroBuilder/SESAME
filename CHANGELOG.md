@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.22 — 2026-08-30
+
+- Covers with category masks: fill the art under the bar again (no black side bars). Hydra/apps still use contain so titles are not cropped. Strip stacked **NL Vertaling** / ROM-hack footers before redrawing.
+- Apps: Stop merging Stremio/Kodi/Firefox/Lutris into one Steam shortcut. They share `/usr/bin/flatpak`, so Optimize matched them as the same ROM — only one tile survived (often with a wrong cover such as Killer Instinct). Each catalog app now keeps its own AppId, artwork, and Apps-collection membership.
+- Dolphin GameCube: default pad is `SDL/0/Steam Deck Controller` instead of the usually-disconnected `Steam Virtual Gamepad`, so GC controls work in Game Mode. External controllers are left alone; Wii Joy2Wii paths unchanged.
+
 ## 0.6.21 — 2026-08-30
 
 - Covers: show the full artwork (contain) in preview and Steam write — no more zoom/crop cutting titles off Hydra covers.
