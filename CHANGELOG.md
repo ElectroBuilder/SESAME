@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.20 — 2026-08-30
+
+- Steam collections: put ROMs into platform tabs again. Membership IDs are written as **unsigned** appids (Steam’s format); the earlier signed values left collections at 0 games.
+
 ## 0.6.19 — 2026-08-30
 
 - Hydra Optimize: replace existing shortcuts (by game folder / name), keep the Steam AppId so artwork and Proton stay linked — no more duplicate tiles when the exe path is fixed.
