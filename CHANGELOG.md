@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.21 — 2026-08-30
+
+- Covers: show the full artwork (contain) in preview and Steam write — no more zoom/crop cutting titles off Hydra covers.
+- Apps: stop Killer Instinct (and other games) covers landing on Stremio/Kodi/Lutris/Firefox — search and saved picks are pinned to the catalog app title; contaminated picks are scrubbed.
+
 ## 0.6.20 — 2026-08-30
 
 - Steam collections: put ROMs into platform tabs again. Membership IDs are written as **unsigned** appids (Steam’s format); the earlier signed values left collections at 0 games.

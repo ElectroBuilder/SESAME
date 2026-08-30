@@ -29,6 +29,24 @@ public static class ArtworkClient
     public static string LastError { get; private set; } = "";
     public static bool LastKeyInvalid { get; private set; }
 
+    /// <summary>
+    /// Apps must search SteamGridDB by catalog title only — polluted SearchQuery
+    /// (e.g. "Killer Instinct") was painting every Flatpak with the wrong cover.
+    /// </summary>
+    public static string ArtworkSearchQuery(OptimizerGame game)
+    {
+        if (game.ShortcutKind == ShortcutKind.App &&
+            DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var app))
+        {
+            game.SearchQuery = app.Title;
+            return app.Title;
+        }
+
+        if (!string.IsNullOrWhiteSpace(game.SearchQuery))
+            return game.SearchQuery.Trim();
+        return game.DisplayName ?? "";
+    }
+
     public static async Task<ArtworkSet?> FindAsync(string title, SystemProfile system, CancellationToken ct)
     {
         LastError = "";
@@ -205,7 +223,8 @@ public static class ArtworkClient
             if (id is not null) return id;
         }
 
-        if (bestHits is { } fallback && fallback.GetArrayLength() > 0)
+        if (bestHits is { } fallback && fallback.GetArrayLength() > 0 &&
+            system.Id is not ("app" or "hydra" or "lutris" or "game"))
         {
             var first = fallback[0];
             if (first.TryGetProperty("id", out var idEl) && idEl.TryGetInt32(out var id))
@@ -276,7 +295,9 @@ public static class ArtworkClient
                 best = item;
             }
         }
-        if (best is null || bestScore < 5) return null;
+        // Apps/Hydra: require an exact-ish title match — never accept a weak autocomplete hit.
+        var min = system.Id is "app" or "hydra" or "lutris" or "game" ? 12 : 5;
+        if (best is null || bestScore < min) return null;
         if (!best.Value.TryGetProperty("id", out var id)) return null;
         return id.TryGetInt32(out var nId) ? nId : null;
     }

@@ -232,7 +232,7 @@ public static class GameOptimizerService
                 var profile = SystemCatalog.FromFolder(game.FolderName)
                     ?? SystemCatalog.All.FirstOrDefault(p => p.Id == game.SystemId)
                     ?? SystemCatalog.Unknown(game.FolderName);
-                var query = string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery;
+                var query = ArtworkClient.ArtworkSearchQuery(game);
                 ArtworkSet? art = null;
                 var keptExisting = !OptimizerSettings.OverwriteArtwork &&
                                    ArtworkAlreadyOnDeck(client, gridDir, game.SteamAppId);
@@ -479,12 +479,22 @@ public static class GameOptimizerService
         SystemProfile profile, ArtworkSet? art)
     {
         var id = game.SteamAppId.ToString();
-        // Portrait capsule must stay a vertical cover — never force a wide banner into it
-        // (that caused black bars top/bottom after contain-fit).
+        // Portrait capsule must stay a vertical cover — never force a wide banner into it.
+        // Unmasked platforms letterbox (contain) so titles are not cropped off.
         var portraitSrc = art?.Grid;
         var landscapeSrc = art?.Wide ?? art?.Hero ?? art?.Grid;
-        var portrait = CoverMask.Portrait(portraitSrc, profile, game.IsRomHack, game.IsTranslation);
-        var landscape = CoverMask.Landscape(landscapeSrc, profile, game.IsRomHack, game.IsTranslation);
+        byte[] portrait;
+        byte[] landscape;
+        if (!OptimizerSettings.UseMaskFor(profile.Id))
+        {
+            portrait = CoverMask.FitOnlyPublic(portraitSrc, CoverMask.PortraitWidth, CoverMask.PortraitHeight);
+            landscape = CoverMask.FitOnlyPublic(landscapeSrc, CoverMask.LandscapeWidth, CoverMask.LandscapeHeight);
+        }
+        else
+        {
+            portrait = CoverMask.Portrait(portraitSrc, profile, game.IsRomHack, game.IsTranslation);
+            landscape = CoverMask.Landscape(landscapeSrc, profile, game.IsRomHack, game.IsTranslation);
+        }
         var files = new List<(string Path, byte[] Data)>
         {
             (DeckClient.Combine(gridDir, id + "p.png"), portrait),

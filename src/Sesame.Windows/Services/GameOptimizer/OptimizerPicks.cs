@@ -56,6 +56,19 @@ public static class OptimizerPicks
             if (!string.IsNullOrWhiteSpace(pick.ArtworkSource))
                 game.ArtworkSource = pick.ArtworkSource;
         }
+        else if (game.ShortcutKind == ShortcutKind.App &&
+                 DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var app))
+        {
+            // Contaminated pick — pin the catalog title so Optimize cannot search "Killer Instinct".
+            game.SearchQuery = app.Title;
+            game.DisplayName = app.Title;
+            game.SelectedGridUrl = null;
+            game.SelectedWideUrl = null;
+            game.SelectedHeroUrl = null;
+            game.SelectedLogoUrl = null;
+            game.SelectedIconUrl = null;
+            game.SteamGridDbId = null;
+        }
         if (pick.LaunchLocked &&
             HostAllowsLaunch(pick) &&
             LaunchComposer.ShouldKeepLaunch(pick.Target, pick.LaunchOptions))
@@ -83,7 +96,10 @@ public static class OptimizerPicks
             PickKey = key,
             Selected = game.Selected,
             DisplayName = game.DisplayName,
-            SearchQuery = game.SearchQuery,
+            SearchQuery = game.ShortcutKind == ShortcutKind.App &&
+                          DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var app)
+                ? app.Title
+                : game.SearchQuery,
             SteamGridDbId = game.SteamGridDbId,
             SelectedGridUrl = game.SelectedGridUrl,
             SelectedWideUrl = game.SelectedWideUrl,
@@ -137,7 +153,8 @@ public static class OptimizerPicks
     }
 
     /// <summary>
-    /// Block re-applying Stremio (or other) artwork onto a different catalog app.
+    /// Block re-applying another app's OR a random game's artwork onto a catalog app
+    /// (e.g. Killer Instinct covers landing on Stremio / Firefox / Kodi).
     /// </summary>
     private static bool AllowArtwork(OptimizerGame game, OptimizerPick pick)
     {
@@ -147,12 +164,22 @@ public static class OptimizerPicks
         foreach (var proposed in new[] { pick.DisplayName, pick.SearchQuery })
         {
             if (string.IsNullOrWhiteSpace(proposed)) continue;
-            if (!DeckApps.TryMatch(proposed, proposed, "", out var fromPick))
-                continue;
-            if (!string.Equals(current.Id, fromPick.Id, StringComparison.OrdinalIgnoreCase))
+            if (DeckApps.TryMatch(proposed, proposed, "", out var fromPick) &&
+                !string.Equals(current.Id, fromPick.Id, StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (!TitleLooksLikeApp(proposed, current))
                 return false;
         }
         return true;
+    }
+
+    private static bool TitleLooksLikeApp(string proposed, DeckApps.Entry current)
+    {
+        if (string.IsNullOrWhiteSpace(proposed)) return true;
+        if (proposed.Contains(current.Title, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return current.Needles.Any(n =>
+            proposed.Contains(n, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool HostAllowsLaunch(OptimizerPick pick) =>
@@ -247,7 +274,9 @@ public static class OptimizerPicks
         }
 
         if (!PickTextMatchesOtherApp(pick.DisplayName, catalog.Id) &&
-            !PickTextMatchesOtherApp(pick.SearchQuery, catalog.Id))
+            !PickTextMatchesOtherApp(pick.SearchQuery, catalog.Id) &&
+            TitleLooksLikeApp(pick.DisplayName ?? "", catalog) &&
+            (string.IsNullOrWhiteSpace(pick.SearchQuery) || TitleLooksLikeApp(pick.SearchQuery, catalog)))
             return changed;
 
         pick.SelectedGridUrl = null;

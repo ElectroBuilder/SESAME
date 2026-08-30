@@ -621,7 +621,8 @@ public partial class GameOptimizerView : UserControl
     {
         var profile = ProfileOf(game);
         if (profile is null) return;
-        var query = string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery;
+        // Apps always search by catalog title — never a polluted SearchQuery / rename.
+        var query = ArtworkClient.ArtworkSearchQuery(game);
         byte[]? grid = game.GridBytes;
         byte[]? wide = game.WideBytes;
         if (grid is null && game.SteamAppId != 0 && _client is { IsConnected: true })
@@ -698,8 +699,21 @@ public partial class GameOptimizerView : UserControl
 
     private void ApplyPreview(OptimizerGame game, SystemProfile profile)
     {
-        var portrait = CoverMask.Portrait(game.GridBytes ?? game.WideBytes, profile, game.IsRomHack, game.IsTranslation);
-        var landscape = CoverMask.Landscape(game.WideBytes ?? game.GridBytes, profile, game.IsRomHack, game.IsTranslation);
+        // Unmasked platforms (Hydra/apps): show the chosen grid as-is so the preview
+        // matches the thumbnail — CoverMask fill was cropping titles off.
+        byte[] portrait;
+        byte[] landscape;
+        if (!OptimizerSettings.UseMaskFor(profile.Id) && game.GridBytes is { Length: > 0 })
+        {
+            portrait = CoverMask.FitOnlyPublic(game.GridBytes, CoverMask.PortraitWidth, CoverMask.PortraitHeight);
+            landscape = CoverMask.FitOnlyPublic(
+                game.WideBytes ?? game.GridBytes, CoverMask.LandscapeWidth, CoverMask.LandscapeHeight);
+        }
+        else
+        {
+            portrait = CoverMask.Portrait(game.GridBytes ?? game.WideBytes, profile, game.IsRomHack, game.IsTranslation);
+            landscape = CoverMask.Landscape(game.WideBytes ?? game.GridBytes, profile, game.IsRomHack, game.IsTranslation);
+        }
         var portraitBmp = ToBitmap(portrait);
         var wideBmp = ToBitmap(landscape);
         game.Cover = portraitBmp;

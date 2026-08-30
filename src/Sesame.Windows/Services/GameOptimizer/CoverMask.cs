@@ -107,6 +107,10 @@ public static class CoverMask
         return ms.ToArray();
     }
 
+    /// <summary>Letterbox a cover into Steam grid size without cropping (Hydra/apps preview + write).</summary>
+    public static byte[] FitOnlyPublic(byte[]? source, int width, int height) =>
+        FitOnly(source, width, height, Color.FromRgb(16, 16, 20));
+
     /// <summary>
     /// Remove stacked SESAME category bars (solid top strip + 5px accent line) so
     /// re-Optimize / Steam round-trips never draw Nintendo Switch / GameCube twice.
@@ -218,7 +222,8 @@ public static class CoverMask
         {
             using var src = Image.Load<Rgba32>(source);
             var area = slot ?? new Rectangle(0, 0, canvas.Width, canvas.Height);
-            var scale = Math.Max(area.Width / (float)src.Width, area.Height / (float)src.Height);
+            // Contain: full cover visible (no crop/zoom). Letterbox bars beat cutting the title.
+            var scale = Math.Min(area.Width / (float)src.Width, area.Height / (float)src.Height);
             var w = Math.Max(1, (int)Math.Ceiling(src.Width * scale));
             var h = Math.Max(1, (int)Math.Ceiling(src.Height * scale));
             src.Mutate(c => c.Resize(new ResizeOptions
@@ -227,7 +232,6 @@ public static class CoverMask
                 Sampler = KnownResamplers.Lanczos3,
                 Mode = ResizeMode.Stretch
             }));
-            // Cover-fill (no letterbox bars): crop overflow, keep the center.
             var x = area.X + (area.Width - w) / 2;
             var y = area.Y + (area.Height - h) / 2;
             canvas.Mutate(c => c.DrawImage(src, new Point(x, y), 1f));
