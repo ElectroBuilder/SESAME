@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.16 — 2026-08-30
+
+- Hydra Optimize: stop reading Hydra LevelDB / orphaned Steam shortcuts (those produced ~200 ghost titles). Scan only real game folders with an existing `.exe`.
+- Default Hydra library path and Files quick access: `/home/deck/Hydra` (migrate away from empty `/home/deck/Games/Hydra`).
+- Optimize still assigns UMU Proton (or GE / Proton Experimental) for Hydra shortcuts.
+
 ## 0.6.15 — 2026-08-30
 
 - Wii Joy-Con pair↔solo without Controllers menu: disconnect Left + SL+SR (or ZR+R) on Right → **SESAME - Joy2Wii (solo)** (Wiimote only, `Extension = None`); recombine with L+R → Joy2Wii + Nunchuk again.

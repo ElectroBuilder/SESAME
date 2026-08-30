@@ -1,4 +1,4 @@
-import glob, json, os, re, sqlite3, sys
+import glob, json, os, re, sys
 
 try:
     sys.stdout.reconfigure(line_buffering=True)
@@ -10,7 +10,22 @@ if 'MODE' not in globals():
 
 HOME = os.path.expanduser('~')
 SEEN = set()
-MAX_BYTES = 8 * 1024 * 1024
+
+def exe_exists(path):
+    """True only for a real file on this machine (drops stale / Windows paths)."""
+    if not path:
+        return False
+    p = str(path).strip().strip('"')
+    if not p:
+        return False
+    # Wine-style Windows paths are never valid on the Deck filesystem.
+    if len(p) >= 3 and p[1] == ':' and p[0].isalpha():
+        return False
+    p = p.replace('\\', '/')
+    try:
+        return os.path.isfile(p)
+    except Exception:
+        return False
 
 def emit(kind, title, exe, start, opts=''):
     if not title or not exe:
@@ -21,191 +36,50 @@ def emit(kind, title, exe, start, opts=''):
     opts = str(opts or '').strip()
     if not title or not exe:
         return
+    # Hydra/Lutris/Other: never emit ghost entries whose .exe is gone.
+    if kind in ('HYDRA', 'LUTRIS', 'OTHER', 'GAME') and not exe_exists(exe):
+        return
     key = (kind + '|' + title + '|' + exe).lower()
     if key in SEEN:
         return
     SEEN.add(key)
     print(kind + '\t' + title + '\t' + exe + '\t' + start + '\t' + opts, flush=True)
 
-def take_game(obj):
-    if not isinstance(obj, dict):
-        return None
-    exe = obj.get('executablePath') or obj.get('executable') or obj.get('exe') or obj.get('gamePath') or obj.get('path')
-    title = obj.get('title') or obj.get('name') or obj.get('appName') or obj.get('gameTitle')
-    if not exe or not title:
-        return None
-    if isinstance(exe, dict):
-        exe = exe.get('path') or exe.get('exe')
-    opts = obj.get('launchOptions') or obj.get('launchParameters') or obj.get('args') or ''
-    return str(title), str(exe), str(opts or '')
-
-def walk_obj(obj):
-    hit = take_game(obj)
-    if hit:
-        yield hit
-    if isinstance(obj, dict):
-        for v in obj.values():
-            yield from walk_obj(v)
-    elif isinstance(obj, list):
-        for v in obj:
-            yield from walk_obj(v)
-
-def extract_json_objects(text):
-    i = 0
-    n = len(text)
-    while i < n:
-        j = text.find('{', i)
-        if j < 0:
-            return
-        depth = 0
-        k = j
-        in_str = False
-        esc = False
-        while k < n and k - j < 250000:
-            c = text[k]
-            if in_str:
-                if esc:
-                    esc = False
-                elif c == '\\':
-                    esc = True
-                elif c == '"':
-                    in_str = False
-            else:
-                if c == '"':
-                    in_str = True
-                elif c == '{':
-                    depth += 1
-                elif c == '}':
-                    depth -= 1
-                    if depth == 0:
-                        blob = text[j:k + 1]
-                        try:
-                            yield json.loads(blob)
-                        except Exception:
-                            pass
-                        break
-            k += 1
-        i = j + 1
-
-def read_bytes(path):
-    try:
-        size = os.path.getsize(path)
-        if size <= 0 or size > MAX_BYTES:
-            return b''
-        with open(path, 'rb') as fh:
-            return fh.read()
-    except Exception:
-        return b''
-
-def scan_blob(data, kind='HYDRA'):
-    if not data:
-        return
-    for enc in ('utf-8', 'utf-16le'):
-        try:
-            text = data.decode(enc, 'ignore')
-        except Exception:
-            continue
-        for obj in extract_json_objects(text):
-            for title, exe, opts in walk_obj(obj):
-                emit(kind, title, exe, os.path.dirname(exe), opts)
-
-def scan_json_file(path):
-    data = read_bytes(path)
-    if not data:
-        return
-    try:
-        obj = json.loads(data.decode('utf-8', 'ignore'))
-        for title, exe, opts in walk_obj(obj):
-            emit('HYDRA', title, exe, os.path.dirname(exe), opts)
-        return
-    except Exception:
-        pass
-    scan_blob(data)
-
-def ident(name):
-    return bool(re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name or ''))
-
-def scan_sqlite(path):
-    try:
-        con = sqlite3.connect('file:%s?mode=ro' % path.replace('?', '%3F'), uri=True)
-        con.row_factory = sqlite3.Row
-    except Exception:
-        return
-    try:
-        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
-        for table in tables:
-            if not ident(table):
-                continue
-            try:
-                cols = [r[1] for r in con.execute('PRAGMA table_info(%s)' % table)]
-            except Exception:
-                continue
-            low = {c.lower(): c for c in cols}
-            tcol = next((low[k] for k in ('title', 'name', 'game_title', 'appname', 'gametitle') if k in low), None)
-            ecol = next((low[k] for k in ('executablepath', 'executable', 'exe', 'path', 'gamepath') if k in low), None)
-            if not tcol or not ecol:
-                continue
-            ocol = next((low[k] for k in ('launchoptions', 'launch_options', 'args', 'launchparameters') if k in low), None)
-            try:
-                for row in con.execute('SELECT * FROM %s' % table):
-                    title = row[tcol]
-                    exe = row[ecol]
-                    opts = row[ocol] if ocol else ''
-                    if title and exe:
-                        emit('HYDRA', title, exe, os.path.dirname(str(exe)), opts or '')
-            except Exception:
-                continue
-    finally:
-        try:
-            con.close()
-        except Exception:
-            pass
-
-HYDRA_ROOTS = [
-    os.path.join(HOME, '.config', 'hydra'),
-    os.path.join(HOME, '.config', 'hydralauncher'),
-    os.path.join(HOME, '.var', 'app'),
-    os.path.join(HOME, '.local', 'share', 'hydra'),
-    os.path.join(HOME, '.local', 'share', 'hydralauncher'),
-]
-
-for root in (HYDRA_ROOTS if MODE in ('all', 'hydra') else []):
-    if not os.path.isdir(root):
-        continue
-    for dirpath, dirs, files in os.walk(root):
-        base = os.path.basename(dirpath).lower()
-        # .var/app holds every Flatpak; only walk Hydra there or we pick up Kate, browsers, …
-        if os.path.basename(root) == 'app' and dirpath == root:
-            dirs[:] = [d for d in dirs if 'hydra' in d.lower()]
-        if any(skip in base for skip in ('cache', 'gpu', 'code_cache', 'blob_storage', 'dawn')):
-            dirs[:] = []
-            continue
-        if len(dirpath) - len(root) > 180:
-            dirs.clear()
-            continue
-        hydra_db = 'hydra-db' in base or base == 'hydra-db'
-        for name in files:
-            low = name.lower()
-            path = os.path.join(dirpath, name)
-            if hydra_db or low.endswith(('.ldb', '.log')) or low in ('current', 'manifest', '000003.log'):
-                scan_blob(read_bytes(path))
-            elif low.endswith(('.json', '.jsonc')) and ('hydra' in dirpath.lower() or 'hydra' in low):
-                scan_json_file(path)
-            elif low.endswith(('.db', '.sqlite', '.sqlite3')) and 'hydra' in (dirpath.lower() + low):
-                scan_sqlite(path)
+# Hydra library DB (LevelDB under ~/.config/hydra, Flatpak, …) is intentionally NOT
+# scanned: it keeps titles after uninstall and caused 100+ ghost games in SESAME.
+# Source of truth = game folders on disk under HYDRA_GAMES (+ common aliases).
 
 if 'LUTRIS_ROOT' not in globals():
     LUTRIS_ROOT = os.path.join(HOME, 'Games', 'Lutris')
 if 'OTHER_ROOT' not in globals():
     OTHER_ROOT = os.path.join(HOME, 'Games', 'Other')
 if 'HYDRA_GAMES' not in globals():
-    HYDRA_GAMES = os.path.join(HOME, 'Games', 'Hydra')
+    HYDRA_GAMES = os.path.join(HOME, 'Hydra')
+
+def hydra_game_roots():
+    """Configured Hydra games folder plus common Deck aliases (only dirs that exist)."""
+    roots = []
+    for cand in (
+        HYDRA_GAMES,
+        os.path.join(HOME, 'Hydra'),
+        os.path.join(HOME, 'hydra'),
+        os.path.join(HOME, 'Games', 'Hydra'),
+    ):
+        if not cand:
+            continue
+        norm = os.path.normpath(cand)
+        if norm in roots:
+            continue
+        if os.path.isdir(norm):
+            roots.append(norm)
+    return roots
 
 SKIP_EXE = (
     'unitycrashhandler', 'unitycrashhandler64', 'unitycrashhandler32',
-    'uninstall', 'unins000', 'crashpad', 'vcredist', 'vc_redist',
-    'directx', 'dxsetup', 'easyanticheat', 'eac', 'battleye',
-    'dotnetfx', 'oalinst', 'physx',
+    'uninstall', 'unins000', 'crashpad', 'crash_uploader', 'crashuploader',
+    'vcredist', 'vc_redist', 'directx', 'dxsetup', 'dxwebsetup',
+    'easyanticheat', 'eac', 'battleye',
+    'dotnetfx', 'dotnetfx40', 'oalinst', 'physx',
 )
 
 def skip_exe(path):
@@ -248,7 +122,6 @@ def scan_game_root(root, kind):
         names = os.listdir(root)
     except Exception:
         return
-    files = [n for n in names if os.path.isfile(os.path.join(root, n))]
     dirs = [n for n in names if os.path.isdir(os.path.join(root, n))]
     direct = pick_exe(root)
     if direct and not dirs:
@@ -297,10 +170,12 @@ def scan_lutris_yaml():
                 emit('LUTRIS', title, exe, os.path.dirname(exe), '')
 
 if MODE in ('all', 'hydra'):
+    # MODE "hydra" from SESAME also carries Lutris/Other folder games (legacy).
     scan_lutris_yaml()
     scan_game_root(LUTRIS_ROOT, 'LUTRIS')
     scan_game_root(OTHER_ROOT, 'OTHER')
-    scan_game_root(HYDRA_GAMES, 'HYDRA')
+    for root in hydra_game_roots():
+        scan_game_root(root, 'HYDRA')
 
 if MODE not in ('all', 'apps'):
     raise SystemExit(0)

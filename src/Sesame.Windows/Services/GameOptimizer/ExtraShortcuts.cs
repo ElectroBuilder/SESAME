@@ -15,7 +15,7 @@ public enum ExtraScanMode
 
 public static class ExtraShortcuts
 {
-    public static IReadOnlyList<OptimizerGame> Scan(DeckClient client, IReadOnlyList<SteamShortcut> steam,
+    public static IReadOnlyList<OptimizerGame> Scan(DeckClient client, IReadOnlyList<SteamShortcut> _,
         ExtraScanMode mode = ExtraScanMode.All, IProgress<string>? progress = null)
     {
         var games = new List<OptimizerGame>();
@@ -31,18 +31,13 @@ public static class ExtraShortcuts
                 /* Hydra is optional */
             }
 
-            foreach (var shortcut in steam)
-            {
-                if (SteamShortcuts.IsOwned(shortcut)) continue;
-                var hay = ((shortcut.Exe ?? "") + " " + (shortcut.LaunchOptions ?? "") + " " +
-                           (shortcut.StartDir ?? "")).Replace('\\', '/');
-                if (!hay.Contains("hydra", StringComparison.OrdinalIgnoreCase)) continue;
-                if (games.Any(g => g.ShortcutKind == ShortcutKind.Hydra &&
-                                   ManualShortcutStore.Normalize(g.DisplayName) ==
-                                   ManualShortcutStore.Normalize(shortcut.AppName)))
-                    continue;
-                games.Add(FromShortcut(shortcut, ShortcutKind.Hydra, "Hydra"));
-            }
+            // Do not re-import orphaned Steam "hydra" shortcuts — Hydra's own launcher
+            // and old SESAME entries often leave paths to deleted games. Folder scan is
+            // the only Hydra source of truth; SESAME recreates shortcuts on Optimize.
+            games.RemoveAll(g =>
+                g.ShortcutKind == ShortcutKind.Hydra &&
+                !g.IsManual &&
+                !ExeExistsOnDeck(client, g.RomPath, g.Target));
         }
 
         if (mode is ExtraScanMode.All or ExtraScanMode.Apps)
@@ -129,9 +124,35 @@ public static class ExtraShortcuts
 
     private static bool Keep(OptimizerGame game)
     {
-        if (game.ShortcutKind != ShortcutKind.App) return true;
-        if (game.IsManual) return true;
-        return DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out _);
+        if (game.ShortcutKind == ShortcutKind.App)
+        {
+            if (game.IsManual) return true;
+            return DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out _);
+        }
+
+        return true;
+    }
+
+    private static bool ExeExistsOnDeck(DeckClient client, string? romPath, string? target)
+    {
+        foreach (var raw in new[] { romPath, LaunchComposer.ExePath(target ?? "") })
+        {
+            var path = (raw ?? "").Trim().Trim('"').Replace('\\', '/');
+            if (string.IsNullOrWhiteSpace(path)) continue;
+            // Windows drive letters are never on the Deck.
+            if (path.Length >= 3 && path[1] == ':' && char.IsLetter(path[0]))
+                continue;
+            try
+            {
+                if (client.Exists(path)) return true;
+            }
+            catch
+            {
+                /* remote check best-effort */
+            }
+        }
+
+        return false;
     }
 
     private static OptimizerGame KeepPreferred(IGrouping<string, OptimizerGame> group)
@@ -211,29 +232,6 @@ public static class ExtraShortcuts
                 AddParsed(games, title, exe, start, options, ShortcutKind.Hydra, "hydra", "hydra", "Hydra");
         }
     }
-
-    private static OptimizerGame FromShortcut(SteamShortcut shortcut, ShortcutKind kind, string system) =>
-        new()
-        {
-            DisplayName = shortcut.AppName,
-            FileName = Path.GetFileName((shortcut.Exe ?? "").Trim('"')),
-            RomPath = LaunchComposer.ExePath(shortcut.Exe ?? ""),
-            FolderName = kind == ShortcutKind.Hydra ? "hydra" : "apps",
-            SystemId = kind == ShortcutKind.Hydra ? "hydra" : "app",
-            SystemName = system,
-            Category = system,
-            Fps = 60,
-            SearchQuery = shortcut.AppName,
-            ShortcutKind = kind,
-            EmulatorName = kind == ShortcutKind.Hydra ? "Game" : system,
-            Target = shortcut.Exe ?? "",
-            StartDir = shortcut.StartDir ?? "",
-            LaunchOptions = shortcut.LaunchOptions ?? "",
-            InSteam = true,
-            SteamAppId = shortcut.AppId,
-            Status = "In Steam (extern)",
-            LaunchChoices = { ToChoice(shortcut.Exe ?? "", shortcut.StartDir ?? "", shortcut.LaunchOptions ?? "") }
-        };
 
     private static LaunchChoice ToChoice(OptimizerGame game) =>
         ToChoice(game.Target, game.StartDir, game.LaunchOptions, game.RomPath);

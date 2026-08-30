@@ -12,7 +12,7 @@
     { "name": "Genesis", "path": "/home/deck/Emulation/roms/genesis", "group": "ROMs" },
     { "name": "PlayStation", "path": "/home/deck/Emulation/roms/psx", "group": "ROMs" },
     { "name": "PlayStation 2", "path": "/home/deck/Emulation/roms/ps2", "group": "ROMs" },
-    { "name": "Hydra", "path": "/home/deck/Games/Hydra", "group": "Games" },
+    { "name": "Hydra", "path": "/home/deck/Hydra", "group": "Games" },
     { "name": "Eden mods", "path": "/home/deck/Emulation/storage/eden/load", "group": "Mods & saves" },
     { "name": "RetroArch saves", "path": "/home/deck/Emulation/saves/retroarch", "group": "Mods & saves" },
     { "name": "N64 texture packs", "path": "/home/deck/Emulation/bios/Mupen64plus", "group": "Mods & saves" },
@@ -30,7 +30,7 @@
     "ps1": "/home/deck/Emulation/roms/psx",
     "psx": "/home/deck/Emulation/roms/psx",
     "ps2": "/home/deck/Emulation/roms/ps2",
-    "hydra": "/home/deck/Games/Hydra"
+    "hydra": "/home/deck/Hydra"
   },
   "installRoutes": {
     ".nes": "/home/deck/Emulation/roms/nes",

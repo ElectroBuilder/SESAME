@@ -13,7 +13,8 @@ public sealed class LibraryPaths
     public static LibraryPaths Current { get; private set; } = new();
 
     public string RomsRoot { get; set; } = "/home/deck/Emulation/roms";
-    public string HydraRoot { get; set; } = "/home/deck/Games/Hydra";
+    /// <summary>Real Hydra game folders live here on Deck; Games/Hydra was often empty.</summary>
+    public string HydraRoot { get; set; } = "/home/deck/Hydra";
     public string LutrisRoot { get; set; } = "/home/deck/Games/Lutris";
     public string OtherGamesRoot { get; set; } = "/home/deck/Games/Other";
     public bool UseEden { get; set; } = true;
@@ -74,6 +75,9 @@ public sealed class LibraryPaths
             Current.RomsRoot = LaunchConfigStore.Current.RomsRoot;
 
         Current.Normalize();
+        // Old default pointed at an empty SESAME-created folder; games are under ~/Hydra.
+        if (string.Equals(Current.HydraRoot, "/home/deck/Games/Hydra", StringComparison.OrdinalIgnoreCase))
+            Current.HydraRoot = "/home/deck/Hydra";
     }
 
     public static void Save(bool syncLaunchers = true)
