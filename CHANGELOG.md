@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.17 — 2026-08-30
+
+- Fix Scan freeze after Hydra path fix: RomScan no longer recursively walks `/home/deck/Hydra` (full Windows game trees). That walk made “Reading ROM folders and mods…” hang and blocked the UI.
+- Hydra/Lutris/Other stay on the shallow Optimize folder scan only — not the ROM library walk.
+
 ## 0.6.16 — 2026-08-30
 
 - Hydra Optimize: stop reading Hydra LevelDB / orphaned Steam shortcuts (those produced ~200 ghost titles). Scan only real game folders with an existing `.exe`.

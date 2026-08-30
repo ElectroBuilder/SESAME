@@ -182,9 +182,12 @@ public static class RomScan
             LaunchConfigStore.Current.RomsRoot,
             "/home/deck/Emulation/roms"
         };
-        foreach (var folder in catalog.RomFolders.Values)
+        foreach (var (key, folder) in catalog.RomFolders)
         {
             if (string.IsNullOrWhiteSpace(folder)) continue;
+            // Hydra (and Lutris/Other) are PC game installs, not ROMs. Walking them
+            // recursively freezes Scan once ~/Hydra has real Windows game trees.
+            if (IsPcGameLibrary(key, folder)) continue;
             var parent = DeckClient.Parent(folder);
             if (!string.IsNullOrEmpty(parent) &&
                 Path.GetFileName(parent.TrimEnd('/')).Equals("roms", StringComparison.OrdinalIgnoreCase))
@@ -192,8 +195,40 @@ public static class RomScan
             else
                 roots.Add(folder);
         }
-        return roots.Where(r => !string.IsNullOrWhiteSpace(r));
+        return roots.Where(r => !string.IsNullOrWhiteSpace(r) && !IsPcGameLibrary("", r));
     }
+
+    private static bool IsPcGameLibrary(string key, string path)
+    {
+        if (key.Equals("hydra", StringComparison.OrdinalIgnoreCase) ||
+            key.Equals("lutris", StringComparison.OrdinalIgnoreCase) ||
+            key.Equals("other", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var norm = (path ?? "").Trim().Replace('\\', '/').TrimEnd('/');
+        if (norm.Length == 0) return false;
+        if (SamePath(norm, LibraryPaths.Current.HydraRoot) ||
+            SamePath(norm, LibraryPaths.Current.LutrisRoot) ||
+            SamePath(norm, LibraryPaths.Current.OtherGamesRoot))
+            return true;
+
+        foreach (var known in new[]
+                 {
+                     "/home/deck/Hydra", "/home/deck/hydra", "/home/deck/Games/Hydra",
+                     "/home/deck/Games/Lutris", "/home/deck/Games/Other"
+                 })
+        {
+            if (SamePath(norm, known)) return true;
+        }
+
+        return false;
+    }
+
+    private static bool SamePath(string a, string b) =>
+        string.Equals(
+            (a ?? "").Trim().Replace('\\', '/').TrimEnd('/'),
+            (b ?? "").Trim().Replace('\\', '/').TrimEnd('/'),
+            StringComparison.OrdinalIgnoreCase);
 
     private static void ParseOutput(string output, Dictionary<string, RomSystemFolder> folders,
         List<RomFileHit> files)

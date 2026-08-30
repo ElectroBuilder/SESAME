@@ -31,13 +31,8 @@ public static class ExtraShortcuts
                 /* Hydra is optional */
             }
 
-            // Do not re-import orphaned Steam "hydra" shortcuts — Hydra's own launcher
-            // and old SESAME entries often leave paths to deleted games. Folder scan is
-            // the only Hydra source of truth; SESAME recreates shortcuts on Optimize.
-            games.RemoveAll(g =>
-                g.ShortcutKind == ShortcutKind.Hydra &&
-                !g.IsManual &&
-                !ExeExistsOnDeck(client, g.RomPath, g.Target));
+            // Folder scan (+ exe_exists in extra-scan.py) is the only Hydra source of
+            // truth — do not re-check each path over SFTP (that stalled Optimize).
         }
 
         if (mode is ExtraScanMode.All or ExtraScanMode.Apps)
@@ -131,28 +126,6 @@ public static class ExtraShortcuts
         }
 
         return true;
-    }
-
-    private static bool ExeExistsOnDeck(DeckClient client, string? romPath, string? target)
-    {
-        foreach (var raw in new[] { romPath, LaunchComposer.ExePath(target ?? "") })
-        {
-            var path = (raw ?? "").Trim().Trim('"').Replace('\\', '/');
-            if (string.IsNullOrWhiteSpace(path)) continue;
-            // Windows drive letters are never on the Deck.
-            if (path.Length >= 3 && path[1] == ':' && char.IsLetter(path[0]))
-                continue;
-            try
-            {
-                if (client.Exists(path)) return true;
-            }
-            catch
-            {
-                /* remote check best-effort */
-            }
-        }
-
-        return false;
     }
 
     private static OptimizerGame KeepPreferred(IGrouping<string, OptimizerGame> group)
