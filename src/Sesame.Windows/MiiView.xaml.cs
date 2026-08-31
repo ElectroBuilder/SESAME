@@ -15,7 +15,6 @@ public partial class MiiView : UserControl
     private MiiTargetState? _liveState;
     private readonly MiiOperationLock _operationLock = new();
     private bool _updatingPaths;
-    private string? _experimentalTargetKey;
     private readonly Dictionary<MiiTargetKind, string> _selectedPaths = [];
 
     public MiiView()
@@ -44,7 +43,6 @@ public partial class MiiView : UserControl
     {
         _state = null;
         _liveState = null;
-        _experimentalTargetKey = null;
         ConfigureAppearanceControls(SelectedKind);
         MiiList.ItemsSource = null;
         BackupBox.ItemsSource = null;
@@ -101,7 +99,6 @@ public partial class MiiView : UserControl
             IntegrityText.Text = loaded.Integrity;
             PathText.Text = loaded.Target.Host + " · " + loaded.Target.TargetPath +
                             (string.IsNullOrWhiteSpace(loaded.Target.PathStatus) ? "" : "\n" + loaded.Target.PathStatus);
-            ResetExperimentalUnlessBoundTo(loaded);
             ApplyCapabilities();
             StatusChanged?.Invoke($"Mii: {loaded.Slots.Count} record(s), {loaded.Capability}");
         });
@@ -110,7 +107,6 @@ public partial class MiiView : UserControl
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
     private async void TargetBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _experimentalTargetKey = null;
         ConfigureAppearanceControls(SelectedKind);
         if (IsLoaded && _client is { IsConnected: true })
         {
@@ -125,7 +121,6 @@ public partial class MiiView : UserControl
     {
         if (_updatingPaths || DatabasePathBox.SelectedItem is not MiiPathCandidate candidate) return;
         _selectedPaths[SelectedKind] = candidate.Path;
-        _experimentalTargetKey = null;
         if (IsLoaded && _client is { IsConnected: true }) await RefreshAsync();
     }
 
@@ -274,7 +269,6 @@ public partial class MiiView : UserControl
                       "This remains experimental until this emulator path is manually certified.";
         if (MessageBox.Show(Window.GetWindow(this), warning, "Save Mii to emulator",
                 MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
-        _experimentalTargetKey = TargetKey(state.Target);
         const bool acknowledged = true;
         if (!state.CanExperimentalPush(acknowledged)) return;
         var allowUnknown = UnknownProcessBox.IsChecked == true;
@@ -402,15 +396,6 @@ public partial class MiiView : UserControl
         SaveBtn.IsEnabled = _state is { IsDraft: true, Capability: not MiiCapability.Unavailable };
         RestoreBtn.IsEnabled = BackupBox.SelectedItem is MiiBackup;
         if (MiiList.SelectedItem is not MiiSlot) NameBox.Clear();
-    }
-
-    private static string TargetKey(MiiOperationSnapshot target) =>
-        target.HostId + "|" + target.Kind + "|" + target.TargetPath;
-
-    private void ResetExperimentalUnlessBoundTo(MiiTargetState state)
-    {
-        if (_experimentalTargetKey == TargetKey(state.Target)) return;
-        _experimentalTargetKey = null;
     }
 
     private void ShowUnavailable(string text)
