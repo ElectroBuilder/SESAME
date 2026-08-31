@@ -26,6 +26,7 @@ public sealed class MiiDatabaseLocator(IMiiNandTransport transport)
     {
         var candidates = Candidates(kind);
         var valid = new List<MiiPathCandidate>();
+        var existing = new List<MiiPathCandidate>();
         var issues = new List<string>();
         var expectedSize = kind == MiiTargetKind.Wii ? MiiFormatWii.Size : MiiFormatSwitch.Size;
         var format = kind == MiiTargetKind.Wii ? (IMiiFormat)_wii : _eden;
@@ -34,6 +35,7 @@ public sealed class MiiDatabaseLocator(IMiiNandTransport transport)
             try
             {
                 if (!transport.Exists(candidate.Path)) continue;
+                existing.Add(candidate);
                 var length = transport.FileLength(candidate.Path);
                 if (length != expectedSize)
                 {
@@ -80,8 +82,17 @@ public sealed class MiiDatabaseLocator(IMiiNandTransport transport)
         }
 
         var preferred = candidates[0];
+        var missingGuidance = existing.Count > 0
+            ? kind == MiiTargetKind.Wii
+                ? "A Dolphin RFL_DB.dat file was found but could not be verified. SESAME will not modify it; see the probe details below. "
+                : "An Eden MiiDatabase.dat file was found but could not be verified. SESAME will not modify it; see the probe details below. "
+            : kind == MiiTargetKind.Wii
+                ? "Dolphin has not created its Wii Mii database yet. In Dolphin, launch the Wii System Menu or Mii Channel once, " +
+                  "then close Dolphin and press Refresh. SESAME does not create RFL_DB.dat automatically because a newly-created " +
+                  "Dolphin database still needs real-emulator validation. "
+                : "Eden has not created its Switch Mii database yet. Launch Eden's Mii Editor applet once, then close Eden and press Refresh. ";
         return Missing(kind, candidates, valid, preferred,
-            "No valid supported database found. Checked exact known paths: " +
+            "No valid supported database found. " + missingGuidance + "Checked exact known paths: " +
             string.Join("; ", candidates.Select(x => x.Path)) + IssueText(issues), approved: true);
     }
 
@@ -114,6 +125,10 @@ public sealed class MiiDatabaseLocator(IMiiNandTransport transport)
             Add(list, EmulatorPaths.UserRoot("dolphin"), WiiSuffix, "the legacy SESAME Dolphin storage default");
             Add(list, DeckClient.Combine(home, ".local/share/dolphin-emu"), WiiSuffix, "the native Dolphin XDG data root");
             Add(list, DeckClient.Combine(home, ".dolphin-emu"), WiiSuffix, "the legacy Dolphin all-in-one user root");
+            Add(list, DeckClient.Combine(LibraryPaths.Current.EmulationRoot, "tools/dolphin-emu/User"), WiiSuffix,
+                "the EmuDeck portable Dolphin user root");
+            Add(list, DeckClient.Combine(home, "Applications/dolphin-emu/User"), WiiSuffix,
+                "the portable Dolphin user root");
         }
         else
         {

@@ -31,6 +31,50 @@ public sealed class MiiNandStoreTests : IDisposable
     }
 
     [Fact]
+    public void MissingDolphinDatabaseExplainsHowToInitializeItWithoutGuessing()
+    {
+        var previous = LibraryPaths.Current.EmulatorOverrides.ToDictionary(x => x.Key, x => x.Value);
+        try
+        {
+            LibraryPaths.Current.EmulatorOverrides.Clear();
+            var fake = new FakeTransport();
+            var resolved = new MiiService(fake, _root).Resolve(MiiTargetKind.Wii);
+
+            Assert.False(resolved.Exists);
+            Assert.Contains("Wii System Menu or Mii Channel", resolved.Target.PathStatus, StringComparison.Ordinal);
+            Assert.Contains("does not create RFL_DB.dat automatically", resolved.Target.PathStatus, StringComparison.Ordinal);
+            Assert.Contains(resolved.Candidates, x => x.Path == "/home/deck/Emulation/tools/dolphin-emu/User/Wii/shared2/menu/FaceLib/RFL_DB.dat");
+        }
+        finally
+        {
+            LibraryPaths.Current.EmulatorOverrides.Clear();
+            foreach (var pair in previous) LibraryPaths.Current.EmulatorOverrides[pair.Key] = pair.Value;
+        }
+    }
+
+    [Fact]
+    public void InvalidDolphinDatabaseIsReportedAsInvalidNotMissing()
+    {
+        var previous = LibraryPaths.Current.EmulatorOverrides.ToDictionary(x => x.Key, x => x.Value);
+        try
+        {
+            LibraryPaths.Current.EmulatorOverrides.Clear();
+            var fake = new FakeTransport();
+            fake.Files["/home/deck/Emulation/storage/dolphin-emu/Wii/shared2/menu/FaceLib/RFL_DB.dat"] = [1, 2, 3];
+            var resolved = new MiiService(fake, _root).Resolve(MiiTargetKind.Wii);
+
+            Assert.False(resolved.Exists);
+            Assert.Contains("was found but could not be verified", resolved.Target.PathStatus, StringComparison.Ordinal);
+            Assert.DoesNotContain("has not created", resolved.Target.PathStatus, StringComparison.Ordinal);
+        }
+        finally
+        {
+            LibraryPaths.Current.EmulatorOverrides.Clear();
+            foreach (var pair in previous) LibraryPaths.Current.EmulatorOverrides[pair.Key] = pair.Value;
+        }
+    }
+
+    [Fact]
     public void SyntheticValidationNeverClaimsWriteVerified()
     {
         var fake = NewLive();
