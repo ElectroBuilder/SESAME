@@ -69,21 +69,21 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                         <TextBlock Text="Hair colour" Foreground="{DynamicResource Muted}"/>
-                        <ComboBox x:Name="HairColorBox" Width="220" DisplayMemberPath="Name"
+                        <ComboBox x:Name="HairColorBox" Width="220"
                                   SelectionChanged="EditorValueChanged" Margin="0,2,0,8">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate><StackPanel Orientation="Horizontal"><Rectangle Width="18" Height="18" Fill="{Binding Swatch}" Margin="0,0,8,0"/><TextBlock Text="{Binding Name}"/></StackPanel></DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                         <TextBlock Text="Eye colour" Foreground="{DynamicResource Muted}"/>
-                        <ComboBox x:Name="EyeColorBox" Width="220" DisplayMemberPath="Name"
+                        <ComboBox x:Name="EyeColorBox" Width="220"
                                   SelectionChanged="EditorValueChanged" Margin="0,2,0,8">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate><StackPanel Orientation="Horizontal"><Rectangle Width="18" Height="18" Fill="{Binding Swatch}" Margin="0,0,8,0"/><TextBlock Text="{Binding Name}"/></StackPanel></DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                         <TextBlock Text="Favourite colour" Foreground="{DynamicResource Muted}"/>
-                        <ComboBox x:Name="FavoriteColorBox" Width="220" DisplayMemberPath="Name"
+                        <ComboBox x:Name="FavoriteColorBox" Width="220"
                                   SelectionChanged="EditorValueChanged" Margin="0,2,0,8">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate><StackPanel Orientation="Horizontal"><Rectangle Width="18" Height="18" Fill="{Binding Swatch}" Margin="0,0,8,0"/><TextBlock Text="{Binding Name}"/></StackPanel></DataTemplate>

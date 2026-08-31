@@ -102,6 +102,15 @@ public static class SteamShortcuts
         {
             /* backup is extra zekerheid */
         }
+
+        // Normalize existing SESAME rows as well as newly built rows. This repairs
+        // shortcuts written by older versions where the ROM was kept in Exe/Target.
+        foreach (var shortcut in shortcuts)
+        {
+            if (IsOwned(shortcut))
+                NormalizeLaunchFields(shortcut);
+        }
+
         var map = new VdfNode();
         for (var i = 0; i < shortcuts.Count; i++)
             map.Set(i.ToString(), ToNode(shortcuts[i]));
@@ -214,6 +223,15 @@ public static class SteamShortcuts
             AllowDesktopConfig = 1,
             Tags = { OwnerTag, collection }
         };
+    }
+
+    private static void NormalizeLaunchFields(SteamShortcut shortcut)
+    {
+        var steam = LaunchComposer.ForSteam(
+            shortcut.Exe ?? "", shortcut.StartDir ?? "", shortcut.LaunchOptions ?? "");
+        shortcut.Exe = steam.Exe;
+        shortcut.StartDir = steam.StartDir;
+        shortcut.LaunchOptions = steam.LaunchOptions;
     }
 
     public static void Upsert(List<SteamShortcut> shortcuts, SteamShortcut item, bool overwrite)

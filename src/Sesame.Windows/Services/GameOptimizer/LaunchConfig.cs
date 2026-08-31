@@ -239,6 +239,13 @@ public static class LaunchConfigStore
                 EmulatorLaunch.Apply(cfg);
                 changed = true;
             }
+            else if (LaunchComposer.IsRetroArchTemplate(cfg.TargetTemplate))
+            {
+                // The emulator selector is authoritative. Repair old configs that
+                // kept a RetroArch target after switching to Eden/Yuzu/etc.
+                EmulatorLaunch.Apply(cfg);
+                changed = true;
+            }
         }
         return changed;
     }

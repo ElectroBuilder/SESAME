@@ -18,12 +18,18 @@ public static class LaunchComposer
         EmulatorTarget? standalone = null;
         if (!retro)
         {
-            standalone = EmulatorProbe.ResolveStandalone(cfg.Emulator, game.RomPath, layout)
-                         ?? EmulatorProbe.ResolveStandalone(profile.Id, game.RomPath, layout)
-                         ?? profile.Emulators
-                             .Where(id => !id.Equals("retroarch", StringComparison.OrdinalIgnoreCase))
-                             .Select(id => EmulatorProbe.ResolveStandalone(id, game.RomPath, layout))
-                             .FirstOrDefault(t => t is not null);
+            // An explicitly selected emulator is authoritative. Falling back to the
+            // first installed Switch emulator made an Eden selection silently launch
+            // Yuzu (or vice versa) when one launcher was missing from the probe.
+            var configuredEmulator = (cfg.Emulator ?? "").Trim();
+            if (!string.IsNullOrEmpty(configuredEmulator))
+                standalone = EmulatorProbe.ResolveStandalone(configuredEmulator, game.RomPath, layout);
+            else
+                standalone = EmulatorProbe.ResolveStandalone(profile.Id, game.RomPath, layout)
+                             ?? profile.Emulators
+                                 .Where(id => !id.Equals("retroarch", StringComparison.OrdinalIgnoreCase))
+                                 .Select(id => EmulatorProbe.ResolveStandalone(id, game.RomPath, layout))
+                                 .FirstOrDefault(t => t is not null);
         }
 
         var coreFile = CoreFileName(cfg.Core, profile);
@@ -59,6 +65,30 @@ public static class LaunchComposer
         var startDir = Expand(cfg.StartDirTemplate, tokens);
         var options = Expand(cfg.OptionsTemplate, tokens);
 
+        // Do not turn an unresolved {exe} into a shortcut that launches the ROM
+        // itself (the old expansion produced `"/path/game.nsp"`).
+        if (string.IsNullOrEmpty(exe) &&
+            (cfg.TargetTemplate ?? "").Contains("{exe}", StringComparison.OrdinalIgnoreCase))
+            target = "";
+
+        // Repair configurations saved with the old RetroArch template while a
+        // standalone emulator was selected in Settings.
+        if (!retro && IsRetroArchTemplate(cfg.TargetTemplate))
+        {
+            if (standalone is null)
+            {
+                target = "";
+                startDir = "";
+                options = "";
+            }
+            else
+            {
+                target = standalone.Exe;
+                startDir = standalone.StartDir;
+                options = SteamCrc.Quote(rom);
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(target) && standalone is not null)
         {
             target = standalone.Exe;
@@ -74,9 +104,10 @@ public static class LaunchComposer
         game.CorePath = corePath;
         game.RetroArchCoreName = Path.GetFileNameWithoutExtension(coreFile)
             .Replace("_libretro", "", StringComparison.OrdinalIgnoreCase);
+        var standaloneName = standalone?.Name;
         game.EmulatorName = game.IsRetroArch
             ? "RetroArch · " + game.RetroArchCoreName.Replace('_', ' ')
-            : string.IsNullOrEmpty(standalone?.Name) ? cfg.Emulator : standalone.Name;
+            : string.IsNullOrEmpty(standaloneName) ? cfg.Emulator ?? "" : standaloneName ?? cfg.Emulator ?? "";
 
         if (DolphinInput.UsesDolphin(profile))
             DolphinInput.Bind(game);
@@ -85,19 +116,12 @@ public static class LaunchComposer
     public static (string Exe, string StartDir, string LaunchOptions) ForSteam(
         string target, string startDir, string options)
     {
-        target = (target ?? "").Trim();
-        options = (options ?? "").Trim();
+        target = NormalizeCommandLine(target);
+        options = NormalizeCommandLine(options);
         startDir = TrimSlash((startDir ?? "").Trim().Trim('"'));
 
         var (exePath, args) = SplitCommand(target);
         exePath = StripQuotes(exePath);
-        // Repair targets split on spaces inside a path ("/home/.../Black" Jacket/game.exe).
-        if (LooksLikePathContinuation(exePath, args))
-        {
-            exePath = (exePath + " " + args).Trim();
-            args = "";
-        }
-
         if (string.IsNullOrEmpty(exePath))
             return ("", string.IsNullOrEmpty(startDir) ? "" : SteamCrc.Quote(WithSlash(startDir)), "");
 
@@ -106,24 +130,10 @@ public static class LaunchComposer
         var start = SteamCrc.Quote(WithSlash(startDir));
 
         // Game Mode treats Exe as the binary and LaunchOptions as arguments.
-        // Proton also needs a real .exe in Exe — extra flags belong in LaunchOptions.
-        if (DolphinInput.IsBound(exePath) || DolphinInput.IsBound(target) ||
-            DolphinInput.IsBound(args) || DolphinInput.IsBound(options) ||
-            IsWindowsExe(exePath))
-        {
-            var extra = args;
-            if (!string.IsNullOrEmpty(options))
-                extra = string.IsNullOrEmpty(extra) ? options : extra + " " + options;
-            return (SteamCrc.Quote(exePath), start, extra);
-        }
-
-        if (!string.IsNullOrEmpty(options))
-            args = string.IsNullOrEmpty(args) ? options : args + " " + options;
-
-        var exeField = SteamCrc.Quote(exePath);
-        if (!string.IsNullOrEmpty(args))
-            exeField += " " + args;
-        return (exeField, start, "");
+        // Game Mode treats Exe as the binary and LaunchOptions as arguments.
+        // Keep this layout for every launcher, including .sh and flatpak commands;
+        // putting the ROM in Exe is what made standalone Switch shortcuts fail.
+        return (SteamCrc.Quote(exePath), start, CombineArguments(args, options));
     }
 
     public static string ExePath(string target) => StripQuotes(FirstToken(target ?? ""));
@@ -151,9 +161,10 @@ public static class LaunchComposer
 
     public static bool UsesRetroArch(SystemLaunchConfig cfg) =>
         EmulatorLaunch.IsRetroArch(cfg.Emulator) ||
-        cfg.Preset is LaunchPresets.Flatpak or LaunchPresets.FlatpakLine
-            or LaunchPresets.EmuDeckLauncher or LaunchPresets.EmuDeckScript
-            or LaunchPresets.Wrapper or LaunchPresets.LegacyWrapper;
+        (string.IsNullOrWhiteSpace(cfg.Emulator) &&
+         cfg.Preset is LaunchPresets.Flatpak or LaunchPresets.FlatpakLine
+             or LaunchPresets.EmuDeckLauncher or LaunchPresets.EmuDeckScript
+             or LaunchPresets.Wrapper or LaunchPresets.LegacyWrapper);
 
     public static bool NeedsWrapper(SystemLaunchConfig cfg) =>
         cfg.Preset.Equals(LaunchPresets.Wrapper, StringComparison.OrdinalIgnoreCase) ||
@@ -282,6 +293,15 @@ public static class LaunchComposer
                 return (target[1..end], target[(end + 1)..].Trim());
         }
 
+        // The {exe} token used to be unquoted. Recover launcher paths containing
+        // spaces, for example `/home/deck/Emulation Tools/eden.sh "/rom"`.
+        var pathWithSpaces = Regex.Match(target,
+            @"^(?<exe>.+?\.(?:sh|exe|bat|cmd|appimage|desktop|bin))(?<rest>\s+.*)?$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (pathWithSpaces.Success)
+            return (pathWithSpaces.Groups["exe"].Value,
+                    pathWithSpaces.Groups["rest"].Value.Trim());
+
         // Absolute path with spaces: /home/deck/Hydra/Black Jacket/BlackJacket.exe
         if (IsSingleAbsolutePath(target))
             return (target, "");
@@ -348,4 +368,31 @@ public static class LaunchComposer
     }
 
     private static string TrimSlash(string path) => (path ?? "").Trim().TrimEnd('/');
+
+    private static string CombineArguments(string first, string second)
+    {
+        first = (first ?? "").Trim();
+        second = (second ?? "").Trim();
+        if (string.IsNullOrEmpty(first)) return second;
+        if (string.IsNullOrEmpty(second)) return first;
+        if (string.Equals(first, second, StringComparison.Ordinal)) return first;
+        if (second.StartsWith(first + " ", StringComparison.Ordinal)) return second;
+        if (first.StartsWith(second + " ", StringComparison.Ordinal)) return first;
+        return first + " " + second;
+    }
+
+    private static string NormalizeCommandLine(string? value)
+    {
+        var text = (value ?? "").Replace('\r', ' ').Replace('\n', ' ').Trim();
+        return Regex.Replace(text, @"[ \t]{2,}", " ");
+    }
+
+    public static bool IsRetroArchTemplate(string? template)
+    {
+        var text = (template ?? "").Trim();
+        return text.Equals(EmulatorLaunch.RetroArchTarget, StringComparison.Ordinal) ||
+               text.Contains("{flatpak}", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("{emulator}", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("org.libretro.RetroArch", StringComparison.OrdinalIgnoreCase);
+    }
 }

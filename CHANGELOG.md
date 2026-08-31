@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.2 — 2026-08-31
+
+- Startup fix: remove the invalid WPF combination of `DisplayMemberPath` and custom `ItemTemplate` in the visual Mii editor.
+- Steam shortcuts: keep the selected emulator executable in `Target` and write ROM arguments to `LaunchOptions`, including migration of existing SESAME shortcuts.
+
 ## 0.9.1 — 2026-08-31
 
 - Startup fix: guard the visual Mii preview while WPF is still constructing the editor, preventing a null-reference crash before the main window opens.
