@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0 — 2026-08-31
+
+- Visual Mii editor: live vector preview updates while choosing gender, hair style, hair colour, eye colour and favourite colour.
+- Mii choices now use readable names and colour swatches; emulator-specific numeric IDs stay hidden while the exact validated IDs are preserved on save.
+
 ## 0.8.0 — 2026-08-31
 
 - Mii maker: simplified the normal workflow to Create Mii, Apply changes and Save to emulator; backup, restore, import and export are grouped under Advanced.

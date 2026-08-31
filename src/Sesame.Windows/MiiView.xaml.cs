@@ -1,11 +1,14 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Microsoft.Win32;
 using Sesame.Services;
 using Sesame.Services.Mii;
 
 namespace Sesame;
+
+public sealed record MiiChoice(int Id, string Name, Brush Swatch, string Glyph);
 
 public partial class MiiView : UserControl
 {
@@ -133,6 +136,10 @@ public partial class MiiView : UserControl
         }
         ApplyCapabilities();
     }
+
+    private void EditorValueChanged(object sender, SelectionChangedEventArgs e) => UpdatePreview();
+    private void EditorTextChanged(object sender, TextChangedEventArgs e) => UpdatePreview();
+    private void GenderChanged(object sender, RoutedEventArgs e) => UpdatePreview();
     private void BackupBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyCapabilities();
 
     private void Create_Click(object sender, RoutedEventArgs e)
@@ -308,36 +315,93 @@ public partial class MiiView : UserControl
 
     private void ConfigureAppearanceControls(MiiTargetKind kind)
     {
-        HairStyleBox.ItemsSource = Enumerable.Range(0, kind == MiiTargetKind.Wii ? 72 : 132).ToArray();
-        HairColorBox.ItemsSource = Enumerable.Range(0, kind == MiiTargetKind.Wii ? 8 : 100).ToArray();
-        EyeColorBox.ItemsSource = Enumerable.Range(0, kind == MiiTargetKind.Wii ? 6 : 100).ToArray();
-        FavoriteColorBox.ItemsSource = Enumerable.Range(0, 12).ToArray();
-        GenderBox.SelectedIndex = 0;
-        HairStyleBox.SelectedItem = 0;
-        HairColorBox.SelectedItem = 0;
-        EyeColorBox.SelectedItem = 0;
-        FavoriteColorBox.SelectedItem = 0;
+        HairStyleBox.ItemsSource = HairChoices(kind);
+        HairColorBox.ItemsSource = ColourChoices(kind, hair: true);
+        EyeColorBox.ItemsSource = ColourChoices(kind, hair: false);
+        FavoriteColorBox.ItemsSource = FavoriteChoices();
+        MaleRadio.IsChecked = true;
+        FemaleRadio.IsChecked = false;
+        HairStyleBox.SelectedIndex = 0;
+        HairColorBox.SelectedIndex = 0;
+        EyeColorBox.SelectedIndex = 0;
+        FavoriteColorBox.SelectedIndex = 0;
+        UpdatePreview();
     }
 
     private MiiAppearance EditorAppearance() => new(
         NameBox.Text,
-        GenderBox.SelectedIndex == 1,
+        FemaleRadio.IsChecked == true,
         SelectedNumber(FavoriteColorBox),
         SelectedNumber(HairStyleBox),
         SelectedNumber(HairColorBox),
         SelectedNumber(EyeColorBox));
 
-    private static int SelectedNumber(ComboBox box) => box.SelectedItem is int number ? number : 0;
+    private static int SelectedNumber(ComboBox box) => box.SelectedItem is MiiChoice choice ? choice.Id : 0;
 
     private void LoadAppearance(MiiAppearance appearance)
     {
         NameBox.Text = appearance.Name;
-        GenderBox.SelectedIndex = appearance.IsFemale ? 1 : 0;
-        HairStyleBox.SelectedItem = appearance.HairStyle;
-        HairColorBox.SelectedItem = appearance.HairColor;
-        EyeColorBox.SelectedItem = appearance.EyeColor;
-        FavoriteColorBox.SelectedItem = appearance.FavoriteColor;
+        FemaleRadio.IsChecked = appearance.IsFemale;
+        MaleRadio.IsChecked = !appearance.IsFemale;
+        SelectChoice(HairStyleBox, appearance.HairStyle);
+        SelectChoice(HairColorBox, appearance.HairColor);
+        SelectChoice(EyeColorBox, appearance.EyeColor);
+        SelectChoice(FavoriteColorBox, appearance.FavoriteColor);
+        UpdatePreview();
     }
+
+    private static void SelectChoice(ComboBox box, int id)
+    {
+        box.SelectedItem = box.Items.OfType<MiiChoice>().FirstOrDefault(x => x.Id == id) ?? box.Items[0];
+    }
+
+    private void UpdatePreview()
+    {
+        if (AvatarPreview is not null) AvatarPreview.Appearance = EditorAppearance();
+    }
+
+    private static IReadOnlyList<MiiChoice> HairChoices(MiiTargetKind kind)
+    {
+        var max = kind == MiiTargetKind.Wii ? 72 : 132;
+        var names = new[] { "Classic", "Side sweep", "Parted", "Bob", "Curls", "Spiky" };
+        return Enumerable.Range(0, max).Select(i => new MiiChoice(i,
+            $"{names[i % names.Length]} {i / names.Length + 1}",
+            new SolidColorBrush(Color.FromRgb(64, 46, 39)), names[i % names.Length][0].ToString())).ToArray();
+    }
+
+    private static IReadOnlyList<MiiChoice> ColourChoices(MiiTargetKind kind, bool hair)
+    {
+        var max = kind == MiiTargetKind.Wii ? (hair ? 8 : 6) : 100;
+        var palette = hair
+            ? new[] { "Black", "Brown", "Auburn", "Blonde", "White", "Gray", "Red", "Blue" }
+            : new[] { "Brown", "Dark brown", "Blue", "Green", "Violet", "Black" };
+        return Enumerable.Range(0, max).Select(i => new MiiChoice(i,
+            i < palette.Length ? palette[i] : $"Colour {i + 1}",
+            new SolidColorBrush(hair ? HairPalette(i) : EyePalette(i)), "")).ToArray();
+    }
+
+    private static IReadOnlyList<MiiChoice> FavoriteChoices() =>
+        new[] { "Blue", "Red", "Green", "Yellow", "Purple", "Orange", "Turquoise", "Pink", "Indigo", "Brown", "Lime", "Gray" }
+            .Select((name, i) => new MiiChoice(i, name, new SolidColorBrush(FavoritePalette(i)), "")).ToArray();
+
+    private static Color HairPalette(int i) => new[]
+    {
+        Color.FromRgb(40,29,24), Color.FromRgb(92,55,35), Color.FromRgb(173,111,57), Color.FromRgb(224,178,87),
+        Color.FromRgb(220,220,220), Color.FromRgb(137,137,145), Color.FromRgb(194,69,62), Color.FromRgb(56,77,125)
+    }[Math.Abs(i) % 8];
+
+    private static Color EyePalette(int i) => new[]
+    {
+        Color.FromRgb(36,28,24), Color.FromRgb(73,48,32), Color.FromRgb(63,107,151),
+        Color.FromRgb(74,133,82), Color.FromRgb(111,71,126), Color.FromRgb(45,45,52)
+    }[Math.Abs(i) % 6];
+
+    private static Color FavoritePalette(int i) => new[]
+    {
+        Color.FromRgb(77,145,205), Color.FromRgb(220,76,76), Color.FromRgb(92,175,105), Color.FromRgb(235,180,59),
+        Color.FromRgb(157,102,194), Color.FromRgb(238,130,63), Color.FromRgb(47,166,164), Color.FromRgb(230,102,153),
+        Color.FromRgb(92,107,192), Color.FromRgb(118,92,67), Color.FromRgb(101,172,87), Color.FromRgb(90,90,98)
+    }[Math.Abs(i) % 12];
 
     private void SelectSlot(int slot)
     {
