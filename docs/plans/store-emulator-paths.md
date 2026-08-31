@@ -1,7 +1,7 @@
 # Plan A — Store + Emulator Paths (Wii / GC / PS1 / PS2)
 
-> Status: critically reviewed; implementation completed through A4.  
-> Scope: shared emulator-path contract, Paths settings UI, Windows Store routing/install, archive safety.  
+> Status: critically reviewed; implementation completed through A4.
+> Scope: shared emulator-path contract, Paths settings UI, Windows Store routing/install, archive safety.
 > Out of scope: Mii Manager, emulator language, generic disc-save import, Deck Store install (A5), release/version bump.
 
 ## 0. Review verdict and binding corrections

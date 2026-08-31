@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — 2026-08-31
+
+- Paths: one shared, editable emulator-path configuration on Windows and Steam Deck for Dolphin, DuckStation, PCSX2 and existing Switch libraries; custom ROM roots now drive scan, Quick Access and known install routes.
+- Store: validated Wii, GameCube, PS1 and PS2 texture/mod/cheat routing. Unknown IDs or layouts are safely staged under `_incoming`; unsupported generic disc saves are rejected before upload.
+- Store safety: exact per-pack ownership prevents shared emulator folders from being deleted or overwritten; hostile archives are checked for traversal, links, reparse points, duplicate targets and expanded-size limits.
+- Mii Manager: inspect and export Wii/Eden Mii records, create verified local backups and perform guarded restores with remote backups, hashes, final compare-and-swap and audit logging.
+- Mii writes remain deliberately disabled until each emulator target has passed explicit live compatibility validation; restore is available only from a verified host/path-bound backup while the emulator is closed.
+
 ## 0.6.23 — 2026-08-30
 
 - Optimize: lock titles so they stay out of Optimize and cannot be edited until unlocked; header checkbox selects/deselects all visible unlocked rows; remove per-column filter boxes (sorting stays).

@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version>0.6.23</Version>
+    <Version>0.7.0</Version>
     <Authors>ElectroBuilder</Authors>
     <Product>SESAME</Product>
     <Description>Steam Easy Shortcut Artwork Manager Engine</Description>
