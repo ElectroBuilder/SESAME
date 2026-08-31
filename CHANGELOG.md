@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0 — 2026-08-31
+
+- Mii maker: simplified the normal workflow to Create Mii, Apply changes and Save to emulator; backup, restore, import and export are grouped under Advanced.
+- Mii appearance editing: gender, hair style/colour, eye colour and favourite colour use validated Wii RFL and Eden StoreData mappings, with CRC regeneration and draft-only editing.
+- Dolphin diagnostics: missing and invalid `RFL_DB.dat` files now produce actionable guidance and additional bounded portable-Dolphin path checks.
+
 ## 0.7.1 — 2026-08-31
 
 - Mii editor: detect the known Dolphin and Eden database locations, including EmuDeck and Flatpak layouts, and let users choose between multiple verified databases.

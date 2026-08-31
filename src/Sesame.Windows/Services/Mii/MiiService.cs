@@ -107,11 +107,28 @@ public sealed class MiiService
     public MiiTargetState RenameDraft(MiiTargetState state, int slot, string name) =>
         Draft(state, Format(state.Target.Kind).UpdateName(RequireDatabase(state), slot, name), "Name edited in draft.");
 
+    public MiiAppearance GetAppearance(MiiTargetState state, int slot) =>
+        Format(state.Target.Kind).ReadAppearance(RequireDatabase(state), slot);
+
+    public MiiTargetState UpdateAppearanceDraft(MiiTargetState state, int slot, MiiAppearance appearance) =>
+        Draft(state, Format(state.Target.Kind).UpdateAppearance(RequireDatabase(state), slot, appearance),
+            "Mii appearance edited in draft.");
+
     public MiiTargetState AddBasicDraft(MiiTargetState state, string name) =>
         ImportDraft(state, CreateBasicRecord(state, name)) with
         {
             Integrity = "Basic Mii added to an offline draft. Live NAND is unchanged."
         };
+
+    public MiiTargetState AddBasicDraft(MiiTargetState state, MiiAppearance appearance)
+    {
+        var added = AddBasicDraft(state, appearance.Name);
+        var slot = added.Slots.Last().Slot;
+        return UpdateAppearanceDraft(added, slot, appearance) with
+        {
+            Integrity = "Mii created in an offline draft. Live NAND is unchanged."
+        };
+    }
 
     public MiiPushResult PushRecord(MiiTargetState state, byte[] record, bool allowUnavailableProcessCheck,
         bool experimentalAcknowledged = false)

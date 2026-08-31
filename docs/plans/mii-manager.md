@@ -34,6 +34,7 @@ Backups are local and remote, reread/hash verified, and bound in their manifest/
 ## M2 — feature-gated editor and Push
 
 - Allow offline draft editing: rename existing records, import exact records, create a named basic record and export the exact draft/database.
+- The normal editor exposes only fields with validated mappings: gender, hair style/colour, eye colour and favourite colour. More facial parts require separate mapping/rendering validation and remain out of this phase.
 - Keep the permanent per-target manual write gate false, but expose an explicit per-session acknowledgement for experimental Push. The acknowledgement is bound to the exact host, target kind and resolved path and is never inferred from parser tests.
 - Retain backup-first transactional replacement and synthetic fault-injection tests; a manual emulator validation campaign is still required before changing the permanent gate.
 - Never infer Wii Sports links or rewrite unrelated save/profile files.

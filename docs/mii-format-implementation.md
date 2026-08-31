@@ -10,7 +10,9 @@ This implementation is deliberately split between format verification and NAND t
 | Eden (`MiiDatabase.dat`) | Read-only verified | Enabled for a valid live DB | Enabled for a host/path-bound valid backup | Experimental opt-in, backup-first |
 | Eden CharInfo/NFIF (88 bytes) | Unsupported | Unsupported | Unsupported | Unsupported |
 
-`WriteGateVerified` and the service write gates remain `false`. Synthetic CRC and mutation tests do not prove that an emulator will accept a write. The editor can now create a draft, rename records, import exact records and export databases. Push is available only after an explicit per-session acknowledgement for the exact host/path; it remains experimental until a separate manual validation campaign for each target.
+`WriteGateVerified` and the service write gates remain `false`. Synthetic CRC and mutation tests do not prove that an emulator will accept a write. The normal editor flow is deliberately short: select or create a Mii, apply changes to the offline draft, then choose **Save to emulator**. That last action asks for one explicit confirmation for the exact host/path and creates verified backups before replacement. Import, export, backup and restore are grouped under the advanced section.
+
+The first appearance editor supports the fields that have an unambiguous direct representation in both formats: name, gender, favourite colour, hair style, hair colour and eye colour. It preserves all other record bytes. Wii values follow the documented RFL bit layout; SwitchDB values follow its StoreData bit sequence and both checksums are regenerated. Style and colour IDs are intentionally shown as emulator IDs because their visible order differs between Wii and Switch. A thumbnail-driven catalog and the remaining face controls (face, eyes, brows, nose, mouth, facial hair, glasses and mole) are not yet implemented rather than being written with unverified mappings.
 
 ## Format invariants encoded in tests
 

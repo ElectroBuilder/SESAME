@@ -117,6 +117,28 @@ public sealed class MiiFormatTests
     }
 
     [Fact]
+    public void Wii_appearance_editor_updates_only_documented_fields_and_crc()
+    {
+        var format = new MiiFormatWii();
+        var database = format.Insert(MiiFormatWii.CreateEmptyDatabase(),
+            format.CreateBasicRecord("Mike", [1, 2, 3, 4, 5, 6, 7, 8]));
+        var original = (byte[])database.Clone();
+
+        var result = format.UpdateAppearance(database, 0,
+            new MiiAppearance("Miker", true, 9, 55, 6, 4));
+
+        Assert.Equal(new MiiAppearance("Miker", true, 9, 55, 6, 4), format.ReadAppearance(result, 0));
+        Assert.True(format.Validate(result).IsValid);
+        AssertOnlyChanged(original, result,
+            Enumerable.Range(MiiFormatWii.RecordsOffset, 22)
+                .Concat(Enumerable.Range(MiiFormatWii.RecordsOffset + 0x22, 2))
+                .Concat(Enumerable.Range(MiiFormatWii.RecordsOffset + 0x28, 4))
+                .Concat(Enumerable.Range(MiiFormatWii.ChecksumOffset, 2)).ToHashSet());
+        Assert.Throws<ArgumentOutOfRangeException>(() => format.UpdateAppearance(database, 0,
+            new MiiAppearance("Miker", false, 12, 0, 0, 0)));
+    }
+
+    [Fact]
     public void Switch_empty_database_validation_is_byte_exact_and_non_mutating()
     {
         var format = new MiiFormatSwitch();
@@ -199,6 +221,31 @@ public sealed class MiiFormatTests
         BinaryPrimitives.WriteUInt32LittleEndian(badField.AsSpan(20, 4), word5);
         WriteCrc(badField, 0x40);
         Assert.Throws<InvalidDataException>(() => format.Insert(MiiFormatSwitch.CreateEmptyDatabase(), badField));
+    }
+
+    [Fact]
+    public void Switch_appearance_editor_updates_documented_storedata_fields_and_both_crcs()
+    {
+        var format = new MiiFormatSwitch();
+        var database = format.Insert(MiiFormatSwitch.CreateEmptyDatabase(),
+            format.CreateBasicRecord("Mike", Enumerable.Range(1, 16).Select(i => (byte)i).ToArray()));
+        var original = (byte[])database.Clone();
+
+        var result = format.UpdateAppearance(database, 0,
+            new MiiAppearance("Miker", true, 9, 120, 87, 66));
+
+        Assert.Equal(new MiiAppearance("Miker", true, 9, 120, 87, 66), format.ReadAppearance(result, 0));
+        Assert.True(format.Validate(result).IsValid);
+        AssertOnlyChanged(original, result,
+            new[]
+            {
+                MiiFormatSwitch.RecordsOffset, MiiFormatSwitch.RecordsOffset + 3,
+                MiiFormatSwitch.RecordsOffset + 4, MiiFormatSwitch.RecordsOffset + 0x15
+            }.Concat(Enumerable.Range(MiiFormatSwitch.RecordsOffset + 0x1C, 20))
+                .Concat(Enumerable.Range(MiiFormatSwitch.RecordsOffset + 0x40, 2))
+                .Concat(Enumerable.Range(MiiFormatSwitch.ChecksumOffset, 2)).ToHashSet());
+        Assert.Throws<ArgumentOutOfRangeException>(() => format.UpdateAppearance(database, 0,
+            new MiiAppearance("Miker", false, 0, 132, 0, 0)));
     }
 
     [Theory]

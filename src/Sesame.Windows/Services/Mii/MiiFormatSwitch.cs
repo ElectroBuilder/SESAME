@@ -93,20 +93,44 @@ public sealed class MiiFormatSwitch : IMiiFormat
         return database.AsSpan(RecordsOffset + slot * RecordSize, RecordSize).ToArray();
     }
 
-    public byte[] UpdateName(byte[] database, int slot, string name)
+    public MiiAppearance ReadAppearance(byte[] database, int slot)
     {
-        var validation = Validate(database);
-        if (!validation.IsValid) throw new InvalidDataException(validation.Error);
-        if ((uint)slot >= database[CountOffset])
-            throw new ArgumentOutOfRangeException(nameof(slot));
+        var record = RecordAt(database, slot);
+        return new MiiAppearance(
+            MiiText.ReadFixed(record.Slice(0x1C, 20), bigEndian: false),
+            (record[4] & 0x80) != 0,
+            record[0x15] & 0x0F,
+            record[0],
+            record[3] & 0x7F,
+            record[4] & 0x7F);
+    }
+
+    public byte[] UpdateAppearance(byte[] database, int slot, MiiAppearance appearance)
+    {
+        ArgumentNullException.ThrowIfNull(appearance);
+        _ = RecordAt(database, slot);
+        ValidateRange(appearance.FavoriteColor, 0, 11, "Favourite colour");
+        ValidateRange(appearance.HairStyle, 0, 131, "Hair style");
+        ValidateRange(appearance.HairColor, 0, 99, "Hair colour");
+        ValidateRange(appearance.EyeColor, 0, 99, "Eye colour");
+
         var result = (byte[])database.Clone();
-        var record = result.AsSpan(RecordsOffset + slot * RecordSize, RecordSize);
-        MiiText.WriteFixed(record.Slice(0x1C, 20), name, bigEndian: false);
-        MiiCrc16.WriteBigEndian(record.Slice(0x40, 2), MiiCrc16.Compute(record.Slice(0, 0x40)));
+        var editable = result.AsSpan(RecordsOffset + slot * RecordSize, RecordSize);
+        MiiText.WriteFixed(editable.Slice(0x1C, 20), appearance.Name, bigEndian: false);
+        editable[0] = (byte)appearance.HairStyle;
+        editable[3] = (byte)((editable[3] & 0x80) | appearance.HairColor);
+        editable[4] = (byte)((appearance.IsFemale ? 0x80 : 0) | appearance.EyeColor);
+        editable[0x15] = (byte)((editable[0x15] & 0xF0) | appearance.FavoriteColor);
+        MiiCrc16.WriteBigEndian(editable.Slice(0x40, 2), MiiCrc16.Compute(editable.Slice(0, 0x40)));
         WriteDatabaseChecksum(result);
         var edited = Validate(result);
         if (!edited.IsValid) throw new InvalidDataException("Edited Eden Mii failed validation: " + edited.Error);
         return result;
+    }
+
+    public byte[] UpdateName(byte[] database, int slot, string name)
+    {
+        return UpdateAppearance(database, slot, ReadAppearance(database, slot) with { Name = name });
     }
 
     public byte[] CreateBasicRecord(string name, byte[]? identity = null)
@@ -192,6 +216,18 @@ public sealed class MiiFormatSwitch : IMiiFormat
     }
 
     private static uint U32(ReadOnlySpan<byte> value, int offset) => BinaryPrimitives.ReadUInt32LittleEndian(value.Slice(offset, 4));
+    private static ReadOnlySpan<byte> RecordAt(byte[] database, int slot)
+    {
+        var validation = new MiiFormatSwitch().Validate(database);
+        if (!validation.IsValid) throw new InvalidDataException(validation.Error);
+        if ((uint)slot >= database[CountOffset]) throw new ArgumentOutOfRangeException(nameof(slot));
+        return database.AsSpan(RecordsOffset + slot * RecordSize, RecordSize);
+    }
+    private static void ValidateRange(int value, int minimum, int maximum, string name)
+    {
+        if (value < minimum || value > maximum)
+            throw new ArgumentOutOfRangeException(name, $"{name} must be between {minimum} and {maximum}.");
+    }
     private static uint Bits(uint value, int offset, int count) => (value >> offset) & ((1u << count) - 1);
     private static void WriteDatabaseChecksum(Span<byte> database) =>
         MiiCrc16.WriteBigEndian(database.Slice(ChecksumOffset, 2), MiiCrc16.Compute(database.Slice(0, ChecksumOffset)));

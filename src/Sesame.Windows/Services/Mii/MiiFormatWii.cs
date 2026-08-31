@@ -94,19 +94,50 @@ public sealed class MiiFormatWii : IMiiFormat
         return record.ToArray();
     }
 
-    public byte[] UpdateName(byte[] database, int slot, string name)
+    public MiiAppearance ReadAppearance(byte[] database, int slot)
     {
-        var validation = Validate(database);
-        if (!validation.IsValid) throw new InvalidDataException(validation.Error);
-        if ((uint)slot >= RecordCount || validation.Slots.All(x => x.Slot != slot))
-            throw new ArgumentOutOfRangeException(nameof(slot), "The selected Wii Mii slot is empty or invalid.");
+        var record = RecordAt(database, slot);
+        var header = U16(record, 0);
+        var hair = U16(record, 0x22);
+        var eye = U32(record, 0x28);
+        return new MiiAppearance(
+            MiiText.ReadFixed(record.Slice(2, 20), bigEndian: true),
+            Bits(header, 14, 1) != 0,
+            (int)Bits(header, 1, 4),
+            (int)Bits(hair, 9, 7),
+            (int)Bits(hair, 6, 3),
+            (int)Bits(eye, 16, 3));
+    }
+
+    public byte[] UpdateAppearance(byte[] database, int slot, MiiAppearance appearance)
+    {
+        ArgumentNullException.ThrowIfNull(appearance);
+        var record = RecordAt(database, slot); // validates the live/draft source first
+        ValidateRange(appearance.FavoriteColor, 0, 11, "Favourite colour");
+        ValidateRange(appearance.HairStyle, 0, 71, "Hair style");
+        ValidateRange(appearance.HairColor, 0, 7, "Hair colour");
+        ValidateRange(appearance.EyeColor, 0, 5, "Eye colour");
+
         var result = (byte[])database.Clone();
-        var nameBytes = result.AsSpan(RecordsOffset + slot * RecordSize + 2, 20);
-        MiiText.WriteFixed(nameBytes, name, bigEndian: true);
+        var editable = result.AsSpan(RecordsOffset + slot * RecordSize, RecordSize);
+        MiiText.WriteFixed(editable.Slice(2, 20), appearance.Name, bigEndian: true);
+        var header = SetBits(U16(editable, 0), 14, 1, appearance.IsFemale ? 1u : 0u);
+        header = SetBits(header, 1, 4, (uint)appearance.FavoriteColor);
+        WriteU16(editable, 0, (ushort)header);
+        var hair = SetBits(U16(editable, 0x22), 9, 7, (uint)appearance.HairStyle);
+        hair = SetBits(hair, 6, 3, (uint)appearance.HairColor);
+        WriteU16(editable, 0x22, (ushort)hair);
+        var eye = SetBits(U32(editable, 0x28), 16, 3, (uint)appearance.EyeColor);
+        WriteU32(editable, 0x28, eye);
         WriteDatabaseChecksum(result);
         var edited = Validate(result);
         if (!edited.IsValid) throw new InvalidDataException("Edited Wii Mii failed validation: " + edited.Error);
         return result;
+    }
+
+    public byte[] UpdateName(byte[] database, int slot, string name)
+    {
+        return UpdateAppearance(database, slot, ReadAppearance(database, slot) with { Name = name });
     }
 
     public byte[] CreateBasicRecord(string name, byte[]? identity = null)
@@ -202,7 +233,25 @@ public sealed class MiiFormatWii : IMiiFormat
     }
 
     private static bool IsEmpty(ReadOnlySpan<byte> value) => value.IndexOfAnyExcept((byte)0) < 0;
+    private static ReadOnlySpan<byte> RecordAt(byte[] database, int slot)
+    {
+        var validation = new MiiFormatWii().Validate(database);
+        if (!validation.IsValid) throw new InvalidDataException(validation.Error);
+        if ((uint)slot >= RecordCount || validation.Slots.All(x => x.Slot != slot))
+            throw new ArgumentOutOfRangeException(nameof(slot), "The selected Wii Mii slot is empty or invalid.");
+        return database.AsSpan(RecordsOffset + slot * RecordSize, RecordSize);
+    }
+    private static void ValidateRange(int value, int minimum, int maximum, string name)
+    {
+        if (value < minimum || value > maximum)
+            throw new ArgumentOutOfRangeException(name, $"{name} must be between {minimum} and {maximum}.");
+    }
     private static uint Bits(uint value, int offset, int count) => (value >> offset) & ((1u << count) - 1);
+    private static uint SetBits(uint value, int offset, int count, uint replacement)
+    {
+        var mask = ((1u << count) - 1) << offset;
+        return (value & ~mask) | ((replacement << offset) & mask);
+    }
     private static ushort U16(ReadOnlySpan<byte> value, int offset) => BinaryPrimitives.ReadUInt16BigEndian(value.Slice(offset, 2));
     private static uint U32(ReadOnlySpan<byte> value, int offset) => BinaryPrimitives.ReadUInt32BigEndian(value.Slice(offset, 4));
     private static void WriteU16(Span<byte> value, int offset, ushort field) => BinaryPrimitives.WriteUInt16BigEndian(value.Slice(offset, 2), field);
