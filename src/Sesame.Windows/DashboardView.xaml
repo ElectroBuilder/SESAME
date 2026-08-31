@@ -1,6 +1,21 @@
 <UserControl x:Class="Sesame.DashboardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="DashTile" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="MinHeight" Value="168"/>
+        </Style>
+        <Style x:Key="DashBadge" TargetType="Border">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+    </UserControl.Resources>
     <DockPanel Background="{DynamicResource Bg}">
         <Border DockPanel.Dock="Top" Background="{DynamicResource PanelAlt}"
                 BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1" Padding="12,10">
@@ -16,58 +31,199 @@
                            Text="Connect, then Scan. Optimize writes shortcuts and covers to Steam Game Mode."/>
             </DockPanel>
         </Border>
-        <ScrollViewer Padding="20">
+        <ScrollViewer Padding="16">
             <UniformGrid Columns="3" Rows="2">
-                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
-                        Click="Files_Click" ToolTip="Browse folders on the Deck">
-                    <StackPanel>
-                        <TextBlock Text="Files" FontSize="22" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="FilesCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
-                                   Foreground="{DynamicResource Accent}" Text="—"/>
-                        <TextBlock x:Name="FilesDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
-                                   TextWrapping="Wrap" Text="Folders on the connected Deck"/>
-                    </StackPanel>
+                <Button Style="{StaticResource DashTile}" Click="Files_Click"
+                        ToolTip="Browse folders on the Deck">
+                    <Border Background="{DynamicResource Panel}" CornerRadius="8"
+                            BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                        <Grid>
+                            <Border Width="6" HorizontalAlignment="Left" Background="{DynamicResource Accent}"
+                                    CornerRadius="8,0,0,8"/>
+                            <Grid Margin="18,16,16,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel>
+                                    <Border Style="{StaticResource DashBadge}" Background="{DynamicResource Accent}">
+                                        <TextBlock Text="F" FontWeight="Bold" FontSize="16" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Files" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock x:Name="FilesCount" Grid.Row="1" FontSize="40" FontWeight="Bold"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource Accent}" Text="—"/>
+                                <TextBlock x:Name="FilesDetail" Grid.Row="2" Foreground="{DynamicResource Muted}"
+                                           TextWrapping="Wrap" Text="Folders on the connected Deck"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Button>
-                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
-                        Click="Apps_Click" ToolTip="Native Deck apps">
-                    <StackPanel>
-                        <TextBlock Text="Apps" FontSize="22" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="AppsCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
-                                   Foreground="{DynamicResource Accent}" Text="—"/>
-                        <TextBlock x:Name="AppsDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
-                                   TextWrapping="Wrap" Text="Kodi, Stremio, browsers and other native apps"/>
-                    </StackPanel>
+
+                <Button Style="{StaticResource DashTile}" Click="Apps_Click" ToolTip="Native Deck apps">
+                    <Border Background="{DynamicResource Panel}" CornerRadius="8"
+                            BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                        <Grid>
+                            <Border Width="6" HorizontalAlignment="Left" Background="{DynamicResource Purple}"
+                                    CornerRadius="8,0,0,8"/>
+                            <Grid Margin="18,16,16,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel>
+                                    <Border Style="{StaticResource DashBadge}" Background="{DynamicResource Purple}">
+                                        <TextBlock Text="A" FontWeight="Bold" FontSize="16" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Apps" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                                    <TextBlock x:Name="AppsCount" FontSize="40" FontWeight="Bold"
+                                               Foreground="{DynamicResource Accent}" Text="—"/>
+                                    <TextBlock x:Name="AppsExtra" FontSize="12" Foreground="{DynamicResource Muted}"
+                                               Margin="0,2,0,0" Text=""/>
+                                </StackPanel>
+                                <TextBlock x:Name="AppsDetail" Grid.Row="2" Foreground="{DynamicResource Muted}"
+                                           TextWrapping="Wrap" Text="Kodi, Stremio, browsers and other native apps"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Button>
-                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
-                        Click="Games_Click" ToolTip="ROM library">
-                    <StackPanel>
-                        <TextBlock Text="Games" FontSize="22" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="GamesCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
-                                   Foreground="{DynamicResource Accent}" Text="—"/>
-                        <TextBlock x:Name="GamesDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
-                                   TextWrapping="Wrap" Text="ROMs and games you added yourself"/>
-                    </StackPanel>
+
+                <Button Style="{StaticResource DashTile}" Click="Games_Click" ToolTip="ROM library">
+                    <Border Background="{DynamicResource Panel}" CornerRadius="8"
+                            BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                        <Grid>
+                            <Border Width="6" HorizontalAlignment="Left" Background="{DynamicResource Gold}"
+                                    CornerRadius="8,0,0,8"/>
+                            <Grid Margin="18,16,16,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel>
+                                    <Border Style="{StaticResource DashBadge}" Background="{DynamicResource Gold}">
+                                        <TextBlock Text="G" FontWeight="Bold" FontSize="16" Foreground="#1A1A1A"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Games" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock x:Name="GamesCount" Grid.Row="1" FontSize="40" FontWeight="Bold"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource Accent}" Text="—"/>
+                                <TextBlock x:Name="GamesDetail" Grid.Row="2" Foreground="{DynamicResource Muted}"
+                                           TextWrapping="Wrap" Text="ROMs and games you added yourself"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Button>
-                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
-                        Click="OptimizeTab_Click" ToolTip="Shortcuts, artwork and collections">
-                    <StackPanel>
-                        <TextBlock Text="Optimize" FontSize="22" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="OptimizeCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
-                                   Foreground="{DynamicResource Accent}" Text="—"/>
-                        <TextBlock x:Name="OptimizeDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
-                                   TextWrapping="Wrap" Text="Steam shortcuts, covers and FPS"/>
-                    </StackPanel>
+
+                <Button Style="{StaticResource DashTile}" Click="OptimizeTab_Click"
+                        ToolTip="Shortcuts, artwork and collections">
+                    <Border Background="{DynamicResource Panel}" CornerRadius="8"
+                            BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                        <Grid>
+                            <Border Width="6" HorizontalAlignment="Left" Background="{DynamicResource Ok}"
+                                    CornerRadius="8,0,0,8"/>
+                            <Grid Margin="18,16,16,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel>
+                                    <Border Style="{StaticResource DashBadge}" Background="{DynamicResource Ok}">
+                                        <TextBlock Text="O" FontWeight="Bold" FontSize="16" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Optimize" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                                    <TextBlock x:Name="OptimizeCount" FontSize="40" FontWeight="Bold"
+                                               Foreground="{DynamicResource Accent}" Text="—"/>
+                                    <TextBlock x:Name="OptimizeExtra" FontSize="12" Foreground="{DynamicResource Muted}"
+                                               Margin="0,2,0,0" Text=""/>
+                                </StackPanel>
+                                <TextBlock x:Name="OptimizeDetail" Grid.Row="2" Foreground="{DynamicResource Muted}"
+                                           TextWrapping="Wrap" Text="Steam shortcuts, covers and FPS"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Button>
-                <Button Margin="8" Padding="22,20" HorizontalContentAlignment="Stretch"
-                        Click="Store_Click" ToolTip="Mods, packs and ROM hacks">
-                    <StackPanel>
-                        <TextBlock Text="Store" FontSize="22" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="StoreCount" FontSize="32" FontWeight="Bold" Margin="0,10,0,0"
-                                   Foreground="{DynamicResource Accent}" Text="—"/>
-                        <TextBlock x:Name="StoreDetail" Margin="0,8,0,0" Foreground="{DynamicResource Muted}"
-                                   TextWrapping="Wrap" Text="Mods, texture packs and ROM hacks"/>
-                    </StackPanel>
+
+                <Button Style="{StaticResource DashTile}" Click="Store_Click"
+                        ToolTip="Mods, packs and ROM hacks">
+                    <Border Background="{DynamicResource Panel}" CornerRadius="8"
+                            BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                        <Grid>
+                            <Border Width="6" HorizontalAlignment="Left" Background="{DynamicResource Warn}"
+                                    CornerRadius="8,0,0,8"/>
+                            <Grid Margin="18,16,16,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel>
+                                    <Border Style="{StaticResource DashBadge}" Background="{DynamicResource Warn}">
+                                        <TextBlock Text="S" FontWeight="Bold" FontSize="16" Foreground="#1A1A1A"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Store" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock x:Name="StoreCount" Grid.Row="1" FontSize="40" FontWeight="Bold"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource Accent}" Text="—"/>
+                                <TextBlock x:Name="StoreDetail" Grid.Row="2" Foreground="{DynamicResource Muted}"
+                                           TextWrapping="Wrap" Text="Mods, texture packs and ROM hacks"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Button>
+
+                <Border Margin="8" MinHeight="168" Background="{DynamicResource Panel}" CornerRadius="8"
+                        BorderBrush="{DynamicResource Border}" BorderThickness="1">
+                    <Grid>
+                        <Border Width="6" HorizontalAlignment="Left" Background="{DynamicResource BrandAccent}"
+                                CornerRadius="8,0,0,8"/>
+                        <Grid Margin="18,14,14,14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <DockPanel>
+                                <Border Style="{StaticResource DashBadge}" Background="{DynamicResource BrandAccent}">
+                                    <TextBlock Text="v" FontWeight="Bold" FontSize="16" Foreground="White"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="SESAME" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <TextBlock x:Name="VersionLabel" Grid.Row="1" Margin="0,8,0,0"
+                                       FontSize="28" FontWeight="Bold" Foreground="{DynamicResource Accent}"
+                                       Text="v0.0.0"/>
+                            <TextBlock x:Name="UpdateStatus" Grid.Row="2" Margin="0,6,0,8"
+                                       Foreground="{DynamicResource Muted}" TextWrapping="Wrap"
+                                       VerticalAlignment="Top"
+                                       Text="Version, updates and quick settings"/>
+                            <WrapPanel Grid.Row="3">
+                                <Button Content="Check update" Margin="0,0,6,4" Padding="10,4"
+                                        Click="CheckUpdate_Click"
+                                        ToolTip="Check GitHub for a newer SESAME release"/>
+                                <Button x:Name="InstallUpdateBtn" Content="Install" Margin="0,0,6,4" Padding="10,4"
+                                        IsEnabled="False" Click="InstallUpdate_Click"
+                                        Style="{StaticResource AccentButton}"
+                                        ToolTip="Download and install the newer release"/>
+                                <Button Content="Settings" Margin="0,0,0,4" Padding="10,4"
+                                        Click="Settings_Click" ToolTip="Open Settings"/>
+                            </WrapPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
             </UniformGrid>
         </ScrollViewer>
     </DockPanel>

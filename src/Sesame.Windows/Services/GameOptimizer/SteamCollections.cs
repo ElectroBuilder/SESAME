@@ -287,14 +287,16 @@ public static class SteamCollections
         }
 
         NormalizeAdded(added);
+        NormalizeAdded(removed);
     }
 
     /// <summary>
-    /// Game Mode matches collection members to shortcut appids from shortcuts.vdf.
-    /// Those are signed 32-bit values (high bit set → negative). Unsigned JSON
-    /// numbers never match, so the tab looks empty and Steam hides it.
+    /// Steam library collections store non-Steam shortcut members as unsigned
+    /// 32-bit appids in JSON (e.g. 3501819989). Signed negatives never match
+    /// Game Mode's library list, so the tab shows 0 games.
+    /// CompatToolMapping / localconfig Apps use signed keys — not collections.
     /// </summary>
-    private static long CollectionAppId(uint id) => unchecked((int)id);
+    private static long CollectionAppId(uint id) => id;
 
     private static void NormalizeAdded(JsonArray added)
     {
@@ -302,14 +304,16 @@ public static class SteamCollections
         foreach (var node in added)
         {
             if (!TryGetLong(node, out var value)) continue;
-            var signed = unchecked((int)value);
-            if (!keep.Contains(signed))
-                keep.Add(signed);
+            var unsigned = AsUnsignedAppId(value);
+            if (!keep.Contains(unsigned))
+                keep.Add(unsigned);
         }
         added.Clear();
         foreach (var id in keep)
             added.Add(id);
     }
+
+    private static long AsUnsignedAppId(long value) => unchecked((uint)value);
 
     private static List<(int ns, int ver)> ReadNamespaces(DeckClient client, string nsPath)
     {
@@ -386,7 +390,7 @@ public static class SteamCollections
     }
 
     private static bool SameApp(long a, long b) =>
-        unchecked((int)a) == unchecked((int)b);
+        AsUnsignedAppId(a) == AsUnsignedAppId(b);
 
     private static bool TryGetLong(JsonNode? node, out long value)
     {

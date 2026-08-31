@@ -8,7 +8,7 @@
                 <Border Width="{Binding ThumbW}" Height="{Binding ThumbH}"
                         Background="{DynamicResource Panel}"
                         BorderBrush="{DynamicResource Border}" BorderThickness="1" ClipToBounds="True">
-                    <Image Source="{Binding Preview}" Stretch="UniformToFill"/>
+                    <Image Source="{Binding Preview}" Stretch="Uniform"/>
                 </Border>
                 <TextBlock Text="{Binding Label}" FontSize="10" Foreground="{DynamicResource Muted}"
                            TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
@@ -50,17 +50,35 @@
                       SelectionMode="Extended">
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Header="" Width="36">
+                        <GridViewColumn Width="36">
+                            <GridViewColumn.Header>
+                                <CheckBox x:Name="SelectAllBox" Click="SelectAll_Click"
+                                          ToolTip="Select or deselect all visible unlocked titles"/>
+                            </GridViewColumn.Header>
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEnabled="{Binding CanSelect}"
+                                              ToolTip="Include in Optimize"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="" Width="32">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ToggleButton IsChecked="{Binding OptimizeLocked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  Content="{Binding LockGlyph}"
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  Width="28" Height="24" Padding="0"
+                                                  FontSize="12"
+                                                  ToolTip="Lock — keep this title unchanged and skip Optimize"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
                         <GridViewColumn Header="" Width="48">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Image Source="{Binding Cover}" Width="36" Height="54" Stretch="UniformToFill"/>
+                                    <Image Source="{Binding Cover}" Width="36" Height="54" Stretch="Uniform"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -189,7 +207,7 @@
                                  ToolTip="Display name in Steam"/>
                         <TextBox x:Name="QueryBox" Grid.Row="1" Grid.Column="2" LostFocus="Name_LostFocus"
                                  ToolTip="Change the search name if the wrong game is found"/>
-                        <Button Grid.Row="1" Grid.Column="3" Content="Search" Click="SearchArt_Click" Margin="8,0,0,0"/>
+                        <Button x:Name="SearchArtBtn" Grid.Row="1" Grid.Column="3" Content="Search" Click="SearchArt_Click" Margin="8,0,0,0"/>
                         <CheckBox x:Name="MaskBox" Grid.Row="1" Grid.Column="4" Content="Category masks"
                                   Margin="8,0,0,0" Checked="Mask_Changed" Unchecked="Mask_Changed"
                                   ToolTip="Master switch. Per platform you set masks in Settings → Covers. Hydra is off by default."/>
@@ -284,19 +302,19 @@
                                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                                     <Border Width="36" Height="54" Margin="0,0,6,0"
                                                             Background="{DynamicResource PanelAlt}" ClipToBounds="True">
-                                                        <Image Source="{Binding Cover.Preview}" Stretch="UniformToFill"/>
+                                                        <Image Source="{Binding Cover.Preview}" Stretch="Uniform"/>
                                                     </Border>
                                                     <Border Width="72" Height="34" Margin="0,0,6,0"
                                                             Background="{DynamicResource PanelAlt}" ClipToBounds="True">
-                                                        <Image Source="{Binding Wide.Preview}" Stretch="UniformToFill"/>
+                                                        <Image Source="{Binding Wide.Preview}" Stretch="Uniform"/>
                                                     </Border>
                                                     <Border Width="88" Height="28" Margin="0,0,6,0"
                                                             Background="{DynamicResource PanelAlt}" ClipToBounds="True">
-                                                        <Image Source="{Binding Hero.Preview}" Stretch="UniformToFill"/>
+                                                        <Image Source="{Binding Hero.Preview}" Stretch="Uniform"/>
                                                     </Border>
                                                     <Border Width="28" Height="28" Margin="0,0,6,0"
                                                             Background="{DynamicResource PanelAlt}" ClipToBounds="True">
-                                                        <Image Source="{Binding Icon.Preview}" Stretch="UniformToFill"/>
+                                                        <Image Source="{Binding Icon.Preview}" Stretch="Uniform"/>
                                                     </Border>
                                                     <Border Width="72" Height="28"
                                                             Background="{DynamicResource PanelAlt}" ClipToBounds="True">

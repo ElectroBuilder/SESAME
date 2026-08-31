@@ -7,6 +7,7 @@ namespace Sesame.Models;
 public sealed class OptimizerGame : INotifyPropertyChanged
 {
     private bool _selected = true;
+    private bool _optimizeLocked;
     private string _displayName = "";
     private string _status = "New";
     private string _artworkSource = "—";
@@ -24,7 +25,33 @@ public sealed class OptimizerGame : INotifyPropertyChanged
     private bool _hasArtwork;
     private string _note = "";
 
-    public bool Selected { get => _selected; set => Set(ref _selected, value); }
+    public bool Selected
+    {
+        get => _selected;
+        set
+        {
+            if (_optimizeLocked) value = false;
+            Set(ref _selected, value);
+        }
+    }
+
+    /// <summary>Frozen for Optimize — cannot be selected and is never rewritten.</summary>
+    public bool OptimizeLocked
+    {
+        get => _optimizeLocked;
+        set
+        {
+            if (_optimizeLocked == value) return;
+            _optimizeLocked = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OptimizeLocked)));
+            if (value) Selected = false;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanSelect)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LockGlyph)));
+        }
+    }
+
+    public bool CanSelect => !_optimizeLocked;
+    public string LockGlyph => _optimizeLocked ? "\uE72E" : "\uE785";
     public string DisplayName { get => _displayName; set => Set(ref _displayName, value); }
     public string FileName { get; set; } = "";
     public string RomPath { get; set; } = "";

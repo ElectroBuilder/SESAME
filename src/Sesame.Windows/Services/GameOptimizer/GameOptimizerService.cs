@@ -98,10 +98,7 @@ public static class GameOptimizerService
             }));
         foreach (var extra in ExtraShortcuts.Scan(client, steam, ExtraScanMode.All, extraProgress))
         {
-            var existing = extra.SteamAppId != 0
-                ? steam.FirstOrDefault(s => s.AppId == extra.SteamAppId)
-                : SteamShortcuts.FindOwnedByRom(steam, extra.RomPath)
-                  ?? SteamShortcuts.FindByRom(steam, extra.RomPath);
+            var existing = ResolveExistingShortcut(steam, extra);
             if (existing is not null)
             {
                 extra.InSteam = SteamShortcuts.IsOwned(existing);
@@ -131,10 +128,7 @@ public static class GameOptimizerService
             .ToList();
         foreach (var extra in apps)
         {
-            var existing = extra.SteamAppId != 0
-                ? steam.FirstOrDefault(s => s.AppId == extra.SteamAppId)
-                : SteamShortcuts.FindOwnedByRom(steam, extra.RomPath)
-                  ?? SteamShortcuts.FindByRom(steam, extra.RomPath);
+            var existing = ResolveExistingShortcut(steam, extra);
             if (existing is not null)
             {
                 extra.InSteam = SteamShortcuts.IsOwned(existing);
@@ -150,11 +144,25 @@ public static class GameOptimizerService
         return apps;
     }
 
+    private static SteamShortcut? ResolveExistingShortcut(IReadOnlyList<SteamShortcut> steam,
+        OptimizerGame extra)
+    {
+        if (extra.ShortcutKind == ShortcutKind.App)
+            return SteamShortcuts.FindOwnedApp(steam, extra) ?? SteamShortcuts.FindApp(steam, extra);
+        if (extra.SteamAppId != 0)
+        {
+            var byId = steam.FirstOrDefault(s => s.AppId == extra.SteamAppId);
+            if (byId is not null) return byId;
+        }
+        return SteamShortcuts.FindOwnedByRom(steam, extra.RomPath)
+               ?? SteamShortcuts.FindByRom(steam, extra.RomPath);
+    }
+
     public static async Task<OptimizeReport> ApplyAsync(DeckClient client, AppCatalog catalog,
         IReadOnlyList<OptimizerGame> games, IProgress<OptimizeProgress>? progress, CancellationToken ct)
     {
         var report = new OptimizeReport();
-        var selected = games.Where(g => g.Selected).ToList();
+        var selected = games.Where(g => g.Selected && !g.OptimizeLocked).ToList();
         if (selected.Count == 0)
         {
             report.Summary = "No games selected.";
@@ -232,7 +240,7 @@ public static class GameOptimizerService
                 var profile = SystemCatalog.FromFolder(game.FolderName)
                     ?? SystemCatalog.All.FirstOrDefault(p => p.Id == game.SystemId)
                     ?? SystemCatalog.Unknown(game.FolderName);
-                var query = string.IsNullOrWhiteSpace(game.SearchQuery) ? game.DisplayName : game.SearchQuery;
+                var query = ArtworkClient.ArtworkSearchQuery(game);
                 ArtworkSet? art = null;
                 var keptExisting = !OptimizerSettings.OverwriteArtwork &&
                                    ArtworkAlreadyOnDeck(client, gridDir, game.SteamAppId);
@@ -479,12 +487,22 @@ public static class GameOptimizerService
         SystemProfile profile, ArtworkSet? art)
     {
         var id = game.SteamAppId.ToString();
-        // Portrait capsule must stay a vertical cover — never force a wide banner into it
-        // (that caused black bars top/bottom after contain-fit).
+        // Portrait capsule must stay a vertical cover — never force a wide banner into it.
+        // Unmasked platforms letterbox (contain) so titles are not cropped off.
         var portraitSrc = art?.Grid;
         var landscapeSrc = art?.Wide ?? art?.Hero ?? art?.Grid;
-        var portrait = CoverMask.Portrait(portraitSrc, profile, game.IsRomHack, game.IsTranslation);
-        var landscape = CoverMask.Landscape(landscapeSrc, profile, game.IsRomHack, game.IsTranslation);
+        byte[] portrait;
+        byte[] landscape;
+        if (!OptimizerSettings.UseMaskFor(profile.Id))
+        {
+            portrait = CoverMask.FitOnlyPublic(portraitSrc, CoverMask.PortraitWidth, CoverMask.PortraitHeight);
+            landscape = CoverMask.FitOnlyPublic(landscapeSrc, CoverMask.LandscapeWidth, CoverMask.LandscapeHeight);
+        }
+        else
+        {
+            portrait = CoverMask.Portrait(portraitSrc, profile, game.IsRomHack, game.IsTranslation);
+            landscape = CoverMask.Landscape(landscapeSrc, profile, game.IsRomHack, game.IsTranslation);
+        }
         var files = new List<(string Path, byte[] Data)>
         {
             (DeckClient.Combine(gridDir, id + "p.png"), portrait),

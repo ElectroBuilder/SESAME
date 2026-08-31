@@ -29,6 +29,24 @@ public static class ArtworkClient
     public static string LastError { get; private set; } = "";
     public static bool LastKeyInvalid { get; private set; }
 
+    /// <summary>
+    /// Apps must search SteamGridDB by catalog title only — polluted SearchQuery
+    /// (e.g. "Killer Instinct") was painting every Flatpak with the wrong cover.
+    /// </summary>
+    public static string ArtworkSearchQuery(OptimizerGame game)
+    {
+        if (game.ShortcutKind == ShortcutKind.App &&
+            DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var app))
+        {
+            game.SearchQuery = app.Title;
+            return app.Title;
+        }
+
+        if (!string.IsNullOrWhiteSpace(game.SearchQuery))
+            return game.SearchQuery.Trim();
+        return game.DisplayName ?? "";
+    }
+
     public static async Task<ArtworkSet?> FindAsync(string title, SystemProfile system, CancellationToken ct)
     {
         LastError = "";
@@ -44,11 +62,172 @@ public static class ArtworkClient
             LastError = "No SteamGridDB key. Set it in Settings (top right).";
         }
 
+        var steam = await FromSteamStoreAsync(title, ct);
+        if (steam is not null) return steam;
+
         var libretro = await FromLibretroAsync(title, system, ct);
         if (libretro is not null) return libretro;
         if (string.IsNullOrEmpty(LastError))
             LastError = "No cover found for " + title + ".";
         return null;
+    }
+
+    /// <summary>Official Steam store capsule art (library_600x900, hero, header, logo).</summary>
+    public static async Task<List<ArtworkChoice>> ListSteamStoreAsync(int steamAppId, CancellationToken ct)
+    {
+        var list = new List<ArtworkChoice>();
+        if (steamAppId <= 0) return list;
+        foreach (var (kind, file, label) in SteamStoreAssets)
+        {
+            var url = SteamStoreAssetUrl(steamAppId, file);
+            var bytes = await DownloadAsync(url, ct);
+            if (bytes is null) continue;
+            list.Add(new ArtworkChoice
+            {
+                Url = url,
+                ThumbUrl = url,
+                Kind = kind,
+                Style = "official",
+                Author = "Steam",
+                Label = label + " · Steam store",
+                Width = kind == "cover" ? 600 : kind == "hero" ? 1920 : kind == "wide" ? 460 : 0,
+                Height = kind == "cover" ? 900 : kind == "hero" ? 620 : kind == "wide" ? 215 : 0
+            });
+        }
+        return list;
+    }
+
+    public static async Task<int?> ResolveSteamStoreIdAsync(string title, int? steamGridDbId, CancellationToken ct)
+    {
+        if (steamGridDbId is int sgdb && OptimizerSettings.HasSteamGridDb)
+        {
+            var fromSgdb = await SteamIdFromSteamGridDbAsync(sgdb, ct);
+            if (fromSgdb is not null) return fromSgdb;
+        }
+        return await SteamStoreSearchIdAsync(title, ct);
+    }
+
+    private static readonly (string Kind, string File, string Label)[] SteamStoreAssets =
+    [
+        ("cover", "library_600x900.jpg", "Cover"),
+        ("wide", "header.jpg", "Wide"),
+        ("hero", "library_hero.jpg", "Hero"),
+        ("logo", "logo.png", "Logo"),
+        ("icon", "capsule_231x87.jpg", "Icon")
+    ];
+
+    private static string SteamStoreAssetUrl(int steamAppId, string file) =>
+        "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/" + steamAppId + "/" + file;
+
+    private static async Task<ArtworkSet?> FromSteamStoreAsync(string title, CancellationToken ct)
+    {
+        var id = await SteamStoreSearchIdAsync(title, ct);
+        if (id is null) return null;
+        var cover = SteamStoreAssetUrl(id.Value, "library_600x900.jpg");
+        var wide = SteamStoreAssetUrl(id.Value, "header.jpg");
+        var hero = SteamStoreAssetUrl(id.Value, "library_hero.jpg");
+        var logo = SteamStoreAssetUrl(id.Value, "logo.png");
+        var coverBytes = await DownloadAsync(cover, ct);
+        if (coverBytes is null)
+        {
+            // Older titles sometimes only have capsule art.
+            cover = SteamStoreAssetUrl(id.Value, "library_600x900_2x.jpg");
+            coverBytes = await DownloadAsync(cover, ct);
+        }
+        if (coverBytes is null) return null;
+        return new ArtworkSet
+        {
+            Source = "Steam",
+            GridUrl = cover,
+            WideUrl = wide,
+            HeroUrl = hero,
+            LogoUrl = logo,
+            IconUrl = cover,
+            Grid = coverBytes
+        };
+    }
+
+    private static async Task<int?> SteamStoreSearchIdAsync(string title, CancellationToken ct)
+    {
+        var clean = StoreGame.StripVariant(title)?.Trim();
+        if (string.IsNullOrWhiteSpace(clean)) return null;
+        try
+        {
+            var url = "https://store.steampowered.com/api/storesearch/?term=" +
+                      Uri.EscapeDataString(clean) + "&l=english&cc=US";
+            using var resp = await Http.GetAsync(url, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("items", out var items) ||
+                items.ValueKind != JsonValueKind.Array)
+                return null;
+            var want = StoreGame.FoldTitle(clean);
+            int? best = null;
+            var bestScore = 0;
+            foreach (var item in items.EnumerateArray())
+            {
+                if (!item.TryGetProperty("id", out var idEl) || !idEl.TryGetInt32(out var id))
+                    continue;
+                var name = item.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                var folded = StoreGame.FoldTitle(name);
+                var score = 0;
+                if (folded == want) score += 12;
+                else if (want.Length >= 4 && (folded.Contains(want) || want.Contains(folded))) score += 5;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = id;
+                }
+            }
+            return bestScore >= 5 ? best : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static async Task<int?> SteamIdFromSteamGridDbAsync(int gameId, CancellationToken ct)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, Api + "/games/id/" + gameId);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", OptimizerSettings.SteamGridDbKey);
+            req.Headers.Accept.ParseAdd("application/json");
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("data", out var data)) return null;
+            if (data.TryGetProperty("external_store_ids", out var stores) &&
+                stores.ValueKind == JsonValueKind.Object)
+            {
+                if (TryReadSteamId(stores, out var id)) return id;
+            }
+            if (data.TryGetProperty("platforms", out var platforms) &&
+                platforms.ValueKind == JsonValueKind.Object &&
+                TryReadSteamId(platforms, out var platformId))
+                return platformId;
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool TryReadSteamId(JsonElement obj, out int id)
+    {
+        id = 0;
+        foreach (var name in new[] { "steam", "Steam", "STEAM" })
+        {
+            if (!obj.TryGetProperty(name, out var el)) continue;
+            if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out id))
+                return id > 0;
+            if (el.ValueKind == JsonValueKind.String &&
+                int.TryParse(el.GetString(), out id) && id > 0)
+                return true;
+        }
+        return false;
     }
 
     public static async Task<List<ArtworkChoice>> ListGridsAsync(int gameId, CancellationToken ct) =>
@@ -205,7 +384,8 @@ public static class ArtworkClient
             if (id is not null) return id;
         }
 
-        if (bestHits is { } fallback && fallback.GetArrayLength() > 0)
+        if (bestHits is { } fallback && fallback.GetArrayLength() > 0 &&
+            system.Id is not ("app" or "hydra" or "lutris" or "game"))
         {
             var first = fallback[0];
             if (first.TryGetProperty("id", out var idEl) && idEl.TryGetInt32(out var id))
@@ -276,7 +456,9 @@ public static class ArtworkClient
                 best = item;
             }
         }
-        if (best is null || bestScore < 5) return null;
+        // Apps/Hydra: require an exact-ish title match — never accept a weak autocomplete hit.
+        var min = system.Id is "app" or "hydra" or "lutris" or "game" ? 12 : 5;
+        if (best is null || bestScore < min) return null;
         if (!best.Value.TryGetProperty("id", out var id)) return null;
         return id.TryGetInt32(out var nId) ? nId : null;
     }

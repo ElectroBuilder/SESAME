@@ -154,6 +154,8 @@ public static class SteamShortcuts
     {
         var rom = NormalizeRom(romPath);
         if (rom.Length < 8) return false;
+        // Flatpak apps all share /usr/bin/flatpak — never treat that as a unique ROM key.
+        if (IsAmbiguousLauncher(rom)) return false;
         var hay = NormalizeRom(Hay(shortcut));
         if (hay.Contains(rom, StringComparison.OrdinalIgnoreCase)) return true;
         // Broken quotes: "/home/.../Black" Jacket/game.exe vs /home/.../Black Jacket/game.exe
@@ -165,6 +167,28 @@ public static class SteamShortcuts
                     GameFolderKey(ExtractRom(shortcut) ?? "");
         return !string.IsNullOrEmpty(folder) &&
                string.Equals(folder, other, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Match a catalog Flatpak/native app by launch target (not shared /usr/bin/flatpak).
+    /// </summary>
+    public static SteamShortcut? FindOwnedApp(IEnumerable<SteamShortcut> shortcuts, OptimizerGame game)
+    {
+        if (!DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var want))
+            return null;
+        return shortcuts.FirstOrDefault(s =>
+            IsOwned(s) &&
+            DeckApps.TryMatch(s.AppName, LaunchComposer.ExePath(s.Exe), s.LaunchOptions, out var hit) &&
+            string.Equals(hit.Id, want.Id, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static SteamShortcut? FindApp(IEnumerable<SteamShortcut> shortcuts, OptimizerGame game)
+    {
+        if (!DeckApps.TryMatch(game.DisplayName, game.RomPath, game.LaunchOptions, out var want))
+            return null;
+        return shortcuts.FirstOrDefault(s =>
+            DeckApps.TryMatch(s.AppName, LaunchComposer.ExePath(s.Exe), s.LaunchOptions, out var hit) &&
+            string.Equals(hit.Id, want.Id, StringComparison.OrdinalIgnoreCase));
     }
 
     public static SteamShortcut Build(OptimizerGame game)
@@ -235,6 +259,7 @@ public static class SteamShortcuts
     /// <summary>
     /// Match SESAME-owned rows by ROM path, and also orphan/broken Hydra duplicates
     /// by game folder or display name so Optimize never leaves two tiles.
+    /// Catalog Flatpak apps share /usr/bin/flatpak — match those by DeckApps id only.
     /// </summary>
     private static IEnumerable<SteamShortcut> FindReplaceCandidates(
         IEnumerable<SteamShortcut> shortcuts, SteamShortcut item)
@@ -243,10 +268,20 @@ public static class SteamShortcuts
         var folder = GameFolderKey(rom);
         var name = NormalizeName(item.AppName);
         var pc = LooksPcExe(item.Exe) || LooksPcExe(rom);
+        var itemApp = TryDeckAppId(item);
 
         foreach (var s in shortcuts)
         {
             if (IsSesameLauncher(s)) continue;
+
+            var existingApp = TryDeckAppId(s);
+            if (itemApp is not null || existingApp is not null)
+            {
+                if (itemApp is not null && existingApp is not null &&
+                    string.Equals(itemApp, existingApp, StringComparison.OrdinalIgnoreCase))
+                    yield return s;
+                continue;
+            }
 
             if (IsOwned(s) && !string.IsNullOrEmpty(rom) && MentionsRom(s, rom))
             {
@@ -274,6 +309,19 @@ public static class SteamShortcuts
                  IsOwned(s)))
                 yield return s;
         }
+    }
+
+    private static string? TryDeckAppId(SteamShortcut s)
+    {
+        if (!DeckApps.TryMatch(s.AppName, LaunchComposer.ExePath(s.Exe), s.LaunchOptions, out var entry))
+            return null;
+        return entry.Id;
+    }
+
+    private static bool IsAmbiguousLauncher(string path)
+    {
+        var leaf = Path.GetFileName(NormalizeRom(path)).ToLowerInvariant();
+        return leaf is "flatpak" or "python" or "python3" or "bash" or "sh" or "env" or "wine";
     }
 
     private static string NormalizeName(string? name) =>

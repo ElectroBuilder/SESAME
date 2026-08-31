@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.23 — 2026-08-30
+
+- Optimize: lock titles so they stay out of Optimize and cannot be edited until unlocked; header checkbox selects/deselects all visible unlocked rows; remove per-column filter boxes (sorting stays).
+- Artwork: official Steam store covers (library capsule, header, hero, logo) in the picker and as fallback when SteamGridDB has no match.
+- Dashboard: richer tiles with badges and extra Optimize stats (locked / missing art); sixth tile with version, Check update / Install, and Settings.
+
+## 0.6.22 — 2026-08-30
+
+- Covers with category masks: fill the art under the bar again (no black side bars). Hydra/apps still use contain so titles are not cropped. Strip stacked **NL Vertaling** / ROM-hack footers before redrawing.
+- Apps: Stop merging Stremio/Kodi/Firefox/Lutris into one Steam shortcut. They share `/usr/bin/flatpak`, so Optimize matched them as the same ROM — only one tile survived (often with a wrong cover such as Killer Instinct). Each catalog app now keeps its own AppId, artwork, and Apps-collection membership.
+- Dolphin GameCube: default pad is `SDL/0/Steam Deck Controller` instead of the usually-disconnected `Steam Virtual Gamepad`, so GC controls work in Game Mode. External controllers are left alone; Wii Joy2Wii paths unchanged.
+
+## 0.6.21 — 2026-08-30
+
+- Covers: show the full artwork (contain) in preview and Steam write — no more zoom/crop cutting titles off Hydra covers.
+- Apps: stop Killer Instinct (and other games) covers landing on Stremio/Kodi/Lutris/Firefox — search and saved picks are pinned to the catalog app title; contaminated picks are scrubbed.
+
+## 0.6.20 — 2026-08-30
+
+- Steam collections: put ROMs into platform tabs again. Membership IDs are written as **unsigned** appids (Steam’s format); the earlier signed values left collections at 0 games.
+
 ## 0.6.19 — 2026-08-30
 
 - Hydra Optimize: replace existing shortcuts (by game folder / name), keep the Steam AppId so artwork and Proton stay linked — no more duplicate tiles when the exe path is fixed.

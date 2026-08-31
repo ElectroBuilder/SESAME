@@ -20,7 +20,7 @@ public static class ListColumns
     private static readonly ConditionalWeakTable<ListView, State> States = new();
 
     public static void Attach(ListView list, IEnumerable items, bool sort = true,
-        IReadOnlyDictionary<string, string>? properties = null)
+        IReadOnlyDictionary<string, string>? properties = null, bool filterBoxes = true)
     {
         var view = items as ListCollectionView ??
                    CollectionViewSource.GetDefaultView(items) as ListCollectionView ??
@@ -31,6 +31,7 @@ public static class ListColumns
             View = view,
             OriginalFilter = view.Filter,
             SortEnabled = sort,
+            FilterBoxes = filterBoxes,
             Properties = properties
         };
         if (States.TryGetValue(list, out _))
@@ -95,28 +96,27 @@ public static class ListColumns
             FontWeight = FontWeights.SemiBold,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
-        var box = new TextBox
-        {
-            Margin = new Thickness(0, 4, 4, 0),
-            Padding = new Thickness(4, 2, 4, 2),
-            FontSize = 11,
-            FontWeight = FontWeights.Normal,
-            MinHeight = 22,
-            MaxHeight = 24,
-            ToolTip = "Filter " + title
-        };
-        box.TextChanged += (_, _) =>
-        {
-            state.Filters[prop] = box.Text ?? "";
-            state.View.Refresh();
-        };
-        box.GotKeyboardFocus += (_, _) =>
-        {
-            /* keep caret in the filter; do not sort */
-        };
         var panel = new StackPanel { MinWidth = 64 };
         panel.Children.Add(label);
-        panel.Children.Add(box);
+        if (state.FilterBoxes)
+        {
+            var box = new TextBox
+            {
+                Margin = new Thickness(0, 4, 4, 0),
+                Padding = new Thickness(4, 2, 4, 2),
+                FontSize = 11,
+                FontWeight = FontWeights.Normal,
+                MinHeight = 22,
+                MaxHeight = 24,
+                ToolTip = "Filter " + title
+            };
+            box.TextChanged += (_, _) =>
+            {
+                state.Filters[prop] = box.Text ?? "";
+                state.View.Refresh();
+            };
+            panel.Children.Add(box);
+        }
         panel.Tag = new HeaderBits(title, prop, label);
         return panel;
     }
@@ -217,6 +217,7 @@ public static class ListColumns
         public required ListCollectionView View { get; init; }
         public Predicate<object>? OriginalFilter { get; init; }
         public bool SortEnabled { get; init; }
+        public bool FilterBoxes { get; init; } = true;
         public IReadOnlyDictionary<string, string>? Properties { get; init; }
         public Dictionary<string, string> Filters { get; } = new(StringComparer.OrdinalIgnoreCase);
         public string? SortProperty { get; set; }

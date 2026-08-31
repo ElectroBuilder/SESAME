@@ -16,6 +16,7 @@ public sealed class OptimizerCacheFile
 public sealed class OptimizerCacheEntry
 {
     public bool Selected { get; set; } = true;
+    public bool OptimizeLocked { get; set; }
     public string DisplayName { get; set; } = "";
     public string FileName { get; set; } = "";
     public string RomPath { get; set; } = "";
@@ -147,6 +148,7 @@ public static class OptimizerLibraryCache
     private static OptimizerCacheEntry FromGame(OptimizerGame game) => new()
     {
         Selected = game.Selected,
+        OptimizeLocked = game.OptimizeLocked,
         DisplayName = game.DisplayName,
         FileName = game.FileName,
         RomPath = game.RomPath,
@@ -196,7 +198,8 @@ public static class OptimizerLibraryCache
     {
         var game = new OptimizerGame
         {
-            Selected = e.Selected,
+            Selected = e.OptimizeLocked ? false : e.Selected,
+            OptimizeLocked = e.OptimizeLocked,
             DisplayName = e.DisplayName,
             FileName = e.FileName,
             RomPath = e.RomPath,
