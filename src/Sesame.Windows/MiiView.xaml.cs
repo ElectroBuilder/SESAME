@@ -357,7 +357,13 @@ public partial class MiiView : UserControl
 
     private void UpdatePreview()
     {
-        if (AvatarPreview is not null) AvatarPreview.Appearance = EditorAppearance();
+        // WPF raises Checked/SelectionChanged while InitializeComponent is still
+        // materialising the editor. Do not read sibling controls until the full
+        // visual tree exists; otherwise startup fails before the main window opens.
+        if (AvatarPreview is null || NameBox is null || MaleRadio is null || FemaleRadio is null ||
+            HairStyleBox is null || HairColorBox is null || EyeColorBox is null || FavoriteColorBox is null)
+            return;
+        AvatarPreview.Appearance = EditorAppearance();
     }
 
     private static IReadOnlyList<MiiChoice> HairChoices(MiiTargetKind kind)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1 — 2026-08-31
+
+- Startup fix: guard the visual Mii preview while WPF is still constructing the editor, preventing a null-reference crash before the main window opens.
+
 ## 0.9.0 — 2026-08-31
 
 - Visual Mii editor: live vector preview updates while choosing gender, hair style, hair colour, eye colour and favourite colour.
