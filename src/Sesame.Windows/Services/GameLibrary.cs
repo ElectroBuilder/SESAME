@@ -33,8 +33,10 @@ public sealed class GameLibrary
             var titleId = ExtractTitleId(titleProbe) ?? GuessTitleId(titleProbe, catalog.TitleIds);
             var display = DisplayName(titleProbe, titleId, catalog);
             var system = rom.SystemLabel;
+            var gameId = PlatformId.TryExtractLibraryMetadata(system, titleProbe, out var parsedGameId)
+                ? parsedGameId : (PlatformId?)null;
             var entry = BuildEntry(client, catalog, display, rom.FileName, system,
-                rom.FullPath, titleId, primary);
+                rom.FullPath, titleId, gameId, primary);
             entry.InnerFileName = innerFile;
             if (RomHackLog.TryGet(rom.FullPath, out var loggedTitle, out var loggedKind))
             {
@@ -57,6 +59,9 @@ public sealed class GameLibrary
             }
             entry.Identity = catalog.ResolveStoreGame(entry.DisplayName, system,
                 titleId, entry.IsTranslation);
+            entry.GameId ??= entry.Identity.GameId;
+            entry.TexturePath = TexturePathFor(entry.DisplayName, system, titleId, catalog, entry.GameId);
+            entry.HasTextures = DirectoryExistsWithChildren(client, entry.TexturePath);
             games.Add(entry);
         }
 
@@ -72,21 +77,32 @@ public sealed class GameLibrary
     private static bool LooksLikeTitleId(string name) =>
         name.Length == 16 && TitleIdInName.IsMatch(name);
 
-    public static string? TexturePathFor(string displayName, string system, string? titleId, AppCatalog catalog)
+    public static string? TexturePathFor(string displayName, string system, string? titleId, AppCatalog catalog,
+        PlatformId? gameId = null)
     {
+        var folded = StoreGame.FoldSystem(system);
+        if (folded is "wii" or "gc")
+            return gameId is { } ? EmulatorPaths.TextureDestination("dolphin", gameId) : null;
+        if (folded == "ps1")
+            return gameId is { } ? EmulatorPaths.TextureDestination("duckstation", gameId) : null;
+        if (folded == "ps2")
+            return gameId is { } ? EmulatorPaths.TextureDestination("pcsx2", gameId) : null;
+
         foreach (var (name, path) in catalog.TextureByGame)
         {
             if (displayName.Contains(name, StringComparison.OrdinalIgnoreCase) ||
                 name.Contains(displayName, StringComparison.OrdinalIgnoreCase))
-                return path;
+                return AppCatalog.RelocateKnownPath(path);
         }
 
         if (string.Equals(system, "SWITCH", StringComparison.OrdinalIgnoreCase) && titleId is not null)
             return DeckClient.Combine(catalog.EdenMods, titleId);
         if (string.Equals(system, "N64", StringComparison.OrdinalIgnoreCase) &&
             catalog.TextureRoots.TryGetValue("n64", out var n64))
-            return n64;
-        return catalog.TextureRoots.TryGetValue("hdpacks", out var hd) ? hd : null;
+            return AppCatalog.RelocateKnownPath(n64);
+        return catalog.TextureRoots.TryGetValue("hdpacks", out var hd)
+            ? AppCatalog.RelocateKnownPath(hd)
+            : null;
     }
 
     public static string? SavePathFor(string system, string? titleId, EdenUser? user, AppCatalog catalog)
@@ -96,14 +112,18 @@ public sealed class GameLibrary
             return DeckClient.Combine(user.Folder, titleId);
 
         var key = StoreGame.FoldSystem(system);
-        if (catalog.RetroarchSaves.TryGetValue(key, out var path)) return path;
-        if (catalog.RetroarchSaves.TryGetValue(system.ToLowerInvariant(), out path)) return path;
+        if (key == "wii") return DeckClient.Combine(EmulatorPaths.SavesRoot("dolphin", key), "Wii/title");
+        if (key == "gc") return DeckClient.Combine(EmulatorPaths.SavesRoot("dolphin", key), "GC");
+        if (key == "ps1") return EmulatorPaths.SavesRoot("duckstation", key);
+        if (key == "ps2") return EmulatorPaths.SavesRoot("pcsx2", key);
+        if (catalog.RetroarchSaves.TryGetValue(key, out var path)) return AppCatalog.RelocateKnownPath(path);
+        if (catalog.RetroarchSaves.TryGetValue(system.ToLowerInvariant(), out path)) return AppCatalog.RelocateKnownPath(path);
         var profile = SystemCatalog.FromFolder(system);
         if (profile is not null)
         {
             foreach (var folder in profile.Folders)
-                if (catalog.RetroarchSaves.TryGetValue(folder, out path)) return path;
-            if (catalog.RetroarchSaves.TryGetValue(profile.Id, out path)) return path;
+                if (catalog.RetroarchSaves.TryGetValue(folder, out path)) return AppCatalog.RelocateKnownPath(path);
+            if (catalog.RetroarchSaves.TryGetValue(profile.Id, out path)) return AppCatalog.RelocateKnownPath(path);
         }
         return null;
     }
@@ -155,11 +175,16 @@ public sealed class GameLibrary
     }
 
     private GameEntry BuildEntry(DeckClient client, AppCatalog catalog, string display, string fileName,
-        string system, string romPath, string? titleId, EdenUser? primary)
+        string system, string romPath, string? titleId, PlatformId? gameId, EdenUser? primary)
     {
-        var modPath = titleId is not null ? DeckClient.Combine(catalog.EdenMods, titleId) : null;
+        var folded = StoreGame.FoldSystem(system);
+        var modPath = SwitchModLayout.IsSwitch(system) && titleId is not null
+            ? DeckClient.Combine(catalog.EdenMods, titleId)
+            : folded is "wii" or "gc" ? EmulatorPaths.ModsRoot("dolphin")
+            : folded == "ps1" ? EmulatorPaths.ModsRoot("duckstation")
+            : folded == "ps2" ? EmulatorPaths.ModsRoot("pcsx2") : null;
         var savePath = SavePathFor(system, titleId, primary, catalog);
-        var texturePath = TexturePathFor(display, system, titleId, catalog);
+        var texturePath = TexturePathFor(display, system, titleId, catalog, gameId);
         return new GameEntry
         {
             DisplayName = display,
@@ -167,11 +192,13 @@ public sealed class GameLibrary
             System = system,
             RomPath = romPath,
             TitleId = titleId,
+            GameId = gameId,
             ModPath = modPath,
             SavePath = savePath,
             TexturePath = texturePath,
             SaveAccountName = primary?.Name,
-            HasMods = DirectoryExistsWithChildren(client, modPath),
+            // Disc mod roots are shared and do not prove that this individual game owns a mod.
+            HasMods = !DiscPackRouting.IsDiscSystem(system) && DirectoryExistsWithChildren(client, modPath),
             HasSaves = !string.IsNullOrEmpty(savePath) && client.Exists(savePath),
             HasTextures = DirectoryExistsWithChildren(client, texturePath),
             Identity = catalog.ResolveStoreGame(display, system, titleId)

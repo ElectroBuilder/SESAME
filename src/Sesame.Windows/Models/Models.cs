@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Sesame.Services;
 
 namespace Sesame.Models;
 
@@ -141,6 +142,7 @@ public sealed class GameEntry
     public string System { get; set; } = "";
     public string RomPath { get; set; } = "";
     public string? TitleId { get; set; }
+    public PlatformId? GameId { get; set; }
     public string? ModPath { get; set; }
     public string? SavePath { get; set; }
     public string? TexturePath { get; set; }
@@ -189,6 +191,7 @@ public sealed class StoreGame
     public string Name { get; set; } = "";
     public string System { get; set; } = "";
     public string? TitleId { get; set; }
+    public PlatformId? GameId { get; set; }
     /// <summary>Onderscheidt een Nederlandse dump van het origineel, bv. "NL".</summary>
     public string? Variant { get; set; }
     public List<int> GameBananaIds { get; set; } = new();
@@ -213,13 +216,15 @@ public sealed class StoreGame
                 parts.Add("GameBanana #" + string.Join("/", GameBananaIds));
             if (!string.IsNullOrEmpty(TitleId))
                 parts.Add("Program ID " + TitleId);
+            if (GameId is { } gameId)
+                parts.Add("Game ID " + gameId.Value);
             if (KingSlugs.Count > 0)
                 parts.Add(KingSlugs[0]);
             return string.Join(" · ", parts);
         }
     }
 
-    public string Key => $"{System}|{Name}|{TitleId}|{Variant}".ToLowerInvariant();
+    public string Key => $"{System}|{Name}|{TitleId}|{GameId?.Value}|{Variant}".ToLowerInvariant();
 
     public override string ToString() => Label;
 
@@ -228,6 +233,7 @@ public sealed class StoreGame
         Name = Name,
         System = System,
         TitleId = TitleId,
+        GameId = GameId,
         Variant = Variant,
         GameBananaIds = [.. GameBananaIds],
         KingSlugs = [.. KingSlugs],
@@ -239,6 +245,7 @@ public sealed class StoreGame
         if (LooksMessy(Name) && !LooksMessy(other.Name) && !string.IsNullOrWhiteSpace(other.Name))
             Name = other.Name;
         TitleId ??= other.TitleId;
+        GameId ??= other.GameId;
         Variant ??= other.Variant;
         foreach (var id in other.GameBananaIds)
             if (!GameBananaIds.Contains(id)) GameBananaIds.Add(id);
@@ -258,6 +265,8 @@ public sealed class StoreGame
         if (other.IsAll || IsAll) return false;
         if (!MatchesSystem(other.System)) return false;
         if (!SameVariant(other)) return false;
+        if (GameId is { } gameId && other.GameId is { } otherGameId)
+            return gameId == otherGameId;
         if (!string.IsNullOrEmpty(TitleId) && !string.IsNullOrEmpty(other.TitleId))
             return string.Equals(TitleId, other.TitleId, StringComparison.OrdinalIgnoreCase);
         if (SameAs(other)) return true;
@@ -496,6 +505,7 @@ public sealed class PackHit : INotifyPropertyChanged
     public string Author { get; set; } = "";
     public string Version { get; set; } = "";
     public string Platform { get; set; } = "";
+    public PlatformId? GameId { get; set; }
     public string OriginalGame { get; set; } = "";
     public string? RequiredRomName { get; set; }
     public string? FileSha1 { get; set; }
@@ -826,6 +836,21 @@ public sealed class PackHit : INotifyPropertyChanged
         Progress = 100;
         StatusKind = IsEnabled ? "ok" : "off";
         StatusText = IsEnabled ? "Installed" : "Disabled";
+    }
+
+    public void SetStaged(string remotePath, string message, string? localFile = null)
+    {
+        if (!string.IsNullOrWhiteSpace(localFile)) LocalFile = localFile;
+        RemotePath = remotePath;
+        TargetPath = remotePath;
+        IsInstalled = false;
+        IsDownloaded = IsDownloaded || File.Exists(LocalFile ?? "");
+        IsBusy = false;
+        IsQueued = false;
+        ProgressUnknown = false;
+        Progress = 100;
+        StatusKind = "local";
+        StatusText = string.IsNullOrWhiteSpace(message) ? "Staged (not active)" : message;
     }
 
     public void SetEnabled(bool enabled)

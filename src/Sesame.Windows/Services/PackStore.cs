@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using SharpCompress.Archives;
-using SharpCompress.Common;
 using Sesame.Models;
 
 namespace Sesame.Services;
@@ -436,18 +435,123 @@ public sealed class PackStore
 
     public static string PrepareUploadFolder(string downloadedFile, bool unwrapSingleRoot = false)
     {
-        var ext = Path.GetExtension(downloadedFile);
+        var ext = Path.GetExtension(downloadedFile).ToLowerInvariant();
         if (ext is not (".zip" or ".rar" or ".7z"))
             return downloadedFile;
         var extract = downloadedFile + ".extracted";
         if (Directory.Exists(extract))
             Directory.Delete(extract, true);
         Directory.CreateDirectory(extract);
-        using var archive = ArchiveFactory.OpenArchive(downloadedFile);
-        archive.WriteToDirectory(extract, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
+        try { ExtractUntrustedArchive(downloadedFile, extract); }
+        catch
+        {
+            try { Directory.Delete(extract, true); } catch { }
+            throw;
+        }
         if (!unwrapSingleRoot) return extract;
         var entries = Directory.GetFileSystemEntries(extract);
         return entries.Length == 1 && Directory.Exists(entries[0]) ? entries[0] : extract;
+    }
+
+    private static void ExtractUntrustedArchive(string archivePath, string extractionRoot)
+    {
+        const int maxEntries = 50_000;
+        const long maxExpandedBytes = 20L * 1024 * 1024 * 1024;
+        var root = Path.GetFullPath(extractionRoot);
+        var rootPrefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) +
+                         Path.DirectorySeparatorChar;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        long expanded = 0;
+        long copied = 0;
+        var count = 0;
+        using var archive = ArchiveFactory.OpenArchive(archivePath);
+        foreach (var entry in archive.Entries)
+        {
+            if (++count > maxEntries) throw new InvalidDataException("Archive contains too many entries.");
+            if (IsArchiveLink(entry.LinkTarget, entry.Attrib))
+                throw new InvalidDataException("Archive contains a symbolic or hard link, which is not allowed.");
+            if (entry.Size < 0 || expanded > maxExpandedBytes - entry.Size)
+                throw new InvalidDataException("Archive expands beyond the safe size limit.");
+            expanded += entry.Size;
+
+            var key = (entry.Key ?? "").Replace('\\', '/');
+            if (key.Length == 0) continue;
+            if (key.IndexOf('\0') >= 0 || key.StartsWith('/') || Path.IsPathRooted(key) ||
+                key.Split('/', StringSplitOptions.RemoveEmptyEntries).Any(part => part == ".."))
+                throw new InvalidDataException("Archive contains an unsafe path: " + key);
+            var destination = Path.GetFullPath(Path.Combine(root, key.Replace('/', Path.DirectorySeparatorChar)));
+            if (!destination.StartsWith(rootPrefix, comparison))
+                throw new InvalidDataException("Archive entry escapes its extraction folder: " + key);
+            if (entry.IsDirectory) { Directory.CreateDirectory(destination); continue; }
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            RejectReparsePath(root, Path.GetDirectoryName(destination)!);
+            using var input = entry.OpenEntryStream();
+            using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            CopyWithExpandedLimit(input, output, ref copied, maxExpandedBytes);
+        }
+        ValidateExtractedTree(root);
+    }
+
+    private static bool IsArchiveLink(string? linkTarget, int? attributes)
+    {
+        if (!string.IsNullOrWhiteSpace(linkTarget)) return true;
+        if (attributes is not int value) return false;
+        var raw = unchecked((uint)value);
+        if (((raw >> 16) & 0xF000) == 0xA000) return true;
+        return (raw & (uint)FileAttributes.ReparsePoint) != 0;
+    }
+
+    internal static void CopyWithExpandedLimit(Stream input, Stream output, ref long copied, long limit)
+    {
+        if (limit < 0 || copied < 0 || copied > limit)
+            throw new InvalidDataException("Archive expands beyond the safe size limit.");
+        var buffer = new byte[81920];
+        while (true)
+        {
+            var read = input.Read(buffer, 0, buffer.Length);
+            if (read <= 0) break;
+            if (copied > limit - read)
+                throw new InvalidDataException("Archive expands beyond the safe size limit.");
+            output.Write(buffer, 0, read);
+            copied += read;
+        }
+    }
+
+    private static void ValidateExtractedTree(string root)
+    {
+        var rootFull = Path.GetFullPath(root);
+        var prefix = rootFull.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) +
+                     Path.DirectorySeparatorChar;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        RejectReparsePath(rootFull, rootFull);
+        foreach (var path in Directory.EnumerateFileSystemEntries(rootFull, "*", SearchOption.AllDirectories))
+        {
+            var full = Path.GetFullPath(path);
+            if (!full.StartsWith(prefix, comparison))
+                throw new InvalidDataException("Extracted payload escapes its extraction folder.");
+            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Extracted payload contains a symbolic link or reparse point.");
+        }
+    }
+
+    internal static void ValidateExtractedTreeForTests(string root) => ValidateExtractedTree(root);
+
+    private static void RejectReparsePath(string root, string path)
+    {
+        var rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var current = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!current.Equals(rootFull, comparison) &&
+            !current.StartsWith(rootFull + Path.DirectorySeparatorChar, comparison))
+            throw new InvalidDataException("Archive entry escapes its extraction folder.");
+
+        while (current.Length >= rootFull.Length)
+        {
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Archive extraction encountered a symbolic link or reparse point.");
+            if (current.Equals(rootFull, comparison)) break;
+            current = Path.GetDirectoryName(current) ?? rootFull;
+        }
     }
 
     public static string ClassifyKind(string title, string? summary = null, string? model = null,
@@ -500,6 +604,9 @@ public sealed class PackStore
 
     public static string ResolveSystem(PackHit hit, AppCatalog catalog, StoreGame? selected = null)
     {
+        if (selected is { IsAll: false } && !string.IsNullOrWhiteSpace(selected.System))
+            return selected.System;
+
         if (hit.SourceGameId is int gid)
         {
             var mapped = catalog.StoreGames.FirstOrDefault(g => g.GameBananaIds.Contains(gid));
@@ -518,9 +625,6 @@ public sealed class PackStore
             if (TryKnownSystem(hit.GameName, out var fromGame))
                 return fromGame;
         }
-
-        if (selected is { IsAll: false } && !string.IsNullOrWhiteSpace(selected.System))
-            return selected.System;
 
         var hay = $"{hit.GameName} {hit.Title} {hit.Summary} {hit.Platform}";
         if (LooksLikeN64(hay)) return "N64";
@@ -544,6 +648,7 @@ public sealed class PackStore
         "snes" => "SNES",
         "switch" => "SWITCH",
         "gc" => "GC",
+        "wii" => "WII",
         "gba" => "GBA",
         "nds" => "NDS",
         "genesis" => "GENESIS",

@@ -20,7 +20,7 @@
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="{DynamicResource BrandBar}" Padding="16,12"
                 BorderBrush="{DynamicResource BrandAccent}" BorderThickness="0,0,0,2">
-            <Grid>
+            <Grid x:Name="HeaderControls">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="220"/>
@@ -86,7 +86,7 @@
                 <RowDefinition x:Name="TermRow" Height="220"/>
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0">
+            <Grid x:Name="WorkspaceGrid" Grid.Row="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="260"/>
                     <ColumnDefinition Width="6"/>
@@ -250,6 +250,9 @@
                     </TabItem>
                     <TabItem Header="Store">
                         <local:StoreView x:Name="StorePanel"/>
+                    </TabItem>
+                    <TabItem Header="Miis">
+                        <local:MiiView x:Name="MiiPanel"/>
                     </TabItem>
                 </TabControl>
             </Grid>

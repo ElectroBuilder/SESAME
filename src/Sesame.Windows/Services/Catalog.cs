@@ -120,6 +120,33 @@ public sealed class AppCatalog
     private static string FirstPath(string preferred, string fallback) =>
         string.IsNullOrWhiteSpace(preferred) ? fallback : preferred;
 
+    /// <summary>Relocates legacy catalog defaults through the one persisted LibraryPaths contract.</summary>
+    public static string RelocateKnownPath(string path)
+    {
+        var normalized = (path ?? "").Trim().Replace('\\', '/').TrimEnd('/');
+        if (normalized.Length == 0) return normalized;
+        if (normalized.Equals("/home/deck/Emulation", StringComparison.OrdinalIgnoreCase))
+            return LibraryPaths.Current.EmulationRoot;
+        const string emulation = "/home/deck/Emulation/";
+        if (normalized.StartsWith(emulation, StringComparison.OrdinalIgnoreCase))
+            return DeckClient.Combine(LibraryPaths.Current.EmulationRoot, normalized[emulation.Length..]);
+        if (normalized.Equals("/home/deck/Hydra", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("/home/deck/Games/Hydra", StringComparison.OrdinalIgnoreCase))
+            return LibraryPaths.Current.HydraRoot;
+        if (normalized.Equals("/home/deck/Games/Lutris", StringComparison.OrdinalIgnoreCase))
+            return LibraryPaths.Current.LutrisRoot;
+        if (normalized.Equals("/home/deck/Games/Other", StringComparison.OrdinalIgnoreCase))
+            return LibraryPaths.Current.OtherGamesRoot;
+        return normalized;
+    }
+
+    public IReadOnlyList<QuickPath> EffectiveQuickAccess() => QuickAccess.Select(path => new QuickPath
+    {
+        Name = path.Name,
+        Group = path.Group,
+        Path = RelocateKnownPath(path.Path)
+    }).ToList();
+
     public StoreGame ResolveStoreGame(string name, string system, string? titleId,
         bool isTranslation = false)
     {
@@ -171,12 +198,16 @@ public sealed class AppCatalog
 
     private static StoreGame ReadStoreGame(JsonElement el)
     {
+        var system = el.TryGetProperty("system", out var s) ? s.GetString() ?? "" : "";
         var game = new StoreGame
         {
             Name = el.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
-            System = el.TryGetProperty("system", out var s) ? s.GetString() ?? "" : "",
+            System = system,
             TitleId = el.TryGetProperty("titleId", out var t) ? t.GetString() : null
         };
+        if (el.TryGetProperty("platformId", out var platform) &&
+            PlatformId.TryCreate(system, platform.GetString(), out var gameId))
+            game.GameId = gameId;
         if (el.TryGetProperty("gameBananaId", out var one) && one.ValueKind == JsonValueKind.Number)
             game.GameBananaIds.Add(one.GetInt32());
         if (el.TryGetProperty("gameBananaIds", out var many) && many.ValueKind == JsonValueKind.Array)

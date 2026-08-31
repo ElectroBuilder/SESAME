@@ -105,7 +105,7 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
-      <TabItem Header="Library">
+      <TabItem Header="Paths">
         <ScrollViewer>
           <StackPanel MaxWidth="640" HorizontalAlignment="Left" Margin="4,12,4,4">
             <TextBlock Text="Library folders" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
@@ -125,8 +125,63 @@
             <CheckBox x:Name="UseEdenBox" Content="Eden" Margin="0,0,0,6"/>
             <CheckBox x:Name="UseYuzuBox" Content="Yuzu" Margin="0,0,0,6"/>
             <CheckBox x:Name="UseRyujinxBox" Content="Ryujinx" Margin="0,0,0,6"/>
-            <CheckBox x:Name="UseCitronBox" Content="Citron" Margin="0,0,0,16"/>
-            <Button Classes="accent" Content="Save library paths" Click="SaveLibrary_Click" HorizontalAlignment="Left"/>
+            <CheckBox x:Name="UseCitronBox" Content="Citron" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Switch paths (read-only)" FontWeight="SemiBold" FontSize="15" Margin="0,8,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,10"
+                       Text="These paths follow the ROM root and selected Switch emulators automatically."/>
+            <TextBlock x:Name="SwitchPathsText" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+            <TextBlock Text="Disc emulator paths" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,14"
+                       Text="Leave an override empty to use the effective default shown below it. User is the emulator data folder; textures, mods and saves may be overridden independently."/>
+
+            <TextBlock Text="Dolphin" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="User override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DolphinUserBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DolphinUserEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Textures override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DolphinTexturesBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DolphinTexturesEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Mods override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DolphinModsBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DolphinModsEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Saves user root override (contains Wii/title and GC; display only in v1)" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DolphinSavesBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DolphinSavesEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <Button Content="Reset Dolphin overrides" Click="ResetDolphinPaths_Click" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+
+            <TextBlock Text="DuckStation" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="User override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DuckStationUserBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DuckStationUserEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Textures override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DuckStationTexturesBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DuckStationTexturesEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Mods override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DuckStationModsBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DuckStationModsEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Saves override (display only in v1)" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="DuckStationSavesBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="DuckStationSavesEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <Button Content="Reset DuckStation overrides" Click="ResetDuckStationPaths_Click" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+
+            <TextBlock Text="PCSX2" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="User override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="Pcsx2UserBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="Pcsx2UserEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Textures override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="Pcsx2TexturesBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="Pcsx2TexturesEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Mods override" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="Pcsx2ModsBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="Pcsx2ModsEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <TextBlock Text="Saves override (display only in v1)" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="Pcsx2SavesBox" Margin="0,0,0,3"/>
+            <TextBlock x:Name="Pcsx2SavesEffective" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,0,0,8"/>
+            <Button Content="Reset PCSX2 overrides" Click="ResetPcsx2Paths_Click" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+
+            <Button Classes="accent" Content="Save paths" Click="SaveLibrary_Click" HorizontalAlignment="Left"/>
             <TextBlock x:Name="LibraryStatus" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
           </StackPanel>
         </ScrollViewer>

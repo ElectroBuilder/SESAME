@@ -1,0 +1,60 @@
+<UserControl x:Class="Sesame.MiiView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid x:Name="Root" Background="{DynamicResource Bg}" Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal">
+            <TextBlock Text="Target" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="TargetBox" Width="220" SelectionChanged="TargetBox_SelectionChanged">
+                <ComboBoxItem Tag="Wii">Dolphin · Wii Mii database</ComboBoxItem>
+                <ComboBoxItem Tag="Eden">Eden · Switch Mii database</ComboBoxItem>
+            </ComboBox>
+            <Button x:Name="RefreshBtn" Content="Refresh" Click="Refresh_Click"/>
+            <Button x:Name="BackupBtn" Content="Backup now" Click="Backup_Click"/>
+            <CheckBox x:Name="UnknownProcessBox" Content="I accept an unavailable process check"
+                      VerticalAlignment="Center" Margin="12,0,0,0"
+                      ToolTip="Only use after manually confirming the emulator is closed."/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource Border}"
+                BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,10,0,10">
+            <StackPanel>
+                <TextBlock x:Name="CapabilityText" FontWeight="SemiBold"/>
+                <TextBlock x:Name="IntegrityText" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                <TextBlock x:Name="PathText" Margin="0,4,0,0" Foreground="{DynamicResource Muted}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <ListView x:Name="MiiList" Grid.Row="2" SelectionChanged="MiiList_SelectionChanged">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Slot" Width="70" DisplayMemberBinding="{Binding Slot}"/>
+                    <GridViewColumn Header="Name" Width="240" DisplayMemberBinding="{Binding Name}"/>
+                    <GridViewColumn Header="Mii / UUID" Width="330" DisplayMemberBinding="{Binding Id}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <DockPanel Grid.Row="3" Margin="0,10,0,0">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <Button x:Name="ExportBtn" Content="Export exact record…" Click="Export_Click"/>
+                <Button x:Name="ImportBtn" Content="Import + Push…" IsEnabled="False" Click="Import_Click"
+                        ToolTip="Disabled until this target passes explicit manual emulator write validation."/>
+                <Button x:Name="BasicBtn" Content="New basic + Push…" IsEnabled="False" Click="Basic_Click"
+                        ToolTip="Disabled until this target passes explicit manual emulator write validation."/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <ComboBox x:Name="BackupBox" Width="420" DisplayMemberPath="Manifest.TimestampUtc"
+                          SelectionChanged="BackupBox_SelectionChanged"/>
+                <Button x:Name="RestoreBtn" Content="Restore verified backup…" Click="Restore_Click"/>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</UserControl>

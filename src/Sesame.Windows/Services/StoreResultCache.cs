@@ -30,6 +30,8 @@ public sealed class CachedHit
     public string Author { get; set; } = "";
     public string Version { get; set; } = "";
     public string Platform { get; set; } = "";
+    public string? GameId { get; set; }
+    public string? GameIdSystem { get; set; }
     public string OriginalGame { get; set; } = "";
     public string Summary { get; set; } = "";
     public DateTime? AddedUtc { get; set; }
@@ -63,6 +65,8 @@ public static class StoreResultCache
             StoreGame.FoldTitle(game.Name),
             string.Join(",", game.GameBananaIds.OrderBy(id => id)),
             game.TitleId ?? "",
+            game.GameId?.System ?? "",
+            game.GameId?.Value ?? "",
             kind.Trim().ToLowerInvariant(),
             source.Trim().ToLowerInvariant(),
             (sort ?? "").Trim().ToLowerInvariant(),
@@ -119,6 +123,7 @@ public static class StoreResultCache
         Author = c.Author,
         Version = c.Version,
         Platform = c.Platform,
+        GameId = PlatformId.TryCreate(c.GameIdSystem ?? c.Platform, c.GameId, out var gameId) ? gameId : null,
         OriginalGame = c.OriginalGame,
         Summary = c.Summary,
         AddedUtc = c.AddedUtc,
@@ -160,7 +165,7 @@ public static class StoreResultCache
         return (added, updated, removed);
     }
 
-    private static CachedHit ToCached(PackHit h) => new()
+    internal static CachedHit ToCached(PackHit h) => new()
     {
         Title = h.Title,
         Source = h.Source,
@@ -173,6 +178,8 @@ public static class StoreResultCache
         Author = h.Author,
         Version = h.Version,
         Platform = h.Platform,
+        GameId = h.GameId?.Value,
+        GameIdSystem = h.GameId?.System,
         OriginalGame = h.OriginalGame,
         Summary = h.Summary,
         AddedUtc = h.AddedUtc,

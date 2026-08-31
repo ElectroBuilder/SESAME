@@ -198,6 +198,26 @@ public sealed class DeckClient : IDisposable
         }
     }
 
+    /// <summary>Creates a new file and fails if any file/link already occupies the path.</summary>
+    public void WriteNewBytes(string path, byte[] data)
+    {
+        lock (_gate)
+        {
+            if (_kind == Kind.Local)
+            {
+                ExclusiveFileCreate.WriteAllBytes(path, data);
+                return;
+            }
+            WithSftp(path, p =>
+            {
+                EnsureDirectoryLocked(Parent(p));
+                ExclusiveFileCreate.Upload(data, (stream, canOverride) =>
+                    _sftp!.UploadFile(stream, p, canOverride));
+                return true;
+            });
+        }
+    }
+
     public void WriteText(string path, string text) =>
         WriteBytes(path, Encoding.UTF8.GetBytes(text ?? ""));
 
@@ -272,6 +292,29 @@ public sealed class DeckClient : IDisposable
             }
             EnsureAliveLocked();
             UploadFileLocked(localPath, remoteDir, progress, remoteName);
+        }
+    }
+
+    /// <summary>Uploads one file with create-new semantics; an existing file or link is never overwritten.</summary>
+    public void UploadFileNew(string localPath, string remoteDir, Action<string>? progress = null,
+        string? remoteName = null)
+    {
+        lock (_gate)
+        {
+            var name = string.IsNullOrWhiteSpace(remoteName) ? Path.GetFileName(localPath) : remoteName;
+            var remote = Combine(remoteDir, name);
+            if (_kind == Kind.Local)
+            {
+                Directory.CreateDirectory(remoteDir);
+                progress?.Invoke("Copying " + name);
+                File.Copy(localPath, remote, overwrite: false);
+                return;
+            }
+            EnsureAliveLocked();
+            EnsureDirectoryLocked(remoteDir);
+            progress?.Invoke("Uploading " + name);
+            using var stream = File.OpenRead(localPath);
+            _sftp!.UploadFile(stream, remote, false);
         }
     }
 

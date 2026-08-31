@@ -55,7 +55,64 @@ public partial class SettingsPage : UserControl
         UseYuzuBox.IsChecked = paths.UseYuzu;
         UseRyujinxBox.IsChecked = paths.UseRyujinx;
         UseCitronBox.IsChecked = paths.UseCitron;
+        BindEmulatorPaths("dolphin", DolphinUserBox, DolphinTexturesBox, DolphinModsBox, DolphinSavesBox,
+            DolphinUserEffective, DolphinTexturesEffective, DolphinModsEffective, DolphinSavesEffective);
+        BindEmulatorPaths("duckstation", DuckStationUserBox, DuckStationTexturesBox, DuckStationModsBox, DuckStationSavesBox,
+            DuckStationUserEffective, DuckStationTexturesEffective, DuckStationModsEffective, DuckStationSavesEffective);
+        BindEmulatorPaths("pcsx2", Pcsx2UserBox, Pcsx2TexturesBox, Pcsx2ModsBox, Pcsx2SavesBox,
+            Pcsx2UserEffective, Pcsx2TexturesEffective, Pcsx2ModsEffective, Pcsx2SavesEffective);
+        BindSwitchPaths();
     }
+
+    private static void BindEmulatorPaths(
+        string emulator,
+        TextBox userBox, TextBox texturesBox, TextBox modsBox, TextBox savesBox,
+        TextBlock userEffective, TextBlock texturesEffective, TextBlock modsEffective, TextBlock savesEffective)
+    {
+        LibraryPaths.Current.EmulatorOverrides.TryGetValue(emulator, out var overrides);
+        userBox.Text = overrides?.UserRoot ?? "";
+        texturesBox.Text = overrides?.TexturesRoot ?? "";
+        modsBox.Text = overrides?.ModsRoot ?? "";
+        savesBox.Text = overrides?.SavesRoot ?? "";
+        BindEffectivePaths(emulator, userEffective, texturesEffective, modsEffective, savesEffective);
+    }
+
+    private static void BindEffectivePaths(
+        string emulator, TextBlock user, TextBlock textures, TextBlock mods, TextBlock saves)
+    {
+        user.Text = "Currently effective: " + EmulatorPaths.UserRoot(emulator);
+        textures.Text = "Currently effective: " + EmulatorPaths.TexturesRoot(emulator);
+        mods.Text = "Currently effective: " + EmulatorPaths.ModsRoot(emulator);
+        saves.Text = "Currently effective: " + EmulatorPaths.SavesRoot(emulator);
+    }
+
+    private void BindSwitchPaths()
+    {
+        var paths = LibraryPaths.Current;
+        var rows = paths.EnabledSwitchIds.Select(id =>
+        {
+            var profile = paths.SwitchProfiles(id);
+            var lines = new List<string>
+            {
+                SwitchName(id),
+                "Mods: " + EmulatorPaths.ModsRoot(id),
+                "Saves: " + EmulatorPaths.SavesRoot(id)
+            };
+            if (!string.IsNullOrWhiteSpace(profile))
+                lines.Add("Profiles: " + profile);
+            return string.Join(Environment.NewLine, lines);
+        });
+        SwitchPathsText.Text = string.Join(Environment.NewLine + Environment.NewLine, rows);
+    }
+
+    private static string SwitchName(string id) => id switch
+    {
+        "eden" => "Eden",
+        "yuzu" => "Yuzu",
+        "ryujinx" => "Ryujinx",
+        "citron" => "Citron",
+        _ => id
+    };
 
     private void Theme_Changed(object? sender, RoutedEventArgs e)
     {
@@ -173,24 +230,89 @@ public partial class SettingsPage : UserControl
         LibraryPaths.Current.UseYuzu = UseYuzuBox.IsChecked == true;
         LibraryPaths.Current.UseRyujinx = UseRyujinxBox.IsChecked == true;
         LibraryPaths.Current.UseCitron = UseCitronBox.IsChecked == true;
+        SaveEmulatorOverrides("dolphin", DolphinUserBox, DolphinTexturesBox, DolphinModsBox, DolphinSavesBox);
+        SaveEmulatorOverrides("duckstation", DuckStationUserBox, DuckStationTexturesBox, DuckStationModsBox, DuckStationSavesBox);
+        SaveEmulatorOverrides("pcsx2", Pcsx2UserBox, Pcsx2TexturesBox, Pcsx2ModsBox, Pcsx2SavesBox);
         LibraryPaths.Save();
+        BindLibrary();
         Launchers.Reload();
 
         if (!DeckSession.Current.Connected)
         {
-            LibraryStatus.Text = "Saved. Empty folders are created the next time SESAME connects.";
+            LibraryStatus.Text = "Paths saved. Empty folders are created the next time SESAME connects.";
             return;
         }
 
         try
         {
             LibraryLayout.Ensure(DeckSession.Current.Client, DeckSession.Current.Catalog);
-            LibraryStatus.Text = "Saved. Empty ROM, Hydra and Switch folders are ready.";
+            LibraryStatus.Text = "Paths saved. Empty ROM, Hydra and Switch folders are ready.";
         }
         catch (Exception ex)
         {
-            LibraryStatus.Text = "Saved, but folder create failed: " + ex.Message;
+            LibraryStatus.Text = "Paths saved, but folder create failed: " + ex.Message;
         }
+    }
+
+    private static void SaveEmulatorOverrides(
+        string emulator, TextBox userBox, TextBox texturesBox, TextBox modsBox, TextBox savesBox)
+    {
+        var user = Draft(userBox);
+        var textures = Draft(texturesBox);
+        var mods = Draft(modsBox);
+        var saves = Draft(savesBox);
+        if (user is null && textures is null && mods is null && saves is null)
+        {
+            EmulatorPaths.ResetOverrides(emulator);
+            return;
+        }
+
+        var overrides = EmulatorPaths.Overrides(emulator);
+        overrides.UserRoot = user;
+        overrides.TexturesRoot = textures;
+        overrides.ModsRoot = mods;
+        overrides.SavesRoot = saves;
+    }
+
+    private static string? Draft(TextBox box) =>
+        string.IsNullOrWhiteSpace(box.Text) ? null : box.Text.Trim();
+
+    private void ResetDolphinPaths_Click(object? sender, RoutedEventArgs e) =>
+        ResetEmulatorDraft("dolphin", DolphinUserBox, DolphinTexturesBox, DolphinModsBox, DolphinSavesBox,
+            DolphinUserEffective, DolphinTexturesEffective, DolphinModsEffective, DolphinSavesEffective);
+
+    private void ResetDuckStationPaths_Click(object? sender, RoutedEventArgs e) =>
+        ResetEmulatorDraft("duckstation", DuckStationUserBox, DuckStationTexturesBox, DuckStationModsBox, DuckStationSavesBox,
+            DuckStationUserEffective, DuckStationTexturesEffective, DuckStationModsEffective, DuckStationSavesEffective);
+
+    private void ResetPcsx2Paths_Click(object? sender, RoutedEventArgs e) =>
+        ResetEmulatorDraft("pcsx2", Pcsx2UserBox, Pcsx2TexturesBox, Pcsx2ModsBox, Pcsx2SavesBox,
+            Pcsx2UserEffective, Pcsx2TexturesEffective, Pcsx2ModsEffective, Pcsx2SavesEffective);
+
+    private void ResetEmulatorDraft(
+        string emulator,
+        TextBox userBox, TextBox texturesBox, TextBox modsBox, TextBox savesBox,
+        TextBlock userEffective, TextBlock texturesEffective, TextBlock modsEffective, TextBlock savesEffective)
+    {
+        userBox.Clear();
+        texturesBox.Clear();
+        modsBox.Clear();
+        savesBox.Clear();
+
+        var dictionary = LibraryPaths.Current.EmulatorOverrides;
+        var hadOverride = dictionary.TryGetValue(emulator, out var previous);
+        EmulatorPaths.ResetOverrides(emulator);
+        try
+        {
+            BindEffectivePaths(emulator, userEffective, texturesEffective, modsEffective, savesEffective);
+        }
+        finally
+        {
+            if (hadOverride)
+                dictionary[emulator] = previous!;
+        }
+
+        LibraryStatus.Text = SwitchName(emulator) + " overrides are reset in the editor. Choose Save paths to apply.";
     }
 
     private async void CheckUpdate_Click(object? sender, RoutedEventArgs e)

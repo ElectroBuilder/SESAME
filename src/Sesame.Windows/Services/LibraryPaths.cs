@@ -21,6 +21,9 @@ public sealed class LibraryPaths
     public bool UseYuzu { get; set; }
     public bool UseRyujinx { get; set; }
     public bool UseCitron { get; set; }
+    /// <summary>Optional per-emulator overrides in the single library-paths.json document.</summary>
+    public Dictionary<string, EmulatorPathOverrides> EmulatorOverrides { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public string EmulationRoot
     {
@@ -155,6 +158,13 @@ public sealed class LibraryPaths
         HydraRoot = Norm(HydraRoot);
         LutrisRoot = Norm(LutrisRoot);
         OtherGamesRoot = Norm(OtherGamesRoot);
+        EmulatorOverrides ??= new Dictionary<string, EmulatorPathOverrides>(StringComparer.OrdinalIgnoreCase);
+        EmulatorOverrides = EmulatorOverrides
+            .Where(pair => EmulatorPaths.IsKnownEmulator(pair.Key))
+            .ToDictionary(
+                pair => pair.Key.Trim().ToLowerInvariant(),
+                pair => pair.Value?.Normalized() ?? new EmulatorPathOverrides(),
+                StringComparer.OrdinalIgnoreCase);
         if (!UseEden && !UseYuzu && !UseRyujinx && !UseCitron)
             UseEden = true;
     }

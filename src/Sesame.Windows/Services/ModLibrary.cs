@@ -4,6 +4,13 @@ using Sesame.Models;
 
 namespace Sesame.Services;
 
+public enum PackOwnershipKind
+{
+    Unknown,
+    IsolatedDirectory,
+    ExactFiles
+}
+
 public sealed class ModRecord
 {
     public string Key { get; set; } = "";
@@ -16,6 +23,7 @@ public sealed class ModRecord
     public string GameName { get; set; } = "";
     public string System { get; set; } = "";
     public string? TitleId { get; set; }
+    public string? GameId { get; set; }
     public string? FileName { get; set; }
     public string? LocalFile { get; set; }
     public string? RemotePath { get; set; }
@@ -23,6 +31,9 @@ public sealed class ModRecord
     public bool Enabled { get; set; } = true;
     public DateTime? DownloadedAt { get; set; }
     public DateTime? InstalledAt { get; set; }
+    public PackActivationState ActivationState { get; set; } = PackActivationState.Active;
+    public PackOwnershipKind OwnershipKind { get; set; }
+    public List<string> OwnedRemoteFiles { get; set; } = new();
 
     public bool HasLocalFile => !string.IsNullOrWhiteSpace(LocalFile) && File.Exists(LocalFile);
     public bool HasInstall => !string.IsNullOrWhiteSpace(RemotePath);
@@ -120,10 +131,16 @@ public sealed class ModLibrary
             if (hit.Size <= 0)
                 hit.Size = new FileInfo(rec.LocalFile!).Length;
         }
+        if (PlatformId.TryCreate(rec.System, rec.GameId, out var gameId)) hit.GameId = gameId;
         if (rec.HasInstall)
         {
-            hit.SetInstalled(rec.RemotePath!, rec.LocalFile);
-            hit.SetEnabled(rec.Enabled);
+            if (rec.ActivationState == PackActivationState.Staged)
+                hit.SetStaged(rec.RemotePath!, "Staged (not active)", rec.LocalFile);
+            else
+            {
+                hit.SetInstalled(rec.RemotePath!, rec.LocalFile);
+                hit.SetEnabled(rec.Enabled);
+            }
         }
     }
 
@@ -140,6 +157,7 @@ public sealed class ModLibrary
             Author = rec.Author,
             FileName = rec.FileName,
             Platform = rec.System,
+            GameId = PlatformId.TryCreate(rec.System, rec.GameId, out var gameId) ? gameId : null,
             TargetPath = rec.RemotePath
         };
         Apply(hit);
@@ -162,7 +180,10 @@ public sealed class ModLibrary
     }
 
     public ModRecord RecordInstall(PackHit hit, string remotePath, StoreGame game, string? titleId,
-        string? localFile = null, string? folderName = null)
+        string? localFile = null, string? folderName = null,
+        PackActivationState activationState = PackActivationState.Active,
+        PackOwnershipKind ownershipKind = PackOwnershipKind.Unknown,
+        IEnumerable<string>? ownedRemoteFiles = null)
     {
         lock (_gate)
         {
@@ -179,6 +200,17 @@ public sealed class ModLibrary
             rec.Enabled = !SwitchModFolders.IsDisabled(rec.ModFolderName) &&
                           !SwitchModFolders.IsDisabled(Path.GetFileName(remotePath.TrimEnd('/')));
             rec.InstalledAt = DateTime.UtcNow;
+            rec.ActivationState = activationState;
+            rec.OwnershipKind = ownershipKind;
+            if (ownedRemoteFiles is not null)
+            {
+                rec.OwnedRemoteFiles = ownedRemoteFiles
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
+                    .Select(NormalizeRemotePath)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(path => path, StringComparer.Ordinal)
+                    .ToList();
+            }
             SaveLocked();
             return rec;
         }
@@ -195,6 +227,28 @@ public sealed class ModLibrary
             rec.Enabled = enabled;
             SaveLocked();
         }
+    }
+
+    public static PackOwnershipKind EffectiveOwnership(ModRecord? record)
+    {
+        if (record is null) return PackOwnershipKind.Unknown;
+        if (record.OwnershipKind != PackOwnershipKind.Unknown) return record.OwnershipKind;
+
+        // Backward compatibility for an old, individually-owned Switch folder. Never infer
+        // ownership for a title root or for shared disc/N64 roots.
+        if (StoreGame.FoldSystem(record.System) == "switch" &&
+            !string.IsNullOrWhiteSpace(record.TitleId) &&
+            !string.IsNullOrWhiteSpace(record.RemotePath))
+        {
+            var remote = NormalizeRemotePath(record.RemotePath);
+            var leaf = Path.GetFileName(remote);
+            var parentLeaf = Path.GetFileName(DeckClient.Parent(remote));
+            if (!leaf.Equals(record.TitleId, StringComparison.OrdinalIgnoreCase) &&
+                parentLeaf.Equals(record.TitleId, StringComparison.OrdinalIgnoreCase))
+                return PackOwnershipKind.IsolatedDirectory;
+        }
+
+        return PackOwnershipKind.Unknown;
     }
 
     public void Remove(PackHit hit)
@@ -350,6 +404,7 @@ public sealed class ModLibrary
             : game.IsAll ? rec.GameName : game.Name;
         rec.System = !string.IsNullOrWhiteSpace(game.System) ? game.System : hit.Platform;
         rec.TitleId = titleId ?? game.TitleId ?? rec.TitleId;
+        rec.GameId = hit.GameId?.Value ?? game.GameId?.Value ?? rec.GameId;
         rec.FileName = hit.FileName ?? rec.FileName;
         return rec;
     }
@@ -369,6 +424,9 @@ public sealed class ModLibrary
     }
 
     private static string FilePath() => Path.Combine(RootDir(), "mod-library.json");
+
+    private static string NormalizeRemotePath(string path) =>
+        (path ?? "").Trim().Replace('\\', '/').TrimEnd('/');
 
     private static string RootDir()
     {

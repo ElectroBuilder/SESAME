@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private const int TabGames = 3;
     private const int TabOptimize = 4;
     private const int TabStore = 5;
+    private const int TabMiis = 6;
     private readonly AppCatalog _catalog = new();
     private readonly ProfileStore _profiles = new();
     private readonly QuickAccessStore _pins = new();
@@ -78,7 +79,22 @@ public partial class MainWindow : Window
         StorePanel.DeleteRequested += hit => _ = DeletePackAsync(hit);
         StorePanel.ToggleRequested += (hit, enabled) => _ = TogglePackAsync(hit, enabled);
         StorePanel.TargetResolver = PreviewPackPath;
+        MiiPanel.Attach(_client);
+        MiiPanel.StatusChanged += SetStatus;
+        MiiPanel.CanStartOperation = () => !_busy && !_drainingStoreQueue;
+        MiiPanel.BusyChanged += busy =>
+        {
+            HeaderControls.IsEnabled = !busy;
+            WorkspaceGrid.IsEnabled = !busy;
+            TermPanel.IsEnabled = !busy;
+        };
         _client.ShellOutput += text => Dispatcher.BeginInvoke(() => AppendTerminal(text));
+        Closing += (_, e) =>
+        {
+            if (!MiiPanel.IsWorking) return;
+            e.Cancel = true;
+            MessageBox.Show(this, "Wait for the Mii operation to finish before closing SESAME.", "Mii operation");
+        };
         Closed += (_, _) => _client.Dispose();
         Loaded += (_, _) => _ = StartupConnectAsync();
     }
@@ -133,6 +149,7 @@ public partial class MainWindow : Window
         var win = new SettingsWindow(_client) { Owner = this };
         win.ShowDialog();
         OptimizerPanel.OnSettingsClosed(win.KeyChanged, win.LaunchersChanged);
+        BuildQuickAccess();
     }
 
     private bool _terminalVisible = true;
@@ -186,7 +203,7 @@ public partial class MainWindow : Window
     private void BuildQuickAccess()
     {
         QuickTree.Items.Clear();
-        var items = _pins.Combined(_catalog.QuickAccess).ToList();
+        var items = _pins.Combined(_catalog.EffectiveQuickAccess()).ToList();
         foreach (var sys in _library.Systems)
         {
             if (items.Any(p =>
@@ -346,6 +363,7 @@ public partial class MainWindow : Window
         {
             OptimizerPanel.OnConnected();
             AppsPanel.OnConnected();
+            MiiPanel.OnConnected();
             RefreshDashboard();
         }, DispatcherPriority.Background);
 
@@ -490,8 +508,14 @@ public partial class MainWindow : Window
 
     private void Disconnect_Click(object sender, RoutedEventArgs e)
     {
+        if (MiiPanel.IsWorking)
+        {
+            MessageBox.Show(this, "Wait for the Mii operation to finish before disconnecting.", "Mii operation");
+            return;
+        }
         OptimizerPanel.CancelBackgroundScan();
         AppsPanel.Clear();
+        MiiPanel.OnDisconnected();
         _client.Disconnect();
         Files.Clear();
         Games.Clear();
@@ -573,6 +597,11 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (MiiPanel.IsWorking)
+        {
+            e.Handled = true;
+            return;
+        }
         if (Keyboard.FocusedElement is TextBox or PasswordBox) return;
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         var alt = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
@@ -1150,10 +1179,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        PackRoutePlan route;
         string dest;
         try
         {
-            dest = PackDestination(hit);
+            route = PlanPackRoute(hit);
+            if (route.State == PackActivationState.Unsupported)
+                throw new InvalidOperationException(route.Message);
+            dest = route.Destination;
         }
         catch (Exception ex)
         {
@@ -1198,29 +1231,22 @@ public partial class MainWindow : Window
                     }
 
                     Report(72, "Preparing…", true);
-                    var jobs = PlanInstall(hit, file, dest, system, titleId);
+                    var install = PlanInstall(hit, file, route, system, titleId);
+                    var jobs = install.Jobs;
                     if (jobs.Count == 0)
                         throw new InvalidOperationException("No files to install.");
 
-                    var remotes = new List<string>();
-                    foreach (var job in jobs)
-                    {
-                        _client.EnsureDirectory(job.RemoteDir);
-                        if (job.IsDirectory)
-                            _client.UploadContents(job.LocalPath, job.RemoteDir, (pct, msg) =>
-                                Report(72 + pct * 0.28, msg));
-                        else
-                            _client.UploadFile(job.LocalPath, job.RemoteDir, msg => Report(90, msg));
-                        remotes.Add(job.RemoteDir);
-                    }
-
-                    var remote = remotes.Count == 1 ? remotes[0] : dest;
+                    var receipt = UploadPackJobs(hit, install, system,
+                        (pct, msg) => Report(72 + pct * 0.28, msg));
                     var folder = jobs.Count == 1 ? jobs[0].FolderName : null;
                     Dispatcher.Invoke(() =>
                     {
-                        StorePanel.Mods.RecordInstall(hit, remote, storeGame, titleId, file, folder);
-                        hit.SetInstalled(remote, file);
-                        hit.TargetPath = remote;
+                        StorePanel.Mods.RecordInstall(hit, receipt.RemotePath, storeGame, titleId, file, folder,
+                            install.Route.State, receipt.OwnershipKind, receipt.OwnedFiles);
+                        if (install.Route.State == PackActivationState.Staged)
+                            hit.SetStaged(receipt.RemotePath, "Staged (not active): " + install.Route.Message, file);
+                        else hit.SetInstalled(receipt.RemotePath, file);
+                        hit.TargetPath = receipt.RemotePath;
                     });
                 }
                 catch (Exception ex)
@@ -1229,7 +1255,9 @@ public partial class MainWindow : Window
                     throw;
                 }
             });
-            FooterText.Text = $"{hit.Kind} installed in {hit.RemotePath ?? dest}";
+            FooterText.Text = hit.IsInstalled
+                ? $"{hit.Kind} installed in {hit.RemotePath ?? dest}"
+                : $"{hit.Kind} staged (not active) in {hit.RemotePath ?? dest}";
             if (scanAfter)
                 await ScanGamesLibraryAsync(overlay: false);
         }
@@ -1296,8 +1324,15 @@ public partial class MainWindow : Window
                 return;
             }
 
+            PackRoutePlan route;
             string dest;
-            try { dest = PackDestination(hit); }
+            try
+            {
+                route = PlanPackRoute(hit);
+                if (route.State == PackActivationState.Unsupported)
+                    throw new InvalidOperationException(route.Message);
+                dest = route.Destination;
+            }
             catch (Exception ex)
             {
                 hit.SetFailed(ex.Message);
@@ -1315,29 +1350,25 @@ public partial class MainWindow : Window
                     });
 
                 Report(72, "Preparing…", true);
-                var jobs = PlanInstall(hit, file, dest, system, null);
+                var install = PlanInstall(hit, file, route, system, null);
+                var jobs = install.Jobs;
                 if (jobs.Count == 0)
                     throw new InvalidOperationException("No files to install.");
-                var remotes = new List<string>();
-                foreach (var job in jobs)
-                {
-                    _client.EnsureDirectory(job.RemoteDir);
-                    if (job.IsDirectory)
-                        _client.UploadContents(job.LocalPath, job.RemoteDir, (pct, msg) =>
-                            Report(72 + pct * 0.28, msg));
-                    else
-                        _client.UploadFile(job.LocalPath, job.RemoteDir, msg => Report(90, msg));
-                    remotes.Add(job.RemoteDir);
-                }
-                var remote = remotes.Count == 1 ? remotes[0] : dest;
+                var receipt = UploadPackJobs(hit, install, system,
+                    (pct, msg) => Report(72 + pct * 0.28, msg));
                 Dispatcher.Invoke(() =>
                 {
-                    StorePanel.Mods.RecordInstall(hit, remote, storeGame, null, file, null);
-                    hit.SetInstalled(remote, file);
-                    hit.TargetPath = remote;
+                    StorePanel.Mods.RecordInstall(hit, receipt.RemotePath, storeGame, null, file, null,
+                        install.Route.State, receipt.OwnershipKind, receipt.OwnedFiles);
+                    if (install.Route.State == PackActivationState.Staged)
+                        hit.SetStaged(receipt.RemotePath, "Staged (not active): " + install.Route.Message, file);
+                    else hit.SetInstalled(receipt.RemotePath, file);
+                    hit.TargetPath = receipt.RemotePath;
                 });
             });
-            FooterText.Text = $"{hit.Kind} installed in {hit.RemotePath ?? dest}";
+            FooterText.Text = hit.IsInstalled
+                ? $"{hit.Kind} installed in {hit.RemotePath ?? dest}"
+                : $"{hit.Kind} staged (not active) in {hit.RemotePath ?? dest}";
             if (scanAfter)
                 await ScanGamesLibraryAsync(overlay: false);
         }
@@ -1361,8 +1392,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        var record = StorePanel.Mods.Find(hit);
+        var ownership = ModLibrary.EffectiveOwnership(record);
+        if (ownership != PackOwnershipKind.IsolatedDirectory)
+        {
+            MessageBox.Show(this,
+                "This pack cannot be toggled safely because it installs files in a shared emulator folder.",
+                "Store");
+            return;
+        }
+
         try
         {
+            EnsureIsolatedOwnershipExclusive(record!, NormalizeRemote(hit.RemotePath ?? record!.RemotePath ?? ""));
             string? next = null;
             await RunBusy(enabled ? "Mod inschakelen…" : "Mod uitschakelen…", () =>
             {
@@ -1409,7 +1451,16 @@ public partial class MainWindow : Window
             RefreshStoreQueue();
         }
 
-        var remote = hit.IsInstalled;
+        var record = StorePanel.Mods.Find(hit);
+        var remote = hit.IsInstalled || record?.HasInstall == true;
+        var ownership = ModLibrary.EffectiveOwnership(record);
+        if (remote && ownership == PackOwnershipKind.Unknown)
+        {
+            MessageBox.Show(this,
+                "SESAME cannot prove which remote files belong only to this pack. Nothing was deleted. " +
+                "Remove it manually after checking the emulator folder.", "Delete mod");
+            return;
+        }
         var question = remote
             ? $"Delete '{hit.Title}' from the Deck and from the library?"
             : $"Delete the local download of '{hit.Title}'?";
@@ -1430,9 +1481,15 @@ public partial class MainWindow : Window
 
                 await RunBusy("Deleting mod…", () =>
                 {
-                    var path = ResolveInstalledModPath(hit);
-                    if (!string.IsNullOrWhiteSpace(path))
-                        _client.DeletePath(path);
+                    if (ownership == PackOwnershipKind.IsolatedDirectory)
+                    {
+                        DeleteIsolatedDirectory(record ??
+                            throw new InvalidOperationException("The pack ownership record is missing."), hit);
+                        return;
+                    }
+
+                    DeleteExactlyOwnedFiles(record ??
+                        throw new InvalidOperationException("The pack ownership record is missing."));
                 });
             }
 
@@ -1472,34 +1529,218 @@ public partial class MainWindow : Window
         name.Length == 16 && name.StartsWith("01", StringComparison.OrdinalIgnoreCase);
 
     private readonly record struct PackInstallJob(string LocalPath, string RemoteDir, bool IsDirectory, string? FolderName);
+    private sealed record PackInstallPlan(PackRoutePlan Route, List<PackInstallJob> Jobs);
+    private sealed record PackUploadReceipt(string RemotePath, PackOwnershipKind OwnershipKind,
+        IReadOnlyList<string> OwnedFiles);
 
-    private List<PackInstallJob> PlanInstall(PackHit hit, string file, string destRoot, string system, string? titleId)
+    private PackInstallPlan PlanInstall(PackHit hit, string file, PackRoutePlan route, string system, string? titleId)
     {
         if (SwitchModLayout.IsSwitch(system) && hit.Section != "Saves")
         {
             if (string.IsNullOrWhiteSpace(titleId))
                 throw new InvalidOperationException(
                     "Switch mods must live in load/<Title ID>/<modname>. Pick a Switch game with a Title ID.");
-            return SwitchModLayout.Prepare(file, titleId, hit.Title)
+            var jobs = SwitchModLayout.Prepare(file, titleId, hit.Title)
                 .Select(job => new PackInstallJob(
                     job.LocalFolder,
-                    DeckClient.Combine(destRoot, job.FolderName),
+                    DeckClient.Combine(route.Destination, job.FolderName),
                     true,
                     job.FolderName))
                 .ToList();
+            return new PackInstallPlan(route, jobs);
         }
 
         var prepared = PackStore.PrepareUploadFolder(file, unwrapSingleRoot: hit.Section == "Saves");
+        if (DiscPackRouting.IsDiscSystem(system))
+            route = DiscPackRouting.ValidatePreparedLayout(route, prepared, hit.Title);
+        prepared = route.PreparedPayload ?? prepared;
+        var destRoot = route.Destination;
         if (Directory.Exists(prepared))
-            return [new PackInstallJob(prepared, destRoot, true, null)];
-        return [new PackInstallJob(prepared, destRoot, false, null)];
+            return new PackInstallPlan(route, [new PackInstallJob(prepared, destRoot, true, null)]);
+        return new PackInstallPlan(route, [new PackInstallJob(prepared, destRoot, false, null)]);
     }
+
+    private void DeleteIsolatedDirectory(ModRecord record, PackHit hit)
+    {
+        var path = NormalizeRemote(ResolveInstalledModPath(hit) ?? "");
+        if (path.Length == 0 || path == "/")
+            throw new InvalidOperationException("The isolated pack directory is unsafe; nothing was deleted.");
+        EnsureIsolatedOwnershipExclusive(record, path);
+        _client.DeletePath(path);
+    }
+
+    private void EnsureIsolatedOwnershipExclusive(ModRecord record, string path)
+    {
+        if (path.Length == 0 || path == "/")
+            throw new InvalidOperationException("The isolated pack directory is unsafe.");
+        foreach (var other in StorePanel.Mods.Items.Where(other => !ReferenceEquals(other, record)))
+        {
+            var ownership = ModLibrary.EffectiveOwnership(other);
+            if (ownership == PackOwnershipKind.IsolatedDirectory && !string.IsNullOrWhiteSpace(other.RemotePath))
+            {
+                var otherRoot = NormalizeRemote(other.RemotePath!);
+                if (IsSameOrNested(path, otherRoot) || IsSameOrNested(otherRoot, path))
+                    throw new InvalidOperationException("Another pack overlaps this directory; nothing was deleted.");
+            }
+            if (ownership == PackOwnershipKind.ExactFiles &&
+                (other.OwnedRemoteFiles ?? []).Select(NormalizeRemote).Any(file => IsSameOrNested(file, path)))
+                throw new InvalidOperationException("Another pack owns files in this directory; nothing was deleted.");
+        }
+    }
+
+    private void DeleteExactlyOwnedFiles(ModRecord record)
+    {
+        var files = (record.OwnedRemoteFiles ?? []).Select(NormalizeRemote)
+            .Where(path => path.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+        if (files.Count == 0)
+            throw new InvalidOperationException("No exact remote file manifest is available; nothing was deleted.");
+        var root = NormalizeRemote(record.RemotePath ?? "");
+        if (root.Length == 0 || root == "/")
+            throw new InvalidOperationException("The recorded ownership root is unsafe; nothing was deleted.");
+        if (files.Any(path => path == "/" || !path.StartsWith('/') ||
+                              (!path.Equals(root, StringComparison.Ordinal) && !IsSameOrNested(path, root))))
+            throw new InvalidOperationException("The remote file manifest escapes its ownership root; nothing was deleted.");
+
+        var shared = StorePanel.Mods.Items.Where(other => !ReferenceEquals(other, record))
+            .Where(other => ModLibrary.EffectiveOwnership(other) == PackOwnershipKind.ExactFiles)
+            .SelectMany(other => other.OwnedRemoteFiles ?? [])
+            .Select(NormalizeRemote).ToHashSet(StringComparer.Ordinal);
+        if (files.Any(shared.Contains))
+            throw new InvalidOperationException("Another pack also claims one of these files; nothing was deleted.");
+
+        foreach (var path in files.OrderByDescending(path => path.Length))
+            _client.DeletePath(path, directory: false);
+    }
+
+    private PackUploadReceipt UploadPackJobs(PackHit hit, PackInstallPlan install, string system,
+        Action<double, string> progress)
+    {
+        foreach (var job in install.Jobs)
+            ValidateRemoteInstallRoot(job.RemoteDir);
+        var isolated = install.Jobs.Count == 1 &&
+                       (SwitchModLayout.IsSwitch(system) || install.Route.State == PackActivationState.Staged ||
+                        (StoreGame.FoldSystem(system) is "wii" or "gc" &&
+                         install.Route.State == PackActivationState.Active &&
+                         install.Route.Capability == DiscPackCapability.Mod));
+        if (isolated)
+        {
+            var job = install.Jobs[0];
+            PrepareIsolatedDestination(hit, job.RemoteDir);
+            _client.EnsureDirectory(job.RemoteDir);
+            if (job.IsDirectory)
+                _client.UploadContents(job.LocalPath, job.RemoteDir, progress);
+            else
+                _client.UploadFile(job.LocalPath, job.RemoteDir, msg => progress(90, msg));
+            return new PackUploadReceipt(job.RemoteDir, PackOwnershipKind.IsolatedDirectory, []);
+        }
+
+        var uploads = PackOwnershipPlanner.Build(install.Jobs
+            .Select(job => new PackPayloadSource(job.LocalPath, job.RemoteDir, job.IsDirectory)).ToList());
+        if (uploads.Count == 0)
+            throw new InvalidOperationException("The pack contains no files to install.");
+
+        var current = StorePanel.Mods.Find(hit);
+        var currentOwned = ModLibrary.EffectiveOwnership(current) == PackOwnershipKind.ExactFiles
+            ? (current!.OwnedRemoteFiles ?? []).Select(NormalizeRemote).ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+        var otherOwned = StorePanel.Mods.Items
+            .Where(record => !ReferenceEquals(record, current) &&
+                             ModLibrary.EffectiveOwnership(record) == PackOwnershipKind.ExactFiles)
+            .SelectMany(record => record.OwnedRemoteFiles ?? [])
+            .Select(NormalizeRemote)
+            .ToHashSet(StringComparer.Ordinal);
+        var otherIsolatedRoots = StorePanel.Mods.Items
+            .Where(record => !ReferenceEquals(record, current) &&
+                             ModLibrary.EffectiveOwnership(record) == PackOwnershipKind.IsolatedDirectory &&
+                             !string.IsNullOrWhiteSpace(record.RemotePath))
+            .Select(record => NormalizeRemote(record.RemotePath!))
+            .ToList();
+        var newlyCreated = new List<string>();
+        try
+        {
+            for (var i = 0; i < uploads.Count; i++)
+            {
+                var upload = uploads[i];
+                if (otherOwned.Contains(upload.RemotePath))
+                    throw new IOException("Another SESAME pack owns this target file: " + upload.RemotePath);
+                if (otherIsolatedRoots.Any(root => IsSameOrNested(upload.RemotePath, root)))
+                    throw new IOException("Another SESAME pack owns the target directory: " + upload.RemotePath);
+                _client.EnsureDirectory(upload.RemoteDir);
+                progress(i * 100.0 / uploads.Count, "Installing " + upload.RemoteName);
+                if (currentOwned.Contains(upload.RemotePath))
+                    _client.UploadFile(upload.LocalPath, upload.RemoteDir, null, upload.RemoteName);
+                else
+                {
+                    _client.UploadFileNew(upload.LocalPath, upload.RemoteDir, null, upload.RemoteName);
+                    newlyCreated.Add(upload.RemotePath);
+                }
+            }
+        }
+        catch
+        {
+            foreach (var path in newlyCreated.AsEnumerable().Reverse())
+            {
+                try { _client.DeletePath(path, directory: false); } catch { /* best-effort rollback */ }
+            }
+            throw;
+        }
+
+        currentOwned.UnionWith(uploads.Select(upload => upload.RemotePath));
+        progress(100, "Installed");
+        return new PackUploadReceipt(install.Route.Destination, PackOwnershipKind.ExactFiles,
+            currentOwned.OrderBy(path => path, StringComparer.Ordinal).ToList());
+    }
+
+    private void PrepareIsolatedDestination(PackHit hit, string destination)
+    {
+        var normalized = NormalizeRemote(destination);
+        var current = StorePanel.Mods.Find(hit);
+        var ownsCurrent = current is not null &&
+                          ModLibrary.EffectiveOwnership(current) == PackOwnershipKind.IsolatedDirectory &&
+                          NormalizeRemote(current.RemotePath ?? "") == normalized;
+        foreach (var record in StorePanel.Mods.Items.Where(record => !ReferenceEquals(record, current)))
+        {
+            var ownership = ModLibrary.EffectiveOwnership(record);
+            if (ownership == PackOwnershipKind.IsolatedDirectory && !string.IsNullOrWhiteSpace(record.RemotePath))
+            {
+                var other = NormalizeRemote(record.RemotePath);
+                if (IsSameOrNested(normalized, other) || IsSameOrNested(other, normalized))
+                    throw new IOException("Another SESAME pack owns this destination: " + destination);
+            }
+            if (ownership == PackOwnershipKind.ExactFiles &&
+                (record.OwnedRemoteFiles ?? []).Select(NormalizeRemote)
+                .Any(path => IsSameOrNested(path, normalized)))
+                throw new IOException("Another SESAME pack owns files inside this destination: " + destination);
+        }
+
+        if (!_client.Exists(destination)) return;
+        if (!ownsCurrent)
+            throw new IOException("The destination already exists and ownership cannot be proven: " + destination);
+        _client.DeletePath(destination);
+    }
+
+    private static bool IsSameOrNested(string candidate, string root) =>
+        candidate.Equals(root, StringComparison.Ordinal) ||
+        candidate.StartsWith(root.TrimEnd('/') + "/", StringComparison.Ordinal);
+
+    private static void ValidateRemoteInstallRoot(string path)
+    {
+        var normalized = NormalizeRemote(path);
+        if (normalized.Length == 0 || normalized == "/" || !normalized.StartsWith('/') ||
+            normalized.Split('/', StringSplitOptions.RemoveEmptyEntries).Any(part => part == ".."))
+            throw new InvalidOperationException("The configured emulator destination is not a safe absolute path: " + path);
+    }
+
+    private static string NormalizeRemote(string path) =>
+        (path ?? "").Trim().Replace('\\', '/').TrimEnd('/');
 
     private string? PreviewPackPath(PackHit hit)
     {
         try
         {
-            var dest = PackDestination(hit);
+            var route = PlanPackRoute(hit);
+            if (route.State == PackActivationState.Unsupported) return null;
+            var dest = route.Destination;
             var storeGame = StorePanel.SelectedStoreGame;
             var system = ResolveSystem(storeGame, hit);
             if (string.IsNullOrEmpty(system))
@@ -1587,7 +1828,8 @@ public partial class MainWindow : Window
                         }));
                 Dispatcher.Invoke(() =>
                 {
-                    StorePanel.Mods.RecordInstall(hit, remote, storeGame, null, patch, null);
+                    StorePanel.Mods.RecordInstall(hit, remote, storeGame, null, patch, null,
+                        PackActivationState.Active, PackOwnershipKind.ExactFiles, [remote]);
                     hit.SetInstalled(remote, patch);
                     hit.TargetPath = remote;
                     FooterText.Text = "ROM hack placed as " + Path.GetFileName(remote);
@@ -1601,7 +1843,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private string PackDestination(PackHit hit)
+    private PackRoutePlan PlanPackRoute(PackHit hit)
+    {
+        var storeGame = StorePanel.SelectedStoreGame;
+        var game = MatchLibraryGame(storeGame, hit);
+        var system = ResolveSystem(storeGame, hit);
+        if (!hit.IsRomHack && DiscPackRouting.IsDiscSystem(system))
+        {
+            var gameId = DiscPackRouting.ResolveGameId(system, game, storeGame, hit, _catalog);
+            hit.GameId = gameId;
+            return DiscPackRouting.Plan(hit, system, gameId);
+        }
+        return new PackRoutePlan(StoreGame.FoldSystem(system), LegacyPackDestination(hit),
+            PackActivationState.Active, "Pack will be installed in an active emulator path.");
+    }
+
+    private string LegacyPackDestination(PackHit hit)
     {
         var storeGame = StorePanel.SelectedStoreGame;
         var game = MatchLibraryGame(storeGame, hit);
@@ -1632,7 +1889,7 @@ public partial class MainWindow : Window
                 return path;
             var key = PackStore.FoldRomFolderKey(system);
             if (_catalog.TextureRoots.TryGetValue(key, out var root) && !string.IsNullOrEmpty(root))
-                return root;
+                return AppCatalog.RelocateKnownPath(root);
             if (PackStore.IsCartRomSystem(system))
                 throw new InvalidOperationException(
                     "No mod folder known for " + system +
@@ -1752,6 +2009,11 @@ public partial class MainWindow : Window
 
     private async void Window_Drop(object sender, DragEventArgs e)
     {
+        if (MiiPanel.IsWorking)
+        {
+            e.Handled = true;
+            return;
+        }
         e.Handled = true;
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         var paths = ((string[])e.Data.GetData(DataFormats.FileDrop)!)
@@ -1816,18 +2078,27 @@ public partial class MainWindow : Window
 
     private string RouteDestination(string localPath, string fallbackDir)
     {
-        if (GameList.SelectedItem is GameEntry { TitleId: not null } game && MainTabs.SelectedIndex == TabGames)
-            return game.ModPath ?? DeckClient.Combine(_catalog.EdenMods, game.TitleId);
-
-        var ext = Path.GetExtension(localPath);
+        var ext = Path.GetExtension(localPath).ToLowerInvariant();
+        if (GameList.SelectedItem is GameEntry game && MainTabs.SelectedIndex == TabGames)
+        {
+            if (SwitchModLayout.IsSwitch(game.System) && !string.IsNullOrWhiteSpace(game.TitleId))
+                return game.ModPath ?? DeckClient.Combine(_catalog.EdenMods, game.TitleId);
+            if (IsAmbiguousDiscImage(ext) && DiscPackRouting.IsDiscSystem(game.System))
+                return _catalog.RomFolderFor(game.System) ?? fallbackDir;
+        }
         if (!string.IsNullOrEmpty(ext) && _catalog.InstallRoutes.TryGetValue(ext, out var routed))
-            return routed;
+            return AppCatalog.RelocateKnownPath(routed);
 
         if (Directory.Exists(localPath) && Path.GetFileName(localPath).Contains("SUPER MARIO 64", StringComparison.OrdinalIgnoreCase))
-            return DeckClient.Combine("/home/deck/Emulation/bios/Mupen64plus/hires_texture", "SUPER MARIO 64");
+            return DeckClient.Combine(
+                DeckClient.Combine(LibraryPaths.Current.EmulationRoot, "bios/Mupen64plus/hires_texture"),
+                "SUPER MARIO 64");
 
         return fallbackDir;
     }
+
+    private static bool IsAmbiguousDiscImage(string extension) =>
+        extension is ".iso" or ".bin" or ".img" or ".chd" or ".rvz" or ".ciso";
 
     private void TermBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {

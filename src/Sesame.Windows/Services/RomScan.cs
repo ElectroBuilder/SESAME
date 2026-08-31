@@ -176,27 +176,14 @@ public static class RomScan
 
     private static IEnumerable<string> RomRoots(AppCatalog catalog)
     {
-        var roots = new HashSet<string>(StringComparer.Ordinal)
-        {
-            LibraryPaths.Current.RomsRoot,
-            LaunchConfigStore.Current.RomsRoot,
-            "/home/deck/Emulation/roms"
-        };
-        foreach (var (key, folder) in catalog.RomFolders)
-        {
-            if (string.IsNullOrWhiteSpace(folder)) continue;
-            // Hydra (and Lutris/Other) are PC game installs, not ROMs. Walking them
-            // recursively freezes Scan once ~/Hydra has real Windows game trees.
-            if (IsPcGameLibrary(key, folder)) continue;
-            var parent = DeckClient.Parent(folder);
-            if (!string.IsNullOrEmpty(parent) &&
-                Path.GetFileName(parent.TrimEnd('/')).Equals("roms", StringComparison.OrdinalIgnoreCase))
-                roots.Add(parent);
-            else
-                roots.Add(folder);
-        }
-        return roots.Where(r => !string.IsNullOrWhiteSpace(r) && !IsPcGameLibrary("", r));
+        // LibraryPaths.Load performs the one-time LaunchConfig migration. Once loaded, only the
+        // selected root is authoritative; silently scanning old defaults makes Paths misleading.
+        return new[] { LibraryPaths.Current.RomsRoot }
+            .Where(r => !string.IsNullOrWhiteSpace(r) && !IsPcGameLibrary("", r));
     }
+
+    internal static IReadOnlyList<string> ConfiguredRootsForTests(AppCatalog catalog) =>
+        RomRoots(catalog).ToList();
 
     private static bool IsPcGameLibrary(string key, string path)
     {

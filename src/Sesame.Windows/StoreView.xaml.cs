@@ -160,8 +160,11 @@ public partial class StoreView : UserControl
     private void Game_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded) return;
-        _ = LoadGameInfoAsync(GameBox.SelectedItem as StoreGame ?? StoreGame.All);
-        if (GameBox.SelectedItem is StoreGame { IsAll: false })
+        var game = GameBox.SelectedItem as StoreGame ?? StoreGame.All;
+        _ = LoadGameInfoAsync(game);
+        var safety = DiscInstallHint(game);
+        if (safety.Length > 0) HintText.Text = safety;
+        if (!game.IsAll)
             _ = SearchAsync(forceRefresh: false);
     }
 
@@ -337,8 +340,8 @@ public partial class StoreView : UserControl
         MergeLibraryHits(game);
         ApplyLocalState();
         StoreResultCache.Save(cacheKey, complete, false, game.IdentityText);
-        HintText.Text = BuildSearchStatus(_hits.Count, game.IdentityText, previous, complete, cached is not null,
-            _sort.Label);
+        HintText.Text = AppendDiscHint(
+            BuildSearchStatus(_hits.Count, game, previous, complete, cached is not null, _sort.Label), game);
         if (_hits.Count > 0 && ResultList.SelectedIndex < 0)
             ResultList.SelectedIndex = 0;
         else if (_hits.Count == 0)
@@ -346,9 +349,10 @@ public partial class StoreView : UserControl
         _ = PrefetchDetailsAsync(complete, cacheKey, game, false, ct);
     }
 
-    private static string BuildSearchStatus(int count, string identity, IReadOnlyList<PackHit> previous,
+    private static string BuildSearchStatus(int count, StoreGame game, IReadOnlyList<PackHit> previous,
         IReadOnlyList<PackHit> next, bool hadCache, string sortLabel)
     {
+        var identity = game.IdentityText;
         if (count == 0)
             return $"No results for {identity}.";
         if (!hadCache || previous.Count == 0)
@@ -360,6 +364,17 @@ public partial class StoreView : UserControl
         if (updated > 0 && added == 0 && removed == 0)
             return $"{count} results · {updated} update{(updated == 1 ? "" : "s")} found · {sortLabel}";
         return $"{count} resultaten · bijgewerkt (+{added} / ~{updated} / -{removed}) · {sortLabel}";
+    }
+
+    private static string DiscInstallHint(StoreGame game) =>
+        DiscPackRouting.IsDiscSystem(game.System)
+            ? "Close the emulator before install. Unknown IDs/layouts are staged (not active); saves require a format-specific importer."
+            : "";
+
+    private static string AppendDiscHint(string status, StoreGame game)
+    {
+        var hint = DiscInstallHint(game);
+        return hint.Length == 0 ? status : status + " · " + hint;
     }
 
     private async Task LoadGameInfoAsync(StoreGame game)

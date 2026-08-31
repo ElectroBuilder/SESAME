@@ -157,7 +157,7 @@ public partial class ShellWindow : Window
 
     private void BuildQuickAccess()
     {
-        QuickList.ItemsSource = _pins.Combined(_session.Catalog.QuickAccess).ToList();
+        QuickList.ItemsSource = _pins.Combined(_session.Catalog.EffectiveQuickAccess()).ToList();
     }
 
     private void Quick_Changed(object? sender, SelectionChangedEventArgs e)
@@ -322,6 +322,7 @@ public partial class ShellWindow : Window
         var win = new SettingsWindow();
         await win.ShowDialog(this);
         ArtPanel.OnConnected();
+        BuildQuickAccess();
     }
 
     private void PinCurrent_Click(object? sender, RoutedEventArgs e)
