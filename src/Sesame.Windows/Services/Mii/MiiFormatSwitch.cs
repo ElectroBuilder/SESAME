@@ -93,6 +93,22 @@ public sealed class MiiFormatSwitch : IMiiFormat
         return database.AsSpan(RecordsOffset + slot * RecordSize, RecordSize).ToArray();
     }
 
+    public byte[] UpdateName(byte[] database, int slot, string name)
+    {
+        var validation = Validate(database);
+        if (!validation.IsValid) throw new InvalidDataException(validation.Error);
+        if ((uint)slot >= database[CountOffset])
+            throw new ArgumentOutOfRangeException(nameof(slot));
+        var result = (byte[])database.Clone();
+        var record = result.AsSpan(RecordsOffset + slot * RecordSize, RecordSize);
+        MiiText.WriteFixed(record.Slice(0x1C, 20), name, bigEndian: false);
+        MiiCrc16.WriteBigEndian(record.Slice(0x40, 2), MiiCrc16.Compute(record.Slice(0, 0x40)));
+        WriteDatabaseChecksum(result);
+        var edited = Validate(result);
+        if (!edited.IsValid) throw new InvalidDataException("Edited Eden Mii failed validation: " + edited.Error);
+        return result;
+    }
+
     public byte[] CreateBasicRecord(string name, byte[]? identity = null)
     {
         var uuid = identity is null ? RandomNumberGenerator.GetBytes(16) : (byte[])identity.Clone();

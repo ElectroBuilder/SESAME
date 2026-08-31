@@ -12,7 +12,9 @@ public interface IMiiNandTransport
     bool IsConnected { get; }
     string Host { get; }
     string HostId { get; }
+    string Home { get; }
     bool Exists(string path);
+    long FileLength(string path);
     byte[] ReadBytes(string path);
     void WriteNew(string path, byte[] data);
     void DeleteFile(string path);
@@ -25,8 +27,10 @@ public sealed class DeckMiiNandTransport(DeckClient client) : IMiiNandTransport
     public bool IsConnected => client.IsConnected;
     public string Host => client.ActiveProfile?.Host ?? "unknown";
     public string HostId => client.ActiveProfile?.Id ?? "unknown";
+    public string Home => client.Home;
 
     public bool Exists(string path) => client.Exists(path);
+    public long FileLength(string path) => client.FileLength(path);
     public byte[] ReadBytes(string path) => client.ReadBytes(path);
 
     public void WriteNew(string path, byte[] data)
@@ -63,7 +67,8 @@ public sealed class DeckMiiNandTransport(DeckClient client) : IMiiNandTransport
     }
 }
 
-public sealed record MiiOperationSnapshot(MiiTargetKind Kind, string TargetPath, string HostId, string Host)
+public sealed record MiiOperationSnapshot(MiiTargetKind Kind, string TargetPath, string HostId, string Host,
+    string PathStatus = "", bool PathApproved = true)
 {
     public static MiiOperationSnapshot Capture(MiiTargetKind kind, string targetPath, IMiiNandTransport transport) =>
         new(kind, targetPath, transport.HostId, transport.Host);
@@ -135,11 +140,12 @@ public sealed class MiiNandStore
         {
             try
             {
-                var manifest = JsonSerializer.Deserialize<MiiBackupManifest>(File.ReadAllText(manifestPath), Json);
-                if (manifest is null || manifest.TargetKind != target.Kind ||
-                    !string.Equals(manifest.HostId, target.HostId, StringComparison.Ordinal) ||
-                    !string.Equals(manifest.TargetPath, target.TargetPath, StringComparison.Ordinal)) continue;
-                result.Add(new MiiBackup(Path.GetDirectoryName(manifestPath)!, manifest));
+                var directory = Path.GetDirectoryName(manifestPath)!;
+                if (!IsBackupDirectory(directory)) continue;
+                var manifest = ReadManifest(manifestPath);
+                if (manifest is null || !IsSaneManifest(manifest) || !MatchesTarget(manifest, target) ||
+                    !HasMatchingBackupContent(directory, manifest)) continue;
+                result.Add(new MiiBackup(directory, manifest));
             }
             catch { /* an unreadable manifest is never offered for restore */ }
         }
@@ -264,16 +270,17 @@ public sealed class MiiNandStore
         bool allowUnavailableProcessCheck)
     {
         EnsureSnapshot(target);
-        ValidateBackupBinding(target, backup);
-        var file = Path.Combine(backup.Directory, backup.Manifest.BackupFile);
+        var verifiedBackup = LoadVerifiedBackup(target, backup);
+        var file = Path.Combine(verifiedBackup.Directory, verifiedBackup.Manifest.BackupFile);
         var bytes = File.ReadAllBytes(file);
-        if (!FixedHashEquals(Sha(bytes), backup.Manifest.BackupSha256))
+        if (bytes.LongLength != verifiedBackup.Manifest.Size ||
+            !FixedHashEquals(Sha(bytes), verifiedBackup.Manifest.BackupSha256))
             throw new InvalidDataException("Backup hash verification failed; restore was not started.");
         EnsureValid(format, bytes, "Backup format validation failed; restore was not started.");
         var result = ReplaceTransactional(target, format, bytes, expectedSourceSha256: null,
-            allowMissingSource: true, allowUnavailableProcessCheck, recoveryBackupDirectory: backup.Directory);
+            allowMissingSource: true, allowUnavailableProcessCheck, recoveryBackupDirectory: verifiedBackup.Directory);
         Audit("restore-source", target, "", result.PostWriteSha256,
-            localBackup: null, remoteBackup: null, restoreSource: backup);
+            localBackup: null, remoteBackup: null, restoreSource: verifiedBackup);
         return result;
     }
 
@@ -328,8 +335,8 @@ public sealed class MiiNandStore
         try { verifiedManifest = JsonSerializer.Deserialize<MiiBackupManifest>(verifiedManifestBytes, Json); }
         catch (JsonException) { /* handled by the common fail-closed check */ }
         if (!FixedHashEquals(Sha(verifiedManifestBytes), manifestHash) || verifiedManifest is null ||
-            verifiedManifest.BackupSha256 != sourceHash ||
-            verifiedManifest.HostId != target.HostId || verifiedManifest.TargetPath != target.TargetPath)
+            !manifest.Equals(verifiedManifest) || !IsSaneManifest(verifiedManifest) ||
+            !MatchesTarget(verifiedManifest, target))
             throw new IOException("Local backup manifest reread verification failed; live NAND was not changed.");
         AppDataPaths.RestrictFile(manifestPath);
         return new MiiBackup(dir, manifest);
@@ -441,6 +448,8 @@ public sealed class MiiNandStore
             !string.Equals(target.Host, _transport.Host, StringComparison.Ordinal))
             throw NotCommitted("The connected host changed after the operation target was captured.");
         if (string.IsNullOrWhiteSpace(target.TargetPath)) throw new ArgumentException("Target path is required.");
+        if (!target.PathApproved)
+            throw NotCommitted("The Mii database path is ambiguous or unverified; no operation was started.");
     }
 
     private void EnsureConnected()
@@ -448,13 +457,78 @@ public sealed class MiiNandStore
         if (!_transport.IsConnected) throw NotCommitted("No Steam Deck session is connected.");
     }
 
-    private static void ValidateBackupBinding(MiiOperationSnapshot target, MiiBackup backup)
+    private MiiBackup LoadVerifiedBackup(MiiOperationSnapshot target, MiiBackup backup)
     {
-        var manifest = backup.Manifest;
-        if (manifest.TargetKind != target.Kind ||
-            !string.Equals(manifest.HostId, target.HostId, StringComparison.Ordinal) ||
-            !string.Equals(manifest.TargetPath, target.TargetPath, StringComparison.Ordinal))
+        if (!IsBackupDirectory(backup.Directory))
+            throw new InvalidDataException("Backup is outside Sesame's protected Mii backup store.");
+        var manifestPath = Path.Combine(backup.Directory, "manifest.json");
+        var manifest = ReadManifest(manifestPath);
+        if (manifest is null || !manifest.Equals(backup.Manifest) || !IsSaneManifest(manifest) ||
+            !MatchesTarget(manifest, target))
             throw new InvalidDataException("Backup belongs to a different host, target, or path.");
+        return new MiiBackup(backup.Directory, manifest);
+    }
+
+    private static MiiBackupManifest? ReadManifest(string manifestPath)
+    {
+        try { return JsonSerializer.Deserialize<MiiBackupManifest>(File.ReadAllText(manifestPath), Json); }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+        catch (JsonException) { return null; }
+    }
+
+    private static bool MatchesTarget(MiiBackupManifest manifest, MiiOperationSnapshot target) =>
+        manifest.TargetKind == target.Kind &&
+        string.Equals(manifest.HostId, target.HostId, StringComparison.Ordinal) &&
+        string.Equals(manifest.TargetPath, target.TargetPath, StringComparison.Ordinal);
+
+    private static bool IsSaneManifest(MiiBackupManifest manifest) =>
+        manifest.HadLiveSource && manifest.Size >= 0 &&
+        string.Equals(manifest.BackupFile, "database.bin", StringComparison.Ordinal) &&
+        IsSha256(manifest.BackupSha256) &&
+        IsSha256(manifest.PreWriteSha256) &&
+        IsSha256(manifest.PostWriteSha256) &&
+        !string.IsNullOrWhiteSpace(manifest.HostId) &&
+        !string.IsNullOrWhiteSpace(manifest.TargetPath);
+
+    private static bool HasMatchingBackupContent(string directory, MiiBackupManifest manifest)
+    {
+        try
+        {
+            var file = Path.Combine(directory, manifest.BackupFile);
+            if (!File.Exists(file) || new FileInfo(file).Length != manifest.Size) return false;
+            return FixedHashEquals(Sha(File.ReadAllBytes(file)), manifest.BackupSha256);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private bool IsBackupDirectory(string directory)
+    {
+        try
+        {
+            var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_backupRoot));
+            var candidate = Path.GetFullPath(directory);
+            var relative = Path.GetRelativePath(root, candidate);
+            return !string.IsNullOrEmpty(relative) &&
+                   !Path.IsPathRooted(relative) &&
+                   !string.Equals(relative, "..", StringComparison.Ordinal) &&
+                   !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+                   !relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsSha256(string value)
+    {
+        if (value.Length != 64) return false;
+        try { return Convert.FromHexString(value).Length == 32; }
+        catch (FormatException) { return false; }
     }
 
     private static void EnsureValid(IMiiFormat format, byte[] bytes, string message)

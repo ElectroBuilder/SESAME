@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 — 2026-08-31
+
+- Mii editor: detect the known Dolphin and Eden database locations, including EmuDeck and Flatpak layouts, and let users choose between multiple verified databases.
+- Mii editor: load existing records, edit names in an offline draft, create named basic Miis, import/export exact records and export the complete database. A valid empty Eden database is now clearly reported as empty instead of missing.
+- Mii Push: explicit experimental per-session opt-in for the exact host/path, with process checks, verified local/remote backups, hash checks, atomic replacement and restore support. Permanent emulator write gates remain off until real Dolphin/Eden validation.
+- Mii safety: tampered or escaped backups and ambiguous paths fail closed before any remote mutation.
+
 ## 0.7.0 — 2026-08-31
 
 - Paths: one shared, editable emulator-path configuration on Windows and Steam Deck for Dolphin, DuckStation, PCSX2 and existing Switch libraries; custom ROM roots now drive scan, Quick Access and known install routes.

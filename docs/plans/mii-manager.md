@@ -31,10 +31,11 @@ Backups are local and remote, reread/hash verified, and bound in their manifest/
 - Permit missing-target restore only when the parent exists; do not invent a pre-backup.
 - Freeze the UI operation snapshot and block disconnect during work.
 
-## M2 — feature-gated Push scaffolding
+## M2 — feature-gated editor and Push
 
-- Keep Import+Push and New basic+Push disabled while the per-target manual gate is false.
-- Retain transaction implementation and synthetic fault-injection tests for a future acknowledged validation run.
+- Allow offline draft editing: rename existing records, import exact records, create a named basic record and export the exact draft/database.
+- Keep the permanent per-target manual write gate false, but expose an explicit per-session acknowledgement for experimental Push. The acknowledgement is bound to the exact host, target kind and resolved path and is never inferred from parser tests.
+- Retain backup-first transactional replacement and synthetic fault-injection tests; a manual emulator validation campaign is still required before changing the permanent gate.
 - Never infer Wii Sports links or rewrite unrelated save/profile files.
 
 See `docs/mii-format-implementation.md` for the implemented capability matrix and transaction invariants.

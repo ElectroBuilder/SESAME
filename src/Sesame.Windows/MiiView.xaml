@@ -29,6 +29,9 @@
                 <TextBlock x:Name="IntegrityText" Margin="0,4,0,0" TextWrapping="Wrap"/>
                 <TextBlock x:Name="PathText" Margin="0,4,0,0" Foreground="{DynamicResource Muted}"
                            TextWrapping="Wrap"/>
+                <ComboBox x:Name="DatabasePathBox" Margin="0,7,0,0" DisplayMemberPath="Path"
+                          SelectionChanged="DatabasePathBox_SelectionChanged" Visibility="Collapsed"
+                          ToolTip="Choose the emulator database SESAME may read and, after opt-in, replace."/>
             </StackPanel>
         </Border>
 
@@ -43,13 +46,23 @@
         </ListView>
 
         <DockPanel Grid.Row="3" Margin="0,10,0,0">
-            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+            <WrapPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <TextBox x:Name="NameBox" Width="150" Margin="0,0,4,0" MaxLength="10"
+                         ToolTip="Select a Mii, edit its name here and save it to the draft."/>
+                <Button x:Name="RenameBtn" Content="Rename in draft" Click="Rename_Click"/>
                 <Button x:Name="ExportBtn" Content="Export exact record…" Click="Export_Click"/>
-                <Button x:Name="ImportBtn" Content="Import + Push…" IsEnabled="False" Click="Import_Click"
-                        ToolTip="Disabled until this target passes explicit manual emulator write validation."/>
-                <Button x:Name="BasicBtn" Content="New basic + Push…" IsEnabled="False" Click="Basic_Click"
-                        ToolTip="Disabled until this target passes explicit manual emulator write validation."/>
-            </StackPanel>
+                <Button x:Name="ExportDatabaseBtn" Content="Export draft/database…" Click="ExportDatabase_Click"/>
+                <Button x:Name="ImportBtn" Content="Import into draft…" IsEnabled="False" Click="Import_Click"
+                        ToolTip="Adds an exact .mii/.miigx record to the offline draft; live NAND is unchanged."/>
+                <Button x:Name="BasicBtn" Content="New basic in draft…" IsEnabled="False" Click="Basic_Click"
+                        ToolTip="Creates a named basic Mii in the offline draft; live NAND is unchanged."/>
+                <Button x:Name="DiscardBtn" Content="Discard draft" IsEnabled="False" Click="Discard_Click"/>
+                <CheckBox x:Name="ExperimentalPushBox" Content="Enable experimental Push" Checked="ExperimentalPushBox_Changed" Unchecked="ExperimentalPushBox_Changed"
+                          VerticalAlignment="Center" Margin="8,0,4,0"
+                          ToolTip="Requires an explicit acknowledgement. SESAME backs up the live database before replacing it."/>
+                <Button x:Name="PushBtn" Content="Push draft…" IsEnabled="False" Click="Push_Click"
+                        ToolTip="Experimental: validates, backs up and atomically replaces the selected emulator database."/>
+            </WrapPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                 <ComboBox x:Name="BackupBox" Width="420" DisplayMemberPath="Manifest.TimestampUtc"
                           SelectionChanged="BackupBox_SelectionChanged"/>

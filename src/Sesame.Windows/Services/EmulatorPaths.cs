@@ -6,6 +6,7 @@ namespace Sesame.Services;
 public sealed class EmulatorPathOverrides
 {
     public string? UserRoot { get; set; }
+    public string? NandRoot { get; set; }
     public string? ModsRoot { get; set; }
     public string? TexturesRoot { get; set; }
     public string? SavesRoot { get; set; }
@@ -13,6 +14,7 @@ public sealed class EmulatorPathOverrides
     internal EmulatorPathOverrides Normalized() => new()
     {
         UserRoot = EmulatorPaths.NormalizeOverride(UserRoot),
+        NandRoot = EmulatorPaths.NormalizeOverride(NandRoot),
         ModsRoot = EmulatorPaths.NormalizeOverride(ModsRoot),
         TexturesRoot = EmulatorPaths.NormalizeOverride(TexturesRoot),
         SavesRoot = EmulatorPaths.NormalizeOverride(SavesRoot)

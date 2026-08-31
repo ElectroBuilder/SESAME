@@ -6,11 +6,11 @@ This implementation is deliberately split between format verification and NAND t
 
 | Target | Read/list/export | Local backup | Verified restore | Import/new Push |
 |---|---:|---:|---:|---:|
-| Dolphin Wii (`RFL_DB.dat`) | Read-only verified | Enabled for a valid live DB | Enabled for a host/path-bound valid backup | Disabled |
-| Eden (`MiiDatabase.dat`) | Read-only verified | Enabled for a valid live DB | Enabled for a host/path-bound valid backup | Disabled |
+| Dolphin Wii (`RFL_DB.dat`) | Read-only verified | Enabled for a valid live DB | Enabled for a host/path-bound valid backup | Experimental opt-in, backup-first |
+| Eden (`MiiDatabase.dat`) | Read-only verified | Enabled for a valid live DB | Enabled for a host/path-bound valid backup | Experimental opt-in, backup-first |
 | Eden CharInfo/NFIF (88 bytes) | Unsupported | Unsupported | Unsupported | Unsupported |
 
-`WriteGateVerified` and the service write gates remain `false`. Synthetic CRC and mutation tests do not prove that an emulator will accept a write. Enabling Push requires a separate, explicitly acknowledged manual validation campaign for each target.
+`WriteGateVerified` and the service write gates remain `false`. Synthetic CRC and mutation tests do not prove that an emulator will accept a write. The editor can now create a draft, rename records, import exact records and export databases. Push is available only after an explicit per-session acknowledgement for the exact host/path; it remains experimental until a separate manual validation campaign for each target.
 
 ## Format invariants encoded in tests
 

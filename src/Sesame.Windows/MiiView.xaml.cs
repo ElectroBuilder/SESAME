@@ -12,7 +12,12 @@ public partial class MiiView : UserControl
     private DeckClient? _client;
     private MiiService? _service;
     private MiiTargetState? _state;
+    private MiiTargetState? _liveState;
     private readonly MiiOperationLock _operationLock = new();
+    private bool _updatingPaths;
+    private bool _updatingExperimental;
+    private string? _experimentalTargetKey;
+    private readonly Dictionary<MiiTargetKind, string> _selectedPaths = [];
 
     public MiiView()
     {
@@ -38,8 +43,11 @@ public partial class MiiView : UserControl
     public void OnDisconnected()
     {
         _state = null;
+        _liveState = null;
+        _experimentalTargetKey = null;
         MiiList.ItemsSource = null;
         BackupBox.ItemsSource = null;
+        DatabasePathBox.ItemsSource = null;
         ShowUnavailable("Not connected.");
     }
 
@@ -50,17 +58,39 @@ public partial class MiiView : UserControl
     private async Task RefreshAsync()
     {
         if (IsWorking || _service is null || _client is not { IsConnected: true }) return;
-        // Capture kind, host id and resolved path synchronously before any await. The whole panel is
-        // disabled until the operation ends, so a selection/settings change cannot redirect it.
-        var snapshot = _service.Capture(SelectedKind);
-        await RunExclusiveAsync(snapshot, async () =>
+        var kind = SelectedKind;
+        var profile = _client.ActiveProfile;
+        if (profile is null) return;
+        _selectedPaths.TryGetValue(kind, out var selectedPath);
+        // Freeze the host and requested path before awaiting. Probing then runs while the whole
+        // panel and app-wide disconnect/close mutations are blocked by the operation lock.
+        var frozen = new MiiOperationSnapshot(kind, selectedPath ?? "automatic path detection",
+            profile.Id, profile.Host, "Detecting exact known database paths…", PathApproved: false);
+        await RunExclusiveAsync(frozen, async () =>
         {
+            var resolution = await Task.Run(() => _service.Resolve(kind, selectedPath));
+            var snapshot = resolution.Target;
             var loaded = await Task.Run(() => _service.Load(snapshot));
-            var backups = await Task.Run(() => _service.Inventory(snapshot));
-            _state = loaded;
+            var backups = await Task.Run(() => _service.Inventory(loaded.Target));
+            _state = _liveState = loaded;
+            if (resolution.Target.PathApproved && resolution.Exists)
+                _selectedPaths[kind] = resolution.Target.TargetPath;
             MiiList.ItemsSource = loaded.Slots;
+            MiiList.SelectedIndex = loaded.Slots.Count > 0 ? 0 : -1;
             BackupBox.ItemsSource = backups;
             BackupBox.SelectedIndex = backups.Count > 0 ? 0 : -1;
+            _updatingPaths = true;
+            try
+            {
+                DatabasePathBox.ItemsSource = resolution.ValidCandidates;
+                DatabasePathBox.SelectedItem = resolution.ValidCandidates.FirstOrDefault(x =>
+                    string.Equals(x.Path, loaded.Target.TargetPath, StringComparison.Ordinal));
+                DatabasePathBox.Visibility = resolution.ValidCandidates.Count > 1 ||
+                                             (!resolution.Target.PathApproved && resolution.ValidCandidates.Count > 0)
+                    ? Visibility.Visible : Visibility.Collapsed;
+                DatabasePathBox.IsEnabled = DatabasePathBox.Visibility == Visibility.Visible;
+            }
+            finally { _updatingPaths = false; }
             CapabilityText.Text = loaded.Capability switch
             {
                 MiiCapability.WriteVerified => "Capability: Write verified",
@@ -68,7 +98,9 @@ public partial class MiiView : UserControl
                 _ => "Capability: Unavailable"
             };
             IntegrityText.Text = loaded.Integrity;
-            PathText.Text = snapshot.Host + " · " + snapshot.TargetPath;
+            PathText.Text = loaded.Target.Host + " · " + loaded.Target.TargetPath +
+                            (string.IsNullOrWhiteSpace(loaded.Target.PathStatus) ? "" : "\n" + loaded.Target.PathStatus);
+            ResetExperimentalUnlessBoundTo(loaded);
             ApplyCapabilities();
             StatusChanged?.Invoke($"Mii: {loaded.Slots.Count} record(s), {loaded.Capability}");
         });
@@ -77,11 +109,68 @@ public partial class MiiView : UserControl
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
     private async void TargetBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        _experimentalTargetKey = null;
+        if (IsLoaded && _client is { IsConnected: true })
+        {
+            _updatingPaths = true;
+            try { DatabasePathBox.ItemsSource = null; DatabasePathBox.Visibility = Visibility.Collapsed; }
+            finally { _updatingPaths = false; }
+            await RefreshAsync();
+        }
+    }
+
+    private async void DatabasePathBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingPaths || DatabasePathBox.SelectedItem is not MiiPathCandidate candidate) return;
+        _selectedPaths[SelectedKind] = candidate.Path;
+        _experimentalTargetKey = null;
         if (IsLoaded && _client is { IsConnected: true }) await RefreshAsync();
     }
 
     private void MiiList_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyCapabilities();
     private void BackupBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyCapabilities();
+    private void ExperimentalPushBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_updatingExperimental) return;
+        if (ExperimentalPushBox.IsChecked != true)
+        {
+            _experimentalTargetKey = null;
+            ApplyCapabilities();
+            return;
+        }
+        if (_state is not { Capability: not MiiCapability.Unavailable } state)
+        {
+            SetExperimentalChecked(false);
+            return;
+        }
+        var warning = "Enable experimental Push for this session and this exact target?\n\n" +
+                      "Host: " + state.Target.Host + " (" + state.Target.HostId + ")\nPath: " + state.Target.TargetPath +
+                      "\n\nSynthetic format/CRC tests pass, but real-emulator compatibility has not been manually certified. " +
+                      "SESAME requires the emulator to be closed and creates verified backups before atomic replacement. " +
+                      "Rollback remains available through Restore verified backup.";
+        if (MessageBox.Show(Window.GetWindow(this), warning, "Experimental Mii Push",
+                MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+        {
+            SetExperimentalChecked(false);
+            return;
+        }
+        _experimentalTargetKey = TargetKey(state.Target);
+        ApplyCapabilities();
+    }
+
+    private void Rename_Click(object sender, RoutedEventArgs e)
+    {
+        if (_service is null || _state is null || MiiList.SelectedItem is not MiiSlot selected) return;
+        try
+        {
+            _state = _service.RenameDraft(_state, selected.Slot, NameBox.Text);
+            MiiList.ItemsSource = _state.Slots;
+            MiiList.SelectedItem = _state.Slots.FirstOrDefault(x => x.Slot == selected.Slot);
+            StatusChanged?.Invoke("Name changed in offline draft. Live NAND is unchanged.");
+            ApplyCapabilities();
+        }
+        catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Mii editor"); }
+    }
 
     private async void Backup_Click(object sender, RoutedEventArgs e)
     {
@@ -115,10 +204,29 @@ public partial class MiiView : UserControl
         catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Mii export"); }
     }
 
+    private void ExportDatabase_Click(object sender, RoutedEventArgs e)
+    {
+        if (_service is null || _state is null) return;
+        try
+        {
+            var bytes = _service.ExportDatabase(_state);
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export exact Mii database",
+                FileName = _state.Target.Kind == MiiTargetKind.Wii ? "RFL_DB.dat" : "MiiDatabase.dat",
+                Filter = "Mii database (*.*)|*.*"
+            };
+            if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+            File.WriteAllBytes(dialog.FileName, bytes);
+            StatusChanged?.Invoke("Exact Mii database exported without conversion.");
+        }
+        catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Mii export"); }
+    }
+
     private async void Restore_Click(object sender, RoutedEventArgs e)
     {
         if (_service is null || BackupBox.SelectedItem is not MiiBackup backup) return;
-        var snapshot = _service.Capture(SelectedKind);
+        var snapshot = _state?.Target ?? _service.Capture(SelectedKind);
         if (!string.Equals(snapshot.HostId, backup.Manifest.HostId, StringComparison.Ordinal) ||
             !string.Equals(snapshot.TargetPath, backup.Manifest.TargetPath, StringComparison.Ordinal))
         {
@@ -150,27 +258,72 @@ public partial class MiiView : UserControl
         if (_client is { IsConnected: true }) await RefreshAsync();
     }
 
-    private async void Import_Click(object sender, RoutedEventArgs e)
+    private void Import_Click(object sender, RoutedEventArgs e)
     {
-        if (_service is null || _state is not { CanPush: true } state) return;
+        if (_service is null || _state is null || _state.Capability == MiiCapability.Unavailable) return;
         var dialog = new OpenFileDialog { Title = "Import exact Mii record", Filter = "Mii records (*.mii;*.miigx)|*.mii;*.miigx|All files (*.*)|*.*" };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        var record = File.ReadAllBytes(dialog.FileName);
-        var snapshot = state.Target;
+        try
+        {
+            _state = _service.ImportDraft(_state, File.ReadAllBytes(dialog.FileName));
+            MiiList.ItemsSource = _state.Slots;
+            StatusChanged?.Invoke("Record imported into offline draft. Live NAND is unchanged.");
+            ApplyCapabilities();
+        }
+        catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Mii editor"); }
+    }
+
+    private void Basic_Click(object sender, RoutedEventArgs e)
+    {
+        if (_service is null || _state is null || _state.Capability == MiiCapability.Unavailable) return;
+        var name = PromptName();
+        if (name is null) return;
+        try
+        {
+            _state = _service.AddBasicDraft(_state, name);
+            MiiList.ItemsSource = _state.Slots;
+            MiiList.SelectedItem = _state.Slots.LastOrDefault();
+            StatusChanged?.Invoke("Basic Mii added to offline draft. Live NAND is unchanged.");
+            ApplyCapabilities();
+        }
+        catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Mii editor"); }
+    }
+
+    private async void Push_Click(object sender, RoutedEventArgs e)
+    {
+        if (_service is null || _state is not { IsDraft: true } state) return;
+        var acknowledged = IsExperimentalAcknowledged(state);
+        if (!state.CanExperimentalPush(acknowledged)) return;
+        var warning = "Push this validated draft to the selected emulator database?\n\n" +
+                      "Host: " + state.Target.Host + "\nPath: " + state.Target.TargetPath +
+                      "\n\nSESAME first creates and verifies a local and remote backup. The emulator must be closed.\n" +
+                      "This is experimental until this exact emulator build has been manually validated.";
+        if (MessageBox.Show(Window.GetWindow(this), warning, "Experimental Mii Push",
+                MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
         var allowUnknown = UnknownProcessBox.IsChecked == true;
-        await RunExclusiveAsync(snapshot, () => Task.Run(() => _service.PushRecord(state, record, allowUnknown)));
+        await RunExclusiveAsync(state.Target, async () =>
+        {
+            var result = await Task.Run(() => _service.PushDatabase(state, allowUnknown, acknowledged));
+            StatusChanged?.Invoke(result.ReconciledAfterTransportFailure
+                ? "Mii draft committed and reconciled after a transport failure."
+                : "Mii draft pushed and verified.");
+        });
         if (_client is { IsConnected: true }) await RefreshAsync();
     }
 
-    private async void Basic_Click(object sender, RoutedEventArgs e)
+    private void Discard_Click(object sender, RoutedEventArgs e)
     {
-        if (_service is null || _state is not { CanPush: true } state) return;
-        var name = PromptName();
-        if (name is null) return;
-        var snapshot = state.Target;
-        var allowUnknown = UnknownProcessBox.IsChecked == true;
-        await RunExclusiveAsync(snapshot, () => Task.Run(() => _service.PushBasic(state, name, allowUnknown)));
-        if (_client is { IsConnected: true }) await RefreshAsync();
+        if (_state is not { IsDraft: true }) return;
+        if (MessageBox.Show(Window.GetWindow(this), "Discard the offline Mii draft? Live NAND is unchanged.",
+                "Mii editor", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        _state = _liveState;
+        if (_state is not null)
+        {
+            MiiList.ItemsSource = _state.Slots;
+            MiiList.SelectedItem = _state.Slots.FirstOrDefault();
+            IntegrityText.Text = _state.Integrity;
+            ApplyCapabilities();
+        }
     }
 
     private string? PromptName()
@@ -243,10 +396,39 @@ public partial class MiiView : UserControl
     {
         var valid = _state is { Capability: not MiiCapability.Unavailable };
         BackupBtn.IsEnabled = valid;
+        DatabasePathBox.IsEnabled = DatabasePathBox.Visibility == Visibility.Visible && !IsWorking;
         ExportBtn.IsEnabled = valid && MiiList.SelectedItem is not null;
-        ImportBtn.IsEnabled = _state?.CanPush == true;
-        BasicBtn.IsEnabled = _state?.CanPush == true;
+        ExportDatabaseBtn.IsEnabled = valid;
+        RenameBtn.IsEnabled = valid && MiiList.SelectedItem is not null;
+        ImportBtn.IsEnabled = valid;
+        BasicBtn.IsEnabled = valid;
+        DiscardBtn.IsEnabled = _state?.IsDraft == true;
+        PushBtn.IsEnabled = _state is { } state && state.CanExperimentalPush(IsExperimentalAcknowledged(state));
         RestoreBtn.IsEnabled = BackupBox.SelectedItem is MiiBackup;
+        if (MiiList.SelectedItem is MiiSlot selected)
+            NameBox.Text = selected.Name;
+        else NameBox.Clear();
+    }
+
+    private bool IsExperimentalAcknowledged(MiiTargetState state) =>
+        ExperimentalPushBox.IsChecked == true && _experimentalTargetKey == TargetKey(state.Target);
+
+    private static string TargetKey(MiiOperationSnapshot target) =>
+        target.HostId + "|" + target.Kind + "|" + target.TargetPath;
+
+    private void ResetExperimentalUnlessBoundTo(MiiTargetState state)
+    {
+        if (_experimentalTargetKey == TargetKey(state.Target)) return;
+        _experimentalTargetKey = null;
+        SetExperimentalChecked(false);
+    }
+
+    private void SetExperimentalChecked(bool value)
+    {
+        _updatingExperimental = true;
+        try { ExperimentalPushBox.IsChecked = value; }
+        finally { _updatingExperimental = false; }
+        ApplyCapabilities();
     }
 
     private void ShowUnavailable(string text)

@@ -29,6 +29,7 @@ public interface IMiiFormat
     string ExportExtension { get; }
     MiiValidation Validate(byte[] database);
     byte[] Insert(byte[] database, byte[] record);
+    byte[] UpdateName(byte[] database, int slot, string name);
     byte[] ExportRecord(byte[] database, int slot);
     byte[] CreateBasicRecord(string name, byte[]? identity = null);
 }

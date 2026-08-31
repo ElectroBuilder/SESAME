@@ -94,6 +94,21 @@ public sealed class MiiFormatWii : IMiiFormat
         return record.ToArray();
     }
 
+    public byte[] UpdateName(byte[] database, int slot, string name)
+    {
+        var validation = Validate(database);
+        if (!validation.IsValid) throw new InvalidDataException(validation.Error);
+        if ((uint)slot >= RecordCount || validation.Slots.All(x => x.Slot != slot))
+            throw new ArgumentOutOfRangeException(nameof(slot), "The selected Wii Mii slot is empty or invalid.");
+        var result = (byte[])database.Clone();
+        var nameBytes = result.AsSpan(RecordsOffset + slot * RecordSize + 2, 20);
+        MiiText.WriteFixed(nameBytes, name, bigEndian: true);
+        WriteDatabaseChecksum(result);
+        var edited = Validate(result);
+        if (!edited.IsValid) throw new InvalidDataException("Edited Wii Mii failed validation: " + edited.Error);
+        return result;
+    }
+
     public byte[] CreateBasicRecord(string name, byte[]? identity = null)
     {
         var ids = identity is null ? RandomNumberGenerator.GetBytes(8) : (byte[])identity.Clone();

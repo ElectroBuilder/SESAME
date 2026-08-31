@@ -59,6 +59,30 @@ public sealed class MiiNandStoreTests : IDisposable
     }
 
     [Fact]
+    public void DraftEditorNeverMutatesLiveUntilExplicitExperimentalPush()
+    {
+        var fake = NewLive();
+        var original = fake.Files[Target].ToArray();
+        var service = new MiiService(fake, _root);
+        var state = service.Load(Snapshot(fake));
+
+        var draft = service.AddBasicDraft(state, "Alice");
+        Assert.True(draft.IsDraft);
+        Assert.Single(draft.Slots);
+        Assert.Equal(original, fake.Files[Target]);
+        Assert.False(draft.CanExperimentalPush(false));
+        Assert.True(draft.CanExperimentalPush(true));
+
+        var renamed = service.RenameDraft(draft, draft.Slots[0].Slot, "Bob");
+        Assert.Equal("Bob", renamed.Slots[0].Name);
+        Assert.Equal(original, fake.Files[Target]);
+        var result = service.PushDatabase(renamed, allowUnavailableProcessCheck: false,
+            experimentalAcknowledged: true);
+        Assert.Equal(renamed.Database, fake.Files[Target]);
+        Assert.Equal(MiiNandStore.Sha(renamed.Database!), result.PostWriteSha256);
+    }
+
+    [Fact]
     public void PushUsesVerifiedBackupsTempCasAtomicMoveAndAudit()
     {
         var fake = NewLive();
@@ -304,9 +328,57 @@ public sealed class MiiNandStoreTests : IDisposable
         var store = new MiiNandStore(fake, _root);
         var backup = store.BackupNow(Snapshot(fake), _format);
         File.WriteAllBytes(Path.Combine(backup.Directory, backup.Manifest.BackupFile), [1, 2, 3]);
+        Assert.Empty(store.Inventory(Snapshot(fake)));
         fake.Events.Clear();
         Assert.Throws<InvalidDataException>(() => store.Restore(Snapshot(fake), _format, backup, false));
         Assert.Empty(fake.Events);
+    }
+
+    [Fact]
+    public void TamperedManifestIsNotOfferedOrRestored()
+    {
+        var fake = NewLive();
+        var store = new MiiNandStore(fake, _root);
+        var backup = store.BackupNow(Snapshot(fake), _format);
+        var manifestPath = Path.Combine(backup.Directory, "manifest.json");
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(backup.Manifest with
+        {
+            BackupFile = "..\\outside.bin"
+        }));
+
+        Assert.Empty(store.Inventory(Snapshot(fake)));
+        fake.Events.Clear();
+        Assert.Throws<InvalidDataException>(() => store.Restore(Snapshot(fake), _format, backup, false));
+        Assert.Empty(fake.Events);
+    }
+
+    [Fact]
+    public void RestoreRejectsBackupThatEscapesTheProtectedStore()
+    {
+        var fake = NewLive();
+        var store = new MiiNandStore(fake, _root);
+        var backup = store.BackupNow(Snapshot(fake), _format);
+        var escaped = backup with { Directory = Path.GetTempPath() };
+
+        fake.Events.Clear();
+        Assert.Throws<InvalidDataException>(() => store.Restore(Snapshot(fake), _format, escaped, false));
+        Assert.Empty(fake.Events);
+    }
+
+    [Fact]
+    public void UnapprovedPathNeverStartsATransaction()
+    {
+        var fake = NewLive();
+        var before = fake.Files[Target];
+        var replacement = _format.Insert(before, _format.CreateBasicRecord("Mike", [1, 2, 3, 4, 5, 6, 7, 8]));
+        var unapproved = Snapshot(fake) with { PathApproved = false, PathStatus = "Ambiguous path." };
+
+        var ex = Assert.Throws<MiiTransactionException>(() => new MiiNandStore(fake, _root)
+            .ReplaceTransactional(unapproved, _format, replacement, MiiNandStore.Sha(before), false, false));
+
+        Assert.Equal(MiiTransactionOutcome.NotCommitted, ex.Outcome);
+        Assert.Empty(fake.Events);
+        Assert.Equal(before, fake.Files[Target]);
     }
 
     [Fact]
@@ -365,6 +437,7 @@ public sealed class MiiNandStoreTests : IDisposable
         public bool IsConnected { get; set; } = true;
         public string Host { get; set; } = "deck.example";
         public string HostId { get; set; } = "profile-stable-id";
+        public string Home { get; set; } = "/home/deck";
         public Dictionary<string, byte[]> Files { get; } = new(StringComparer.Ordinal);
         public HashSet<string> Directories { get; } = new(StringComparer.Ordinal) { "/" };
         public List<string> Events { get; } = [];
@@ -381,6 +454,7 @@ public sealed class MiiNandStoreTests : IDisposable
         private int _liveReads;
 
         public bool Exists(string path) => Files.ContainsKey(path) || Directories.Contains(path);
+        public long FileLength(string path) => Files.TryGetValue(path, out var bytes) ? bytes.Length : -1;
 
         public byte[] ReadBytes(string path)
         {
