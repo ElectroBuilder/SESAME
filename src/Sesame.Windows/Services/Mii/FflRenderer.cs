@@ -51,8 +51,12 @@ public sealed class FflRenderer : IDisposable
             return null;
         }
 
-        var helper = FindHelper();
-        var resource = FindResource();
+        // File discovery must not run on WPF's dispatcher. In particular, never
+        // recursively scan a synced Assets folder while the user is editing a Mii.
+        var paths = await Task.Run(() => (Helper: FindHelper(), Resource: FindResource()),
+            cancellationToken).ConfigureAwait(false);
+        var helper = paths.Helper;
+        var resource = paths.Resource;
         if (helper is null)
         {
             LastError = "FFL renderer helper is missing from the Renderer folder.";
@@ -183,10 +187,26 @@ public sealed class FflRenderer : IDisposable
 
         var pixels = new byte[checked(width * height * 4)];
         await ReadExactlyAsync(stream, pixels, cancellationToken).ConfigureAwait(false);
+        // The FFL helper returns the NNAS/TGA row order (bottom row first).
+        // BitmapSource expects the first row to be the visual top row.
+        FlipRows(pixels, width, height);
         var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null,
             pixels, width * 4);
         bitmap.Freeze();
         return bitmap;
+    }
+
+    private static void FlipRows(byte[] pixels, int width, int height)
+    {
+        var rowSize = checked(width * 4);
+        var row = new byte[rowSize];
+        for (var y = 0; y < height / 2; y++)
+        {
+            var opposite = height - y - 1;
+            Buffer.BlockCopy(pixels, y * rowSize, row, 0, rowSize);
+            Buffer.BlockCopy(pixels, opposite * rowSize, pixels, y * rowSize, rowSize);
+            Buffer.BlockCopy(row, 0, pixels, opposite * rowSize, rowSize);
+        }
     }
 
     private static byte[] BuildRequest(byte[] record)
@@ -295,20 +315,12 @@ public sealed class FflRenderer : IDisposable
         var basePath = AppContext.BaseDirectory;
         candidates.Add(Path.Combine(basePath, "Renderer", "FFLResHigh.dat"));
         foreach (var name in names) candidates.Add(Path.Combine(basePath, name));
-        foreach (var ancestor in Ancestors(basePath, 8))
-        {
-            foreach (var name in names) candidates.Add(Path.Combine(ancestor, name));
-            var assets = Path.Combine(ancestor, "Assets");
-            if (!Directory.Exists(assets)) continue;
-            try
-            {
-                candidates.AddRange(Directory.EnumerateFiles(assets, "*.dat", SearchOption.AllDirectories)
-                    .Where(x => names.Any(n => string.Equals(Path.GetFileName(x), n,
-                        StringComparison.OrdinalIgnoreCase))));
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
+        // Development builds may place the resource beside the app, but do not
+        // search arbitrary ancestor/OneDrive trees. Release packages always put
+        // it in Renderer, and a missing package should fail quickly and clearly.
+        foreach (var ancestor in Ancestors(basePath, 3))
+            foreach (var name in names)
+                candidates.Add(Path.Combine(ancestor, name));
         return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists);
     }
 

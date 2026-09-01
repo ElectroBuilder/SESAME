@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.3 — 2026-09-01
+
+- Remove the drawn Mii fallback completely; the preview now shows only the bundled FFL render.
+- Correct the native renderer's bottom-up BGRA output so Miis are upright, and animate real preview updates.
+- Replace hair-style dropdowns with a gender-aware, arrow-key navigable thumbnail gallery.
+- Apply gender changes immediately, keep Mii selection/draft previews in sync, and remove the manual FFL resource picker.
+- Prevent preview file discovery from scanning synced Assets trees on the UI thread, avoiding long freezes during editing, settings changes and Deck connections.
+
 ## 0.10.2 — 2026-09-01
 
 - Package the FFL renderer's required runtime models, shaders and metadata so the native helper can start from the released Windows zip.

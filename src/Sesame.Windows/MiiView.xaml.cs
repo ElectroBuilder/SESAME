@@ -1,7 +1,9 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Input;
 using Microsoft.Win32;
 using Sesame.Services;
 using Sesame.Services.Mii;
@@ -21,6 +23,7 @@ public partial class MiiView : UserControl
     private CancellationTokenSource? _previewCts;
     private int _previewGeneration;
     private bool _updatingPaths;
+    private bool _suppressEditorEvents;
     private readonly Dictionary<MiiTargetKind, string> _selectedPaths = [];
 
     public MiiView()
@@ -30,6 +33,7 @@ public partial class MiiView : UserControl
         TargetBox.SelectedIndex = 0;
         ConfigureAppearanceControls(MiiTargetKind.Wii);
         ShowUnavailable("Connect to a Steam Deck to inspect Miis.");
+        Loaded += (_, _) => UpdatePreview();
         var app = Application.Current;
         if (app is not null) app.Exit += (_, _) => _fflRenderer.Dispose();
     }
@@ -52,7 +56,8 @@ public partial class MiiView : UserControl
         _previewCts?.Cancel();
         _state = null;
         _liveState = null;
-        ConfigureAppearanceControls(SelectedKind);
+        AvatarPreview.RenderedImage = null;
+        FflPreviewText.Text = "Connect to a Steam Deck to render a Mii.";
         MiiList.ItemsSource = null;
         BackupBox.ItemsSource = null;
         DatabasePathBox.ItemsSource = null;
@@ -135,6 +140,7 @@ public partial class MiiView : UserControl
 
     private void MiiList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_suppressEditorEvents) return;
         if (_service is not null && _state is not null && MiiList.SelectedItem is MiiSlot selected)
         {
             try { LoadAppearance(_service.GetAppearance(_state, selected.Slot)); }
@@ -143,30 +149,34 @@ public partial class MiiView : UserControl
         ApplyCapabilities();
     }
 
-    private void EditorValueChanged(object sender, SelectionChangedEventArgs e) => UpdatePreview();
-    private void EditorTextChanged(object sender, TextChangedEventArgs e) => UpdatePreview();
-    private void GenderChanged(object sender, RoutedEventArgs e) => UpdatePreview();
-    private void BackupBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyCapabilities();
-
-    private void ChooseFflResource_Click(object sender, RoutedEventArgs e)
+    private void EditorValueChanged(object sender, SelectionChangedEventArgs e)
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = "Choose FFLResHigh.dat or AFLResHigh_2_3.dat",
-            Filter = "FFL resource (*.dat)|*.dat|All files (*.*)|*.*"
-        };
-        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        try
-        {
-            FflRenderer.SaveResourcePath(dialog.FileName);
-            StatusChanged?.Invoke("FFL resource selected. Rendering the real Mii preview…");
-            UpdatePreview();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "FFL renderer");
-        }
+        if (!_suppressEditorEvents) UpdatePreview();
     }
+
+    private void EditorTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_suppressEditorEvents) UpdatePreview();
+    }
+
+    private void GenderChanged(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEditorEvents || HairGallery is null) return;
+        var currentHair = SelectedNumber(HairGallery);
+        HairGallery.ItemsSource = HairChoices(SelectedKind, FemaleRadio.IsChecked == true);
+        SelectChoice(HairGallery, currentHair);
+        UpdatePreview();
+    }
+
+    private void HairGallery_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End)) return;
+        // ListBox handles these keys, but keeping focus here makes keyboard
+        // navigation deterministic even when the pointer is over a thumbnail.
+        if (sender is ListBox gallery) gallery.Focus();
+    }
+
+    private void BackupBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyCapabilities();
 
     private void Create_Click(object sender, RoutedEventArgs e)
     {
@@ -341,16 +351,21 @@ public partial class MiiView : UserControl
 
     private void ConfigureAppearanceControls(MiiTargetKind kind)
     {
-        HairStyleBox.ItemsSource = HairChoices(kind);
-        HairColorBox.ItemsSource = ColourChoices(kind, hair: true);
-        EyeColorBox.ItemsSource = ColourChoices(kind, hair: false);
-        FavoriteColorBox.ItemsSource = FavoriteChoices();
-        MaleRadio.IsChecked = true;
-        FemaleRadio.IsChecked = false;
-        HairStyleBox.SelectedIndex = 0;
-        HairColorBox.SelectedIndex = 0;
-        EyeColorBox.SelectedIndex = 0;
-        FavoriteColorBox.SelectedIndex = 0;
+        _suppressEditorEvents = true;
+        try
+        {
+            HairGallery.ItemsSource = HairChoices(kind, female: false);
+            HairColorBox.ItemsSource = ColourChoices(kind, hair: true);
+            EyeColorBox.ItemsSource = ColourChoices(kind, hair: false);
+            FavoriteColorBox.ItemsSource = FavoriteChoices();
+            MaleRadio.IsChecked = true;
+            FemaleRadio.IsChecked = false;
+            HairGallery.SelectedIndex = 0;
+            HairColorBox.SelectedIndex = 0;
+            EyeColorBox.SelectedIndex = 0;
+            FavoriteColorBox.SelectedIndex = 0;
+        }
+        finally { _suppressEditorEvents = false; }
         UpdatePreview();
     }
 
@@ -358,26 +373,33 @@ public partial class MiiView : UserControl
         NameBox.Text,
         FemaleRadio.IsChecked == true,
         SelectedNumber(FavoriteColorBox),
-        SelectedNumber(HairStyleBox),
+        SelectedNumber(HairGallery),
         SelectedNumber(HairColorBox),
         SelectedNumber(EyeColorBox));
 
-    private static int SelectedNumber(ComboBox box) => box.SelectedItem is MiiChoice choice ? choice.Id : 0;
+    private static int SelectedNumber(Selector control) => control.SelectedItem is MiiChoice choice ? choice.Id : 0;
 
     private void LoadAppearance(MiiAppearance appearance)
     {
-        NameBox.Text = appearance.Name;
-        FemaleRadio.IsChecked = appearance.IsFemale;
-        MaleRadio.IsChecked = !appearance.IsFemale;
-        SelectChoice(HairStyleBox, appearance.HairStyle);
-        SelectChoice(HairColorBox, appearance.HairColor);
-        SelectChoice(EyeColorBox, appearance.EyeColor);
-        SelectChoice(FavoriteColorBox, appearance.FavoriteColor);
+        _suppressEditorEvents = true;
+        try
+        {
+            NameBox.Text = appearance.Name;
+            FemaleRadio.IsChecked = appearance.IsFemale;
+            MaleRadio.IsChecked = !appearance.IsFemale;
+            HairGallery.ItemsSource = HairChoices(SelectedKind, appearance.IsFemale);
+            SelectChoice(HairGallery, appearance.HairStyle);
+            SelectChoice(HairColorBox, appearance.HairColor);
+            SelectChoice(EyeColorBox, appearance.EyeColor);
+            SelectChoice(FavoriteColorBox, appearance.FavoriteColor);
+        }
+        finally { _suppressEditorEvents = false; }
         UpdatePreview();
     }
 
-    private static void SelectChoice(ComboBox box, int id)
+    private static void SelectChoice(Selector box, int id)
     {
+        if (box.Items.Count == 0) return;
         box.SelectedItem = box.Items.OfType<MiiChoice>().FirstOrDefault(x => x.Id == id) ?? box.Items[0];
     }
 
@@ -386,13 +408,13 @@ public partial class MiiView : UserControl
         // WPF raises Checked/SelectionChanged while InitializeComponent is still
         // materialising the editor. Do not read sibling controls until the full
         // visual tree exists; otherwise startup fails before the main window opens.
-        if (AvatarPreview is null || NameBox is null || MaleRadio is null || FemaleRadio is null ||
-            HairStyleBox is null || HairColorBox is null || EyeColorBox is null || FavoriteColorBox is null)
+        if (!IsLoaded || AvatarPreview is null || NameBox is null || MaleRadio is null || FemaleRadio is null ||
+            HairGallery is null || HairColorBox is null || EyeColorBox is null || FavoriteColorBox is null)
             return;
         var appearance = EditorAppearance();
-        AvatarPreview.Appearance = appearance;
-        AvatarPreview.RenderedImage = null;
-        FflPreviewText.Text = "Live preview · emulator-safe fields";
+        FflPreviewText.Text = AvatarPreview.RenderedImage is null
+            ? "Rendering real Mii preview…"
+            : "Updating real Mii preview…";
         RequestRealPreview(appearance);
     }
 
@@ -408,19 +430,22 @@ public partial class MiiView : UserControl
     private async Task RenderRealPreviewAsync(MiiAppearance appearance, int generation,
         CancellationToken cancellationToken)
     {
+        var kind = SelectedKind;
+        var state = _state;
+        var selected = MiiList.SelectedItem as MiiSlot;
         byte[] record;
         try
         {
-            if (_service is not null && _state is { CanExport: true })
+            if (_service is not null && state is { CanExport: true })
             {
-                if (MiiList.SelectedItem is MiiSlot selected)
+                if (selected is not null)
                 {
-                    var previewState = _service.UpdateAppearanceDraft(_state, selected.Slot, appearance);
+                    var previewState = _service.UpdateAppearanceDraft(state, selected.Slot, appearance);
                     record = _service.ExportRecord(previewState, selected.Slot);
                 }
                 else
                 {
-                    var previewState = _service.AddBasicDraft(_state, appearance);
+                    var previewState = _service.AddBasicDraft(state, appearance);
                     record = _service.ExportRecord(previewState, previewState.Slots.Last().Slot);
                 }
             }
@@ -429,7 +454,7 @@ public partial class MiiView : UserControl
                 // A real preview should also work before a database exists.
                 // The editor remains read-only in that state, but FFL can
                 // still render a valid basic record for the selected platform.
-                record = SelectedKind == MiiTargetKind.Wii
+                record = kind == MiiTargetKind.Wii
                     ? new MiiFormatWii().CreateBasicRecord(string.IsNullOrWhiteSpace(appearance.Name) ? "Mii" : appearance.Name)
                     : new MiiFormatSwitch().CreateBasicRecord(string.IsNullOrWhiteSpace(appearance.Name) ? "Mii" : appearance.Name);
             }
@@ -452,7 +477,8 @@ public partial class MiiView : UserControl
                 return;
             }
             AvatarPreview.RenderedImage = image;
-            FflPreviewText.Text = $"Live preview · FFL renderer ({SelectedKind})";
+            AvatarPreview.PlayRevealAnimation();
+            FflPreviewText.Text = $"Live preview · FFL renderer ({kind})";
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -461,10 +487,12 @@ public partial class MiiView : UserControl
         }
     }
 
-    private static IReadOnlyList<MiiChoice> HairChoices(MiiTargetKind kind)
+    private static IReadOnlyList<MiiChoice> HairChoices(MiiTargetKind kind, bool female)
     {
         var max = kind == MiiTargetKind.Wii ? 72 : 132;
-        var names = new[] { "Classic", "Side sweep", "Parted", "Bob", "Curls", "Spiky" };
+        var names = female
+            ? new[] { "Bob", "Side sweep", "Parted", "Curls", "Long", "Ponytail" }
+            : new[] { "Classic", "Side sweep", "Parted", "Short", "Curls", "Spiky" };
         return Enumerable.Range(0, max).Select(i => new MiiChoice(i,
             $"{names[i % names.Length]} {i / names.Length + 1}",
             new SolidColorBrush(Color.FromRgb(64, 46, 39)), names[i % names.Length][0].ToString())).ToArray();

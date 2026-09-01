@@ -46,11 +46,8 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,18,6">
                         <local:MiiAvatarControl x:Name="AvatarPreview" Height="275" MinWidth="210"/>
-                        <TextBlock x:Name="FflPreviewText" Text="Live preview · emulator-safe fields" HorizontalAlignment="Center"
+                        <TextBlock x:Name="FflPreviewText" Text="Rendering real Mii preview…" HorizontalAlignment="Center"
                                    Foreground="{DynamicResource Muted}" Margin="0,5,0,0"/>
-                        <Button Content="Choose FFL resource…" Click="ChooseFflResource_Click"
-                                HorizontalAlignment="Center" Margin="0,4,0,0"
-                                ToolTip="Optional: choose AFLResHigh_2_3.dat once when automatic detection cannot find it."/>
                     </StackPanel>
                     <StackPanel Grid.Column="1">
                         <StackPanel Margin="0,0,10,8">
@@ -65,12 +62,29 @@
                                          Checked="GenderChanged"/>
                         </StackPanel>
                         <TextBlock Text="Hair style" Foreground="{DynamicResource Muted}"/>
-                        <ComboBox x:Name="HairStyleBox" Width="220"
-                                  SelectionChanged="EditorValueChanged" Margin="0,2,0,8">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate><StackPanel Orientation="Horizontal"><Border Width="22" Height="22" CornerRadius="11" Background="#D7E8EC" Margin="0,0,8,0"><TextBlock Text="{Binding Glyph}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/></Border><TextBlock Text="{Binding Name}" VerticalAlignment="Center"/></StackPanel></DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                        <ListBox x:Name="HairGallery" Height="142" Width="330" Margin="0,2,0,8"
+                                 SelectionChanged="EditorValueChanged" PreviewKeyDown="HairGallery_PreviewKeyDown"
+                                 Focusable="True" IsTabStop="True"
+                                 KeyboardNavigation.DirectionalNavigation="Cycle"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="76" Height="60" Margin="2" Padding="3"
+                                            Background="{Binding Swatch}" CornerRadius="7" BorderBrush="{DynamicResource Border}"
+                                            BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Glyph}" FontSize="22" Foreground="White"
+                                                       HorizontalAlignment="Center" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="10" TextTrimming="CharacterEllipsis"
+                                                       Foreground="White" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                         <TextBlock Text="Hair colour" Foreground="{DynamicResource Muted}"/>
                         <ComboBox x:Name="HairColorBox" Width="220"
                                   SelectionChanged="EditorValueChanged" Margin="0,2,0,8">
