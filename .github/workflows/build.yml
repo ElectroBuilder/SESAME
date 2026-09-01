@@ -10,7 +10,49 @@ permissions:
   contents: write
 
 jobs:
+  mii-renderer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ariankordi/FFL-Testing
+          ref: renderer-server-prototype
+          path: ffl-testing
+          submodules: recursive
+      - name: Install native renderer dependencies
+        shell: pwsh
+        run: vcpkg install --triplet x64-windows-static
+        working-directory: ffl-testing
+      - name: Configure native renderer
+        shell: pwsh
+        run: >-
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static
+          -DCMAKE_BUILD_TYPE=Release
+          -DNO_GLTF=ON
+          -DRIO_USE_HEADLESS_GLFW=OFF
+        working-directory: ffl-testing
+      - name: Build native renderer
+        shell: pwsh
+        run: cmake --build build --config Release --target ffl_testing_2 --parallel
+        working-directory: ffl-testing
+      - name: Stage native renderer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force renderer | Out-Null
+          $binary = Join-Path $PWD 'ffl_testing_2.exe'
+          if (-not (Test-Path -LiteralPath $binary)) { throw "FFL renderer binary was not produced: $binary" }
+          Copy-Item -LiteralPath $binary -Destination renderer
+          Copy-Item -LiteralPath LICENSE -Destination renderer\FFL-Testing-LICENSE.txt
+        working-directory: ffl-testing
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sesame-mii-renderer
+          path: ffl-testing/renderer
+
   windows:
+    needs: mii-renderer
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +61,10 @@ jobs:
           dotnet-version: "8.0.x"
       - run: dotnet restore SESAME.sln
       - run: dotnet publish src/Sesame.Windows/Sesame.Windows.csproj -c Release -o artifacts/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: sesame-mii-renderer
+          path: artifacts/windows/Renderer
       - uses: actions/upload-artifact@v4
         with:
           name: sesame-windows

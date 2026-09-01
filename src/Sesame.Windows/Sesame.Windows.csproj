@@ -19,6 +19,7 @@
     <Compile Include="Services\StoreImageCache.cs" />
     <Compile Remove="AppBrand.cs" />
     <Compile Remove="AppVersion.cs" />
+    <Compile Include="Services\Mii\FflRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\app.ico" />

@@ -17,6 +17,9 @@ public partial class MiiView : UserControl
     private MiiTargetState? _state;
     private MiiTargetState? _liveState;
     private readonly MiiOperationLock _operationLock = new();
+    private readonly FflRenderer _fflRenderer = new();
+    private CancellationTokenSource? _previewCts;
+    private int _previewGeneration;
     private bool _updatingPaths;
     private readonly Dictionary<MiiTargetKind, string> _selectedPaths = [];
 
@@ -27,6 +30,8 @@ public partial class MiiView : UserControl
         TargetBox.SelectedIndex = 0;
         ConfigureAppearanceControls(MiiTargetKind.Wii);
         ShowUnavailable("Connect to a Steam Deck to inspect Miis.");
+        var app = Application.Current;
+        if (app is not null) app.Exit += (_, _) => _fflRenderer.Dispose();
     }
 
     public bool IsWorking => _operationLock.IsActive;
@@ -44,6 +49,7 @@ public partial class MiiView : UserControl
 
     public void OnDisconnected()
     {
+        _previewCts?.Cancel();
         _state = null;
         _liveState = null;
         ConfigureAppearanceControls(SelectedKind);
@@ -141,6 +147,26 @@ public partial class MiiView : UserControl
     private void EditorTextChanged(object sender, TextChangedEventArgs e) => UpdatePreview();
     private void GenderChanged(object sender, RoutedEventArgs e) => UpdatePreview();
     private void BackupBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyCapabilities();
+
+    private void ChooseFflResource_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Choose FFLResHigh.dat or AFLResHigh_2_3.dat",
+            Filter = "FFL resource (*.dat)|*.dat|All files (*.*)|*.*"
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            FflRenderer.SaveResourcePath(dialog.FileName);
+            StatusChanged?.Invoke("FFL resource selected. Rendering the Eden preview…");
+            UpdatePreview();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "FFL renderer");
+        }
+    }
 
     private void Create_Click(object sender, RoutedEventArgs e)
     {
@@ -363,7 +389,54 @@ public partial class MiiView : UserControl
         if (AvatarPreview is null || NameBox is null || MaleRadio is null || FemaleRadio is null ||
             HairStyleBox is null || HairColorBox is null || EyeColorBox is null || FavoriteColorBox is null)
             return;
-        AvatarPreview.Appearance = EditorAppearance();
+        var appearance = EditorAppearance();
+        AvatarPreview.Appearance = appearance;
+        AvatarPreview.RenderedImage = null;
+        FflPreviewText.Text = "Live preview · emulator-safe fields";
+        RequestRealPreview(appearance);
+    }
+
+    private void RequestRealPreview(MiiAppearance appearance)
+    {
+        _previewCts?.Cancel();
+        _previewCts?.Dispose();
+        var cts = _previewCts = new CancellationTokenSource();
+        var generation = ++_previewGeneration;
+        _ = RenderRealPreviewAsync(appearance, generation, cts.Token);
+    }
+
+    private async Task RenderRealPreviewAsync(MiiAppearance appearance, int generation,
+        CancellationToken cancellationToken)
+    {
+        if (SelectedKind != MiiTargetKind.Eden || _service is null || _state is null || !_state.CanExport)
+            return;
+        byte[] record;
+        try
+        {
+            if (MiiList.SelectedItem is MiiSlot selected)
+            {
+                var previewState = _service.UpdateAppearanceDraft(_state, selected.Slot, appearance);
+                record = _service.ExportRecord(previewState, selected.Slot);
+            }
+            else
+            {
+                var previewState = _service.AddBasicDraft(_state, appearance);
+                record = _service.ExportRecord(previewState, previewState.Slots.Last().Slot);
+            }
+        }
+        catch { return; }
+
+        try
+        {
+            await Task.Delay(120, cancellationToken);
+            var image = await _fflRenderer.RenderAsync(record, cancellationToken);
+            if (image is null || cancellationToken.IsCancellationRequested || generation != _previewGeneration)
+                return;
+            AvatarPreview.RenderedImage = image;
+            FflPreviewText.Text = "Live preview · Eden FFL renderer";
+        }
+        catch (OperationCanceledException) { }
+        catch { /* the vector preview remains available when the optional helper is unavailable */ }
     }
 
     private static IReadOnlyList<MiiChoice> HairChoices(MiiTargetKind kind)

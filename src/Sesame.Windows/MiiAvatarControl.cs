@@ -23,6 +23,16 @@ public sealed class MiiAvatarControl : FrameworkElement
         set => SetValue(AppearanceProperty, value);
     }
 
+    public static readonly DependencyProperty RenderedImageProperty =
+        DependencyProperty.Register(nameof(RenderedImage), typeof(ImageSource), typeof(MiiAvatarControl),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public ImageSource? RenderedImage
+    {
+        get => (ImageSource?)GetValue(RenderedImageProperty);
+        set => SetValue(RenderedImageProperty, value);
+    }
+
     protected override Size MeasureOverride(Size availableSize) =>
         new(Math.Min(availableSize.Width, 250), Math.Min(availableSize.Height, 285));
 
@@ -33,6 +43,19 @@ public sealed class MiiAvatarControl : FrameworkElement
         var height = ActualHeight > 1 ? ActualHeight : 260;
         var center = width / 2;
         var a = Appearance;
+
+        if (RenderedImage is not null)
+        {
+            var imageHeight = Math.Max(1, height - 34);
+            var scale = Math.Min((width - 2) / RenderedImage.Width, imageHeight / RenderedImage.Height);
+            var imageWidth = RenderedImage.Width * scale;
+            var fittedHeight = RenderedImage.Height * scale;
+            var imageRect = new Rect((width - imageWidth) / 2, 1 + (imageHeight - fittedHeight) / 2,
+                imageWidth, fittedHeight);
+            dc.DrawImage(RenderedImage, imageRect);
+            DrawName(dc, width, height, a.Name);
+            return;
+        }
 
         dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromRgb(232, 244, 246)),
             new Pen(new SolidColorBrush(Color.FromRgb(157, 196, 204)), 1),
@@ -86,12 +109,16 @@ public sealed class MiiAvatarControl : FrameworkElement
         dc.DrawGeometry(null, outline, smile);
 
         if (!string.IsNullOrWhiteSpace(a.Name))
-        {
-            var dip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-            var text = new FormattedText(a.Name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI Semibold"), 16, new SolidColorBrush(Color.FromRgb(35, 55, 62)), dip);
-            dc.DrawText(text, new Point(center - text.Width / 2, height - 28));
-        }
+            DrawName(dc, width, height, a.Name);
+    }
+
+    private void DrawName(DrawingContext dc, double width, double height, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var dip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        var text = new FormattedText(name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+            new Typeface("Segoe UI Semibold"), 16, new SolidColorBrush(Color.FromRgb(35, 55, 62)), dip);
+        dc.DrawText(text, new Point((width - text.Width) / 2, height - 28));
     }
 
     private static void DrawEyes(DrawingContext dc, double center, Brush eye, int eyeId)

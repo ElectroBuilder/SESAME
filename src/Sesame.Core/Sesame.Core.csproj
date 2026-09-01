@@ -14,7 +14,7 @@
     <Compile Include="..\Sesame.Windows\AppVersion.cs" Link="AppVersion.cs" />
     <Compile Include="..\Sesame.Windows\Models\**\*.cs" Link="Models\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\Sesame.Windows\Services\**\*.cs" Link="Services\%(RecursiveDir)%(Filename)%(Extension)"
-             Exclude="..\Sesame.Windows\Services\ThemeManager.cs;..\Sesame.Windows\Services\StoreImageCache.cs" />
+             Exclude="..\Sesame.Windows\Services\ThemeManager.cs;..\Sesame.Windows\Services\StoreImageCache.cs;..\Sesame.Windows\Services\Mii\FflRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\Sesame.Windows\Data\catalog.json" LogicalName="Sesame.catalog.json" />

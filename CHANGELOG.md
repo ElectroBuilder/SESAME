@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0 — 2026-09-01
+
+- Eden Mii preview now uses the real FFL renderer and the exact 68-byte Eden record, so hair, face, eyes, body and other stored Switch Mii fields are rendered by FFL instead of the placeholder drawing.
+- Windows releases bundle the FFL renderer helper; `AFLResHigh_2_3.dat`/`FFLResHigh.dat` is detected automatically from the app/Assets folders and can be selected once when needed. The Nintendo-derived resource remains external to the release.
+
 ## 0.9.3 — 2026-09-01
 
 - Startup hardening: load the Mii editor only when its tab is opened, so a Mii-editor XAML issue can no longer prevent SESAME from starting.
