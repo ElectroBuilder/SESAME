@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.2 — 2026-09-01
+
+- Package the FFL renderer's required runtime models, shaders and metadata so the native helper can start from the released Windows zip.
+- Render both Wii/RFL (74-byte) and Eden/Switch (68-byte) Mii records, including a basic real preview before a database exists.
+- Keep the renderer warm when preview edits are cancelled and show the actual renderer error instead of silently displaying the vector fallback.
+
 ## 0.10.1 — 2026-09-01
 
 - Include the supplied, verified `AFLResHigh_2_3.dat` resource in the Windows package as `Renderer\FFLResHigh.dat`, so the Eden FFL preview no longer silently falls back to the drawn placeholder after installation.

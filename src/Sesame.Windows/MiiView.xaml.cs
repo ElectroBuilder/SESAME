@@ -159,7 +159,7 @@ public partial class MiiView : UserControl
         try
         {
             FflRenderer.SaveResourcePath(dialog.FileName);
-            StatusChanged?.Invoke("FFL resource selected. Rendering the Eden preview…");
+            StatusChanged?.Invoke("FFL resource selected. Rendering the real Mii preview…");
             UpdatePreview();
         }
         catch (Exception ex)
@@ -408,35 +408,57 @@ public partial class MiiView : UserControl
     private async Task RenderRealPreviewAsync(MiiAppearance appearance, int generation,
         CancellationToken cancellationToken)
     {
-        if (SelectedKind != MiiTargetKind.Eden || _service is null || _state is null || !_state.CanExport)
-            return;
         byte[] record;
         try
         {
-            if (MiiList.SelectedItem is MiiSlot selected)
+            if (_service is not null && _state is { CanExport: true })
             {
-                var previewState = _service.UpdateAppearanceDraft(_state, selected.Slot, appearance);
-                record = _service.ExportRecord(previewState, selected.Slot);
+                if (MiiList.SelectedItem is MiiSlot selected)
+                {
+                    var previewState = _service.UpdateAppearanceDraft(_state, selected.Slot, appearance);
+                    record = _service.ExportRecord(previewState, selected.Slot);
+                }
+                else
+                {
+                    var previewState = _service.AddBasicDraft(_state, appearance);
+                    record = _service.ExportRecord(previewState, previewState.Slots.Last().Slot);
+                }
             }
             else
             {
-                var previewState = _service.AddBasicDraft(_state, appearance);
-                record = _service.ExportRecord(previewState, previewState.Slots.Last().Slot);
+                // A real preview should also work before a database exists.
+                // The editor remains read-only in that state, but FFL can
+                // still render a valid basic record for the selected platform.
+                record = SelectedKind == MiiTargetKind.Wii
+                    ? new MiiFormatWii().CreateBasicRecord(string.IsNullOrWhiteSpace(appearance.Name) ? "Mii" : appearance.Name)
+                    : new MiiFormatSwitch().CreateBasicRecord(string.IsNullOrWhiteSpace(appearance.Name) ? "Mii" : appearance.Name);
             }
         }
-        catch { return; }
+        catch (Exception ex)
+        {
+            FflPreviewText.Text = "FFL preview unavailable · " + ex.Message;
+            return;
+        }
 
         try
         {
             await Task.Delay(120, cancellationToken);
             var image = await _fflRenderer.RenderAsync(record, cancellationToken);
             if (image is null || cancellationToken.IsCancellationRequested || generation != _previewGeneration)
+            {
+                if (!cancellationToken.IsCancellationRequested && generation == _previewGeneration &&
+                    !string.IsNullOrWhiteSpace(_fflRenderer.LastError))
+                    FflPreviewText.Text = "FFL preview unavailable · " + _fflRenderer.LastError;
                 return;
+            }
             AvatarPreview.RenderedImage = image;
-            FflPreviewText.Text = "Live preview · Eden FFL renderer";
+            FflPreviewText.Text = $"Live preview · FFL renderer ({SelectedKind})";
         }
         catch (OperationCanceledException) { }
-        catch { /* the vector preview remains available when the optional helper is unavailable */ }
+        catch (Exception ex)
+        {
+            FflPreviewText.Text = "FFL preview unavailable · " + ex.Message;
+        }
     }
 
     private static IReadOnlyList<MiiChoice> HairChoices(MiiTargetKind kind)

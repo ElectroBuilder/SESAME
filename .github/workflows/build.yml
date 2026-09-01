@@ -60,6 +60,14 @@ jobs:
           if (-not (Test-Path -LiteralPath $binary)) { throw "FFL renderer binary was not produced: $binary" }
           Copy-Item -LiteralPath $binary -Destination renderer
           Copy-Item -LiteralPath LICENSE -Destination renderer\FFL-Testing-LICENSE.txt
+          # RIO's default content device resolves relative to the executable:
+          # <renderer>\fs\content. Include the complete small runtime tree so
+          # shaders, body models and CSV metadata are available after release.
+          $content = Join-Path $PWD 'renderer\fs\content'
+          New-Item -ItemType Directory -Force $content | Out-Null
+          Copy-Item -Path (Join-Path $PWD 'fs\content\*') -Destination $content -Recurse -Force
+          if (-not (Test-Path -LiteralPath (Join-Path $content 'body_models.csv'))) { throw 'FFL runtime metadata was not staged.' }
+          if (-not (Test-Path -LiteralPath (Join-Path $content 'models\body\body_switch_skeleton.csv'))) { throw 'FFL runtime body models were not staged.' }
         working-directory: ffl-testing
       - uses: actions/upload-artifact@v4
         with:

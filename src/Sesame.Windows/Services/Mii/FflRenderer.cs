@@ -20,6 +20,8 @@ namespace Sesame.Services.Mii;
 public sealed class FflRenderer : IDisposable
 {
     private const int RequestSize = 155;
+    private const int MinimumRecordSize = MiiFormatSwitch.RecordSize;
+    private const int MaximumRecordSize = MiiFormatWii.RecordSize;
     private const int ResourceTypeHigh = 1;
     private const int ShaderTypeSwitch = 1;
     private const int ResponseFormatTgaBgraFlipY = 2;
@@ -29,6 +31,8 @@ public sealed class FflRenderer : IDisposable
     private int _port;
     private string? _processResource;
     private bool _disposed;
+
+    public string? LastError { get; private set; }
 
     public static void SaveResourcePath(string path)
     {
@@ -41,13 +45,24 @@ public sealed class FflRenderer : IDisposable
 
     public async Task<ImageSource?> RenderAsync(byte[] edenRecord, CancellationToken cancellationToken = default)
     {
-        if (_disposed || edenRecord.Length != MiiFormatSwitch.RecordSize)
+        if (_disposed || (edenRecord.Length != MinimumRecordSize && edenRecord.Length != MaximumRecordSize))
+        {
+            LastError = _disposed ? "FFL renderer is disposed." : "Unsupported Mii record size.";
             return null;
+        }
 
         var helper = FindHelper();
         var resource = FindResource();
-        if (helper is null || resource is null)
+        if (helper is null)
+        {
+            LastError = "FFL renderer helper is missing from the Renderer folder.";
             return null;
+        }
+        if (resource is null)
+        {
+            LastError = "FFLResHigh.dat is missing from the Renderer folder.";
+            return null;
+        }
 
         await _renderLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -57,10 +72,27 @@ public sealed class FflRenderer : IDisposable
 
             try
             {
-                return await SendRequestAsync(port.Value, edenRecord, cancellationToken).ConfigureAwait(false);
+                using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                requestTimeout.CancelAfter(TimeSpan.FromSeconds(10));
+                var image = await SendRequestAsync(port.Value, edenRecord, requestTimeout.Token).ConfigureAwait(false);
+                LastError = null;
+                return image;
             }
-            catch
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                // Cancelling a superseded preview must not kill the shared
+                // renderer. The next preview can reuse its warm OpenGL state.
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                LastError = "FFL renderer timed out while producing the preview.";
+                StopProcess();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LastError = "FFL render request failed: " + ex.Message;
                 StopProcess();
                 return null;
             }
@@ -100,19 +132,32 @@ public sealed class FflRenderer : IDisposable
         try
         {
             _process = Process.Start(start);
-            if (_process is null) return null;
+            if (_process is null)
+            {
+                LastError = "FFL renderer process could not be started.";
+                return null;
+            }
             _processResource = resource;
             _port = port;
             var ready = await WaitForPortAsync(port, _process, cancellationToken).ConfigureAwait(false);
             if (!ready)
             {
+                LastError = _process.HasExited
+                    ? $"FFL renderer exited during startup (code {_process.ExitCode}). Check Renderer runtime files."
+                    : "FFL renderer did not open its local port within 15 seconds.";
                 StopProcess();
                 return null;
             }
             return port;
         }
-        catch
+        catch (OperationCanceledException)
         {
+            StopProcess();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LastError = "FFL renderer startup failed: " + ex.Message;
             StopProcess();
             return null;
         }
@@ -146,6 +191,8 @@ public sealed class FflRenderer : IDisposable
 
     private static byte[] BuildRequest(byte[] record)
     {
+        if (record.Length != MinimumRecordSize && record.Length != MaximumRecordSize)
+            throw new InvalidDataException("FFL renderer received an unsupported Mii record size.");
         using var stream = new MemoryStream(RequestSize);
         using var writer = new BinaryWriter(stream);
         writer.Write(record);
