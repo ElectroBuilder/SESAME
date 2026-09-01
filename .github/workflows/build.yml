@@ -32,7 +32,10 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release `
             -DNO_GLTF=ON `
             -DRIO_USE_HEADLESS_GLFW=ON 2>&1 | Tee-Object configure.log
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content -LiteralPath configure.log | ForEach-Object { Write-Host "::error title=FFL configure::$($_)" }
+            exit $LASTEXITCODE
+          }
         working-directory: ffl-testing
       - name: Upload native configure diagnostics
         if: failure()
