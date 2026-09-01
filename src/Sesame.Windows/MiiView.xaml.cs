@@ -7,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using Sesame.Services;
 using Sesame.Services.Mii;
@@ -83,6 +84,8 @@ public partial class MiiView : UserControl
     private int _choiceRenderGeneration;
     private bool _updatingPaths;
     private bool _suppressEditorEvents;
+    private DispatcherOperation? _pendingEditorChange;
+    private int _editorChangeGeneration;
     private MiiAppearance? _loadedAppearance;
     private MiiAppearance? _editorAppearance;
     private int? _selectedSlot;
@@ -124,6 +127,8 @@ public partial class MiiView : UserControl
         _previewCts?.Cancel();
         _cardRenderCts?.Cancel();
         _choiceRenderCts?.Cancel();
+        _pendingEditorChange?.Abort();
+        _pendingEditorChange = null;
         _state = null;
         _liveState = null;
         _loadedAppearance = null;
@@ -215,6 +220,10 @@ public partial class MiiView : UserControl
     private void MiiList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressEditorEvents) return;
+        // A user can click another Mii before the deferred gallery event has
+        // run. Commit the old controls against the old slot first, otherwise
+        // loading the new card would legitimately discard that last change.
+        FlushPendingEditorChange();
         if (_service is not null && _state is not null && MiiList.SelectedItem is MiiCard card)
         {
             var selected = _state.Slots.FirstOrDefault(x => x.Slot == card.SlotIndex) ?? card.Slot;
@@ -232,21 +241,50 @@ public partial class MiiView : UserControl
 
     private void EditorValueChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_suppressEditorEvents) UpdatePreview();
+        if (!_suppressEditorEvents) ScheduleEditorChange();
     }
 
     private void EditorTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!_suppressEditorEvents) UpdatePreview();
+        if (!_suppressEditorEvents) ScheduleEditorChange();
     }
 
     private void GenderChanged(object sender, RoutedEventArgs e)
     {
         if (_suppressEditorEvents || HairGallery is null) return;
         var currentHair = SelectedNumber(HairGallery);
-        HairGallery.ItemsSource = HairChoices(SelectedKind, FemaleRadio.IsChecked == true);
-        SelectChoice(HairGallery, currentHair);
-        UpdatePreview();
+        _suppressEditorEvents = true;
+        try
+        {
+            HairGallery.ItemsSource = HairChoices(SelectedKind, FemaleRadio.IsChecked == true);
+            SelectChoice(HairGallery, currentHair);
+        }
+        finally { _suppressEditorEvents = false; }
+        ScheduleEditorChange();
+    }
+
+    private void ScheduleEditorChange()
+    {
+        if (_suppressEditorEvents || !IsLoaded) return;
+        var generation = ++_editorChangeGeneration;
+        _pendingEditorChange?.Abort();
+        _pendingEditorChange = Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+        {
+            _pendingEditorChange = null;
+            if (_suppressEditorEvents || generation != _editorChangeGeneration) return;
+            // Let WPF finish the selection/radio transition first. Reading the
+            // controls synchronously from SelectionChanged used to commit a
+            // half-updated editor and the next event then restored the old Mii.
+            UpdatePreview();
+        }));
+    }
+
+    private void FlushPendingEditorChange()
+    {
+        if (_pendingEditorChange is null) return;
+        _pendingEditorChange.Abort();
+        _pendingEditorChange = null;
+        if (!_suppressEditorEvents) UpdatePreview();
     }
 
     private void HairGallery_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -338,7 +376,13 @@ public partial class MiiView : UserControl
         try
         {
             _state = _service.UpdateAppearanceDraft(_state, selected.Slot, EditorAppearance());
-            SelectSlot(selected.Slot);
+            if (_miiCards.FirstOrDefault(x => x.SlotIndex == selected.Slot) is { } card &&
+                _state.Slots.FirstOrDefault(x => x.Slot == selected.Slot) is { } updatedSlot)
+                card.UpdateSlot(updatedSlot);
+            _selectedSlot = selected.Slot;
+            _suppressEditorEvents = true;
+            try { MiiList.SelectedItem = _miiCards.FirstOrDefault(x => x.SlotIndex == selected.Slot); }
+            finally { _suppressEditorEvents = false; }
             _ = RenderMiiCardsAsync(_state);
             StatusChanged?.Invoke("Mii changes are in the draft. Choose Save to emulator when ready.");
         }
@@ -477,8 +521,17 @@ public partial class MiiView : UserControl
         _state = _liveState;
         if (_state is not null)
         {
-            BindMiiCards(_state);
-            MiiList.SelectedItem = _miiCards.FirstOrDefault();
+            var slot = _state.Slots.FirstOrDefault()?.Slot;
+            _suppressEditorEvents = true;
+            try
+            {
+                BindMiiCards(_state);
+                _selectedSlot = slot;
+                MiiList.SelectedItem = _miiCards.FirstOrDefault(x => x.SlotIndex == slot);
+            }
+            finally { _suppressEditorEvents = false; }
+            if (slot is { } selectedSlot && _service is not null)
+                LoadAppearance(_service.GetAppearance(_state, selectedSlot));
             IntegrityText.Text = _state.Integrity;
             ApplyCapabilities();
         }
@@ -511,7 +564,10 @@ public partial class MiiView : UserControl
             FavoriteColorGallery.ItemsSource = FavoriteChoices();
             FaceGallery.ItemsSource = PartChoices(kind, "Face", kind == MiiTargetKind.Wii ? 6 : 12);
             EyeGallery.ItemsSource = PartChoices(kind, "Eye", kind == MiiTargetKind.Wii ? 48 : 60);
-            EyebrowGallery.ItemsSource = PartChoices(kind, "Brow", kind == MiiTargetKind.Wii ? 24 : 32);
+            // Eden's CoreData validator accepts eyebrow styles 0..23. The
+            // old 32-item gallery exposed eight values that could never be
+            // committed, which looked exactly like a selection reset.
+            EyebrowGallery.ItemsSource = PartChoices(kind, "Brow", 24);
             NoseGallery.ItemsSource = PartChoices(kind, "Nose", kind == MiiTargetKind.Wii ? 12 : 18);
             MouthGallery.ItemsSource = PartChoices(kind, "Mouth", kind == MiiTargetKind.Wii ? 24 : 36);
             GlassesGallery.ItemsSource = PartChoices(kind, "Glasses", kind == MiiTargetKind.Wii ? 9 : 20);
@@ -522,7 +578,10 @@ public partial class MiiView : UserControl
             foreach (var gallery in AllGalleries()) gallery.SelectedIndex = 0;
         }
         finally { _suppressEditorEvents = false; }
-        UpdatePreview();
+        // Changing the target rebuilds the controls before the new database is
+        // loaded. Never serialize those temporary defaults into the previous
+        // emulator's draft.
+        if (_state is null || _state.Target.Kind == kind) UpdatePreview();
     }
 
     private MiiAppearance EditorAppearance()
@@ -614,15 +673,21 @@ public partial class MiiView : UserControl
     private async Task RenderChoiceThumbnailsAsync(MiiTargetKind kind, MiiAppearance baseAppearance,
         int generation, CancellationToken cancellationToken)
     {
-        // These are the high-value galleries: each tile is real FFL output,
-        // so hair and eyes are recognisable instead of abstract labels.
+        // Every selectable part gets its own real FFL thumbnail. This keeps
+        // the catalogue honest: labels and colour swatches are only metadata,
+        // never a replacement for the part being previewed.
         var galleries = new[]
         {
             (Gallery: HairGallery, Part: "HairStyle"),
             (Gallery: HairColorGallery, Part: "HairColor"),
             (Gallery: EyeColorGallery, Part: "EyeColor"),
+            (Gallery: FaceColorGallery, Part: "FaceColor"),
             (Gallery: EyeGallery, Part: "EyeType"),
-            (Gallery: NoseGallery, Part: "NoseType")
+            (Gallery: EyebrowGallery, Part: "EyebrowType"),
+            (Gallery: NoseGallery, Part: "NoseType"),
+            (Gallery: MouthGallery, Part: "MouthType"),
+            (Gallery: GlassesGallery, Part: "GlassesType"),
+            (Gallery: MoleGallery, Part: "MoleType")
         };
         try
         {
@@ -636,7 +701,8 @@ public partial class MiiView : UserControl
                     var image = await _fflRenderer.RenderAsync(record, cancellationToken, resolution: 96);
                     if (image is not null && generation == _choiceRenderGeneration &&
                         !cancellationToken.IsCancellationRequested)
-                        choice.Thumbnail = part is "EyeType" or "EyeColor" or "NoseType"
+                        choice.Thumbnail = part is "FaceColor" or "EyeType" or "EyeColor" or
+                            "EyebrowType" or "NoseType" or "MouthType" or "GlassesType" or "MoleType"
                             ? CropFace(image)
                             : image;
                 }
@@ -673,7 +739,12 @@ public partial class MiiView : UserControl
             case "HairColor": result.HairColor = value; break;
             case "EyeColor": result.EyeColor = value; break;
             case "EyeType": result.EyeType = value; break;
+            case "FaceColor": result.FaceColor = value; break;
+            case "EyebrowType": result.EyebrowType = value; break;
             case "NoseType": result.NoseType = value; break;
+            case "MouthType": result.MouthType = value; break;
+            case "GlassesType": result.GlassesType = value; break;
+            case "MoleType": result.MoleType = value; break;
         }
         return result;
     }
@@ -925,8 +996,16 @@ public partial class MiiView : UserControl
     private void SelectSlot(int slot)
     {
         if (_state is null) return;
-        BindMiiCards(_state);
-        MiiList.SelectedItem = _miiCards.FirstOrDefault(x => x.SlotIndex == slot);
+        _suppressEditorEvents = true;
+        try
+        {
+            BindMiiCards(_state);
+            _selectedSlot = slot;
+            MiiList.SelectedItem = _miiCards.FirstOrDefault(x => x.SlotIndex == slot);
+        }
+        finally { _suppressEditorEvents = false; }
+        if (_service is not null && _state.Slots.Any(x => x.Slot == slot))
+            LoadAppearance(_service.GetAppearance(_state, slot));
         ApplyCapabilities();
     }
 

@@ -4,15 +4,23 @@
              xmlns:local="clr-namespace:Sesame">
     <UserControl.Resources>
         <DataTemplate x:Key="ChoiceTemplate">
-            <Border Width="100" Height="74" Margin="3" Padding="3"
-                    Background="{Binding Swatch}" CornerRadius="8"
+            <Border Width="154" Height="126" Margin="6" Padding="5"
+                    Background="{DynamicResource Bg}" CornerRadius="8"
                     BorderBrush="{DynamicResource Border}" BorderThickness="1">
-                <StackPanel>
-                    <Image Source="{Binding Thumbnail}" Width="88" Height="48" Stretch="Uniform"
-                           HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding Name}" FontSize="10" TextTrimming="CharacterEllipsis"
-                               Foreground="White" HorizontalAlignment="Center"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Background="{DynamicResource PanelAlt}" CornerRadius="5" Padding="2">
+                        <Image Source="{Binding Thumbnail}" Width="140" Height="92" Stretch="Uniform"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="2,4,2,0">
+                        <Border Width="11" Height="11" Background="{Binding Swatch}" CornerRadius="2" Margin="0,0,5,0"/>
+                        <TextBlock Text="{Binding Name}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Grid>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
@@ -108,85 +116,107 @@
                         <Button x:Name="CreateBtn" Visibility="Collapsed" IsEnabled="False" Click="Create_Click"/>
                     </StackPanel>
 
-                    <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel>
-                            <TabControl Height="435">
-                                <TabItem Header="Hair &amp; colours">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <StackPanel Margin="3">
-                                            <TextBlock Text="Hair style" Foreground="{DynamicResource Muted}"/>
-                                            <ListBox x:Name="HairGallery" Height="235" Margin="0,3,0,8" Tag="4"
-                                                     ItemTemplate="{StaticResource ChoiceTemplate}"
-                                                     SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
-                                                     KeyboardNavigation.DirectionalNavigation="Cycle"
-                                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                                <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                            </ListBox>
-                                            <TextBlock Text="Hair colour" Foreground="{DynamicResource Muted}"/>
-                                            <ListBox x:Name="HairColorGallery" Height="105" Tag="6" ItemTemplate="{StaticResource ChoiceTemplate}"
-                                                     SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
-                                                     KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                                <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                            </ListBox>
-                                            <TextBlock Text="Eye colour" Foreground="{DynamicResource Muted}" Margin="0,6,0,0"/>
-                                            <ListBox x:Name="EyeColorGallery" Height="105" Tag="6" ItemTemplate="{StaticResource ChoiceTemplate}"
-                                                     SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
-                                                     KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                                <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                            </ListBox>
-                                            <TextBlock Text="Skin colour" Foreground="{DynamicResource Muted}" Margin="0,6,0,0"/>
-                                            <ListBox x:Name="FaceColorGallery" Height="105" Tag="6" ItemTemplate="{StaticResource ChoiceTemplate}"
-                                                     SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
-                                                     KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                                <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                            </ListBox>
-                                            <TextBlock Text="Favourite colour" Foreground="{DynamicResource Muted}" Margin="0,6,0,0"/>
-                                            <ListBox x:Name="FavoriteColorGallery" Height="105" Tag="6" ItemTemplate="{StaticResource ChoiceTemplate}"
-                                                     SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
-                                                     KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                                <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                            </ListBox>
-                                        </StackPanel>
-                                    </ScrollViewer>
-                                </TabItem>
-                                <TabItem Header="Face parts">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <StackPanel Margin="3">
-                                            <TextBlock Text="Face shape" Foreground="{DynamicResource Muted}"/>
-                                            <ListBox x:Name="FaceGallery" Height="105" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Eyes" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="EyeGallery" Height="145" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Eyebrows" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="EyebrowGallery" Height="115" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Nose" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="NoseGallery" Height="105" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Mouth" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="MouthGallery" Height="145" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                        </StackPanel>
-                                    </ScrollViewer>
-                                </TabItem>
-                                <TabItem Header="Details &amp; colours">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <StackPanel Margin="3">
-                                            <TextBlock Text="Eyebrow colour" Foreground="{DynamicResource Muted}"/>
-                                            <ListBox x:Name="EyebrowColorGallery" Height="105" Tag="6" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Mouth colour" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="MouthColorGallery" Height="80" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Beard / moustache colour" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="BeardColorGallery" Height="105" Tag="6" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Glasses" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="GlassesGallery" Height="115" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Glasses colour" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="GlassesColorGallery" Height="105" Tag="6" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="6"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                            <TextBlock Text="Mole" Foreground="{DynamicResource Muted}" Margin="0,7,0,0"/>
-                                            <ListBox x:Name="MoleGallery" Height="62" Tag="2" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
-                                        </StackPanel>
-                                    </ScrollViewer>
-                                </TabItem>
-                            </TabControl>
-
-                        </StackPanel>
-                    </ScrollViewer>
+                    <TabControl Grid.Column="2" Height="535" Margin="0">
+                        <TabItem Header="Hair style">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Hair style · select a real FFL render" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="HairGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}"
+                                         SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
+                                         KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                </ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Hair colour">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Hair colour" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="HairColorGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}"
+                                         SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
+                                         KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                </ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Eye colour">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Eye colour" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="EyeColorGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}"
+                                         SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
+                                         KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                </ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Skin colour">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Skin colour" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="FaceColorGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}"
+                                         SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
+                                         KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                </ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Favourite colour">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Favourite colour" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="FavoriteColorGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}"
+                                         SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown"
+                                         KeyboardNavigation.DirectionalNavigation="Cycle" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                </ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Face shape">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Face shape" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="FaceGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Eyes">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Eyes · real FFL face crops" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="EyeGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Eyebrows">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Eyebrows" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="EyebrowGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Nose">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Nose · real FFL face crops" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="NoseGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Mouth">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Mouth" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="MouthGallery" Height="485" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Glasses &amp; mole">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Glasses" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="GlassesGallery" Height="300" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                                <TextBlock Text="Mole" Foreground="{DynamicResource Muted}" Margin="0,8,0,4"/>
+                                <ListBox x:Name="MoleGallery" Height="140" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Detail colours">
+                            <StackPanel Margin="3">
+                                <TextBlock Text="Eyebrow colour" Foreground="{DynamicResource Muted}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="EyebrowColorGallery" Height="180" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                                <TextBlock Text="Mouth colour" Foreground="{DynamicResource Muted}" Margin="0,8,0,4"/>
+                                <ListBox x:Name="MouthColorGallery" Height="140" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                                <TextBlock Text="Beard / glasses colour" Foreground="{DynamicResource Muted}" Margin="0,8,0,4"/>
+                                <ListBox x:Name="BeardColorGallery" Height="140" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                                <ListBox x:Name="GlassesColorGallery" Height="140" Tag="4" ItemTemplate="{StaticResource ChoiceTemplate}" SelectionChanged="EditorValueChanged" PreviewKeyDown="ChoiceGallery_PreviewKeyDown" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ListBox.ItemsPanel></ListBox>
+                            </StackPanel>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
             </DockPanel>
         </Border>
