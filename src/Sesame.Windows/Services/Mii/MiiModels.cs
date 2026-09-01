@@ -114,6 +114,7 @@ public interface IMiiFormat
     MiiAppearance ReadAppearance(byte[] database, int slot);
     byte[] UpdateAppearance(byte[] database, int slot, MiiAppearance appearance);
     byte[] UpdateName(byte[] database, int slot, string name);
+    byte[] Remove(byte[] database, int slot);
     byte[] ExportRecord(byte[] database, int slot);
     byte[] CreateBasicRecord(string name, byte[]? identity = null);
 }

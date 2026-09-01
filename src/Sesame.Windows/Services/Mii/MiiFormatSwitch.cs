@@ -287,6 +287,25 @@ public sealed class MiiFormatSwitch : IMiiFormat
         });
     }
 
+    public byte[] Remove(byte[] database, int slot)
+    {
+        var validation = Validate(database);
+        if (!validation.IsValid) throw new InvalidDataException(validation.Error);
+        var count = database[CountOffset];
+        if ((uint)slot >= count) throw new ArgumentOutOfRangeException(nameof(slot));
+        var result = (byte[])database.Clone();
+        var start = RecordsOffset + slot * RecordSize;
+        var trailing = (count - slot - 1) * RecordSize;
+        if (trailing > 0)
+            Buffer.BlockCopy(result, start + RecordSize, result, start, trailing);
+        Array.Clear(result, RecordsOffset + (count - 1) * RecordSize, RecordSize);
+        result[CountOffset] = (byte)(count - 1);
+        WriteDatabaseChecksum(result);
+        var edited = Validate(result);
+        if (!edited.IsValid) throw new InvalidDataException("Removed Eden Mii failed validation: " + edited.Error);
+        return result;
+    }
+
     public byte[] CreateBasicRecord(string name, byte[]? identity = null)
     {
         var uuid = identity is null ? RandomNumberGenerator.GetBytes(16) : (byte[])identity.Clone();

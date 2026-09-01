@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.11 — 2026-09-01
+
+- Mii cards now re-render the edited character immediately instead of showing a stale avatar.
+- Use the full available editor height for the Mii list and keep the preview, Mii list and four fixed tabs aligned at the top.
+- Group editor controls into Hair, Eyes, Face and Misc tabs with colour subsections.
+- Add safe draft deletion for individual Miis; live NAND changes only after an explicit save.
+
 ## 0.10.10 — 2026-09-01
 
 - Updater: recognize the versioned Windows/Linux release assets and select the newest compatible release instead of falling back to an older legacy asset.

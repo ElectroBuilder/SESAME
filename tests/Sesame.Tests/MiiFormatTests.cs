@@ -76,6 +76,24 @@ public sealed class MiiFormatTests
     }
 
     [Fact]
+    public void Wii_remove_clears_the_selected_slot_and_recalculates_crc()
+    {
+        var format = new MiiFormatWii();
+        var database = format.Insert(MiiFormatWii.CreateEmptyDatabase(),
+            format.CreateBasicRecord("Sara", [9, 8, 7, 6, 5, 4, 3, 2]));
+
+        var result = format.Remove(database, 0);
+
+        var validation = format.Validate(result);
+        Assert.True(validation.IsValid, validation.Error);
+        Assert.Empty(validation.Slots);
+        Assert.Equal((byte)0, result[MiiFormatWii.RecordsOffset]);
+        Assert.NotEqual(database.AsSpan(MiiFormatWii.RecordsOffset, MiiFormatWii.RecordSize).ToArray(),
+            result.AsSpan(MiiFormatWii.RecordsOffset, MiiFormatWii.RecordSize).ToArray());
+        Assert.NotEqual(database, result);
+    }
+
+    [Fact]
     public void Wii_rejects_wrong_size_magic_crc_duplicate_and_delete_bit()
     {
         var format = new MiiFormatWii();
@@ -209,6 +227,23 @@ public sealed class MiiFormatTests
             Enumerable.Range(MiiFormatSwitch.RecordsOffset, MiiFormatSwitch.RecordSize)
                 .Append(MiiFormatSwitch.CountOffset)
                 .Concat(Enumerable.Range(MiiFormatSwitch.ChecksumOffset, 2)).ToHashSet());
+    }
+
+    [Fact]
+    public void Switch_remove_compacts_records_and_recalculates_count_and_crc()
+    {
+        var format = new MiiFormatSwitch();
+        var database = format.Insert(MiiFormatSwitch.CreateEmptyDatabase(),
+            format.CreateBasicRecord("First", Enumerable.Range(1, 16).Select(i => (byte)i).ToArray()));
+        database = format.Insert(database,
+            format.CreateBasicRecord("Second", Enumerable.Range(17, 16).Select(i => (byte)i).ToArray()));
+
+        var result = format.Remove(database, 0);
+
+        var validation = format.Validate(result);
+        Assert.True(validation.IsValid, validation.Error);
+        Assert.Equal("Second", validation.Slots.Single().Name);
+        Assert.Equal((byte)1, result[MiiFormatSwitch.CountOffset]);
     }
 
     [Fact]

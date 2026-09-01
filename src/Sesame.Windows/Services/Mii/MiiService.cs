@@ -114,6 +114,10 @@ public sealed class MiiService
         Draft(state, Format(state.Target.Kind).UpdateAppearance(RequireDatabase(state), slot, appearance),
             "Mii appearance edited in draft.");
 
+    public MiiTargetState RemoveDraft(MiiTargetState state, int slot) =>
+        Draft(state, Format(state.Target.Kind).Remove(RequireDatabase(state), slot),
+            "Mii removed from an offline draft. Live NAND is unchanged.");
+
     public MiiTargetState AddBasicDraft(MiiTargetState state, string name) =>
         ImportDraft(state, CreateBasicRecord(state, name)) with
         {

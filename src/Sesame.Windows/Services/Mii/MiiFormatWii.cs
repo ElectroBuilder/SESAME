@@ -292,6 +292,17 @@ public sealed class MiiFormatWii : IMiiFormat
         });
     }
 
+    public byte[] Remove(byte[] database, int slot)
+    {
+        _ = RecordAt(database, slot);
+        var result = (byte[])database.Clone();
+        Array.Clear(result, RecordsOffset + slot * RecordSize, RecordSize);
+        WriteDatabaseChecksum(result);
+        var validation = Validate(result);
+        if (!validation.IsValid) throw new InvalidDataException("Removed Wii Mii failed validation: " + validation.Error);
+        return result;
+    }
+
     public byte[] CreateBasicRecord(string name, byte[]? identity = null)
     {
         var ids = identity is null ? RandomNumberGenerator.GetBytes(8) : (byte[])identity.Clone();

@@ -337,6 +337,7 @@ public partial class MiiView : UserControl
             SetRandom(EyebrowGallery);
             SetRandom(NoseGallery);
             SetRandom(MouthGallery);
+            SetRandom(BeardGallery);
             SetRandom(GlassesGallery);
             SetRandom(MoleGallery);
         }
@@ -386,6 +387,46 @@ public partial class MiiView : UserControl
         catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Mii maker"); }
     }
 
+    private void Delete_Click(object sender, RoutedEventArgs e)
+    {
+        if (_service is null || _state is null || SelectedMii is not { } selected) return;
+        if (MessageBox.Show(Window.GetWindow(this),
+                $"Remove '{selected.Name}' from the draft? Live NAND is unchanged until you save.",
+                "Remove Mii", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+        try
+        {
+            _pendingEditorChange?.Abort();
+            _pendingEditorChange = null;
+            _state = _service.RemoveDraft(_state, selected.Slot);
+            var nextSlot = _state.Slots.FirstOrDefault()?.Slot;
+            _suppressEditorEvents = true;
+            try
+            {
+                BindMiiCards(_state);
+                _selectedSlot = nextSlot;
+                MiiList.SelectedIndex = nextSlot is { } value
+                    ? _miiCards.IndexOf(_miiCards.First(card => card.SlotIndex == value))
+                    : -1;
+                if (nextSlot is null)
+                {
+                    NameBox.Clear();
+                    AvatarPreview.RenderedImage = null;
+                    FflPreviewText.Text = "No Miis in this draft.";
+                }
+            }
+            finally { _suppressEditorEvents = false; }
+            if (nextSlot is { } slot)
+            {
+                LoadAppearance(_service.GetAppearance(_state, slot));
+                _ = RenderMiiCardsAsync(_state);
+            }
+            ApplyCapabilities();
+            StatusChanged?.Invoke("Mii removed from the draft. Choose Save to emulator when ready.");
+        }
+        catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), ex.Message, "Remove Mii"); }
+    }
+
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (_service is null || _state is null || SelectedMii is not { } selected) return;
@@ -394,7 +435,10 @@ public partial class MiiView : UserControl
             _state = _service.UpdateAppearanceDraft(_state, selected.Slot, EditorAppearance());
             if (_miiCards.FirstOrDefault(x => x.SlotIndex == selected.Slot) is { } card &&
                 _state.Slots.FirstOrDefault(x => x.Slot == selected.Slot) is { } updatedSlot)
+            {
                 card.UpdateSlot(updatedSlot);
+                QueueSelectedCardRender(_state, card);
+            }
             _selectedSlot = selected.Slot;
             _suppressEditorEvents = true;
             try { MiiList.SelectedItem = _miiCards.FirstOrDefault(x => x.SlotIndex == selected.Slot); }
@@ -586,6 +630,7 @@ public partial class MiiView : UserControl
             EyebrowGallery.ItemsSource = PartChoices(kind, "Brow", 24);
             NoseGallery.ItemsSource = PartChoices(kind, "Nose", kind == MiiTargetKind.Wii ? 12 : 18);
             MouthGallery.ItemsSource = PartChoices(kind, "Mouth", kind == MiiTargetKind.Wii ? 24 : 36);
+            BeardGallery.ItemsSource = PartChoices(kind, "Beard", kind == MiiTargetKind.Wii ? 4 : 8);
             GlassesGallery.ItemsSource = PartChoices(kind, "Glasses", kind == MiiTargetKind.Wii ? 9 : 20);
             MoleGallery.ItemsSource = PartChoices(kind, "Mole", kind == MiiTargetKind.Wii ? 2 : 2);
             MaleRadio.IsChecked = true;
@@ -625,7 +670,7 @@ public partial class MiiView : UserControl
             NoseScale = old?.NoseScale ?? 0, NosePosition = old?.NosePosition ?? 0,
             MouthType = SelectedNumber(MouthGallery), MouthColor = SelectedNumber(MouthColorGallery),
             MouthScale = old?.MouthScale ?? 0, MouthAspect = old?.MouthAspect ?? 0,
-            MouthPosition = old?.MouthPosition ?? 0, BeardType = old?.BeardType ?? 0,
+            MouthPosition = old?.MouthPosition ?? 0, BeardType = SelectedNumber(BeardGallery),
             BeardColor = SelectedNumber(BeardColorGallery), MustacheType = old?.MustacheType ?? 0,
             MustacheScale = old?.MustacheScale ?? 0, MustachePosition = old?.MustachePosition ?? 0,
             GlassesType = SelectedNumber(GlassesGallery), GlassesColor = SelectedNumber(GlassesColorGallery),
@@ -658,6 +703,7 @@ public partial class MiiView : UserControl
             SelectChoice(EyebrowGallery, appearance.EyebrowType);
             SelectChoice(NoseGallery, appearance.NoseType);
             SelectChoice(MouthGallery, appearance.MouthType);
+            SelectChoice(BeardGallery, appearance.BeardType);
             SelectChoice(GlassesGallery, appearance.GlassesType);
             SelectChoice(MoleGallery, appearance.MoleType);
             SelectChoice(EyebrowColorGallery, appearance.EyebrowColor);
@@ -704,6 +750,7 @@ public partial class MiiView : UserControl
             (Gallery: EyebrowGallery, Part: "EyebrowType"),
             (Gallery: NoseGallery, Part: "NoseType"),
             (Gallery: MouthGallery, Part: "MouthType"),
+            (Gallery: BeardGallery, Part: "BeardType"),
             (Gallery: GlassesGallery, Part: "GlassesType"),
             (Gallery: MoleGallery, Part: "MoleType")
         };
@@ -761,6 +808,7 @@ public partial class MiiView : UserControl
             case "EyebrowType": result.EyebrowType = value; break;
             case "NoseType": result.NoseType = value; break;
             case "MouthType": result.MouthType = value; break;
+            case "BeardType": result.BeardType = value; break;
             case "GlassesType": result.GlassesType = value; break;
             case "MoleType": result.MoleType = value; break;
         }
@@ -824,7 +872,10 @@ public partial class MiiView : UserControl
             _state = _service.UpdateAppearanceDraft(state, selected.Slot, appearance);
             if (_miiCards.FirstOrDefault(x => x.SlotIndex == selected.Slot) is { } card &&
                 _state.Slots.FirstOrDefault(x => x.Slot == selected.Slot) is { } updatedSlot)
+            {
                 card.UpdateSlot(updatedSlot);
+                QueueSelectedCardRender(_state, card);
+            }
             _editorAppearance = appearance.Clone();
             _loadedAppearance = appearance;
         }
@@ -932,7 +983,7 @@ public partial class MiiView : UserControl
     [
         HairGallery, HairColorGallery, EyeColorGallery, FaceColorGallery, EyebrowColorGallery,
         MouthColorGallery, BeardColorGallery, GlassesColorGallery, FavoriteColorGallery,
-        FaceGallery, EyeGallery, EyebrowGallery, NoseGallery, MouthGallery,
+        FaceGallery, EyeGallery, EyebrowGallery, NoseGallery, MouthGallery, BeardGallery,
         GlassesGallery, MoleGallery
     ];
 
@@ -1023,6 +1074,30 @@ public partial class MiiView : UserControl
         catch (Exception ex) { StatusChanged?.Invoke("Mii thumbnails unavailable: " + ex.Message); }
     }
 
+    private void QueueSelectedCardRender(MiiTargetState state, MiiCard card)
+    {
+        if (_service is not { } service || !state.CanExport) return;
+        _cardRenderCts?.Cancel();
+        _cardRenderCts?.Dispose();
+        var cts = _cardRenderCts = new CancellationTokenSource();
+        var generation = ++_cardRenderGeneration;
+        _ = RenderSelectedCardAsync(service, state, card, generation, cts);
+    }
+
+    private async Task RenderSelectedCardAsync(MiiService service, MiiTargetState state, MiiCard card,
+        int generation, CancellationTokenSource cts)
+    {
+        try
+        {
+            var record = await Task.Run(() => service.ExportRecord(state, card.SlotIndex), cts.Token);
+            var image = await _fflRenderer.RenderAsync(record, cts.Token, resolution: 112);
+            if (image is not null && generation == _cardRenderGeneration && !cts.IsCancellationRequested)
+                card.Image = image;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { StatusChanged?.Invoke("Mii thumbnail unavailable: " + ex.Message); }
+    }
+
     private void SelectSlot(int slot)
     {
         if (_state is null) return;
@@ -1103,6 +1178,7 @@ public partial class MiiView : UserControl
         ExportBtn.IsEnabled = valid && SelectedMii is not null;
         ExportDatabaseBtn.IsEnabled = valid;
         CreateBtn.IsEnabled = valid;
+        DeleteBtn.IsEnabled = valid && SelectedMii is not null;
         ApplyBtn.IsEnabled = valid && SelectedMii is not null;
         ImportBtn.IsEnabled = valid;
         DiscardBtn.IsEnabled = _state?.IsDraft == true;
