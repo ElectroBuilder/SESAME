@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.4 — 2026-09-01
+
+- Replace the text-only Mii slot table with selectable cards that render each Mii using FFL thumbnails.
+- Add larger keyboard-navigable galleries for hair, colours, face shape, eyes, eyebrows, nose, mouth, glasses and mole choices.
+- Add skin/accessory colour galleries and a Randomize action, with immediate preview updates even before a database is available.
+- Persist the complete supported Wii/Eden FFL part set instead of silently resetting hidden face fields when applying a colour or part change.
+
 ## 0.10.3 — 2026-09-01
 
 - Remove the drawn Mii fallback completely; the preview now shows only the bundled FFL render.

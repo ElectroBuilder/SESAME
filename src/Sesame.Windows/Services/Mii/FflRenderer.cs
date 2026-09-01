@@ -43,7 +43,8 @@ public sealed class FflRenderer : IDisposable
         AppDataPaths.RestrictFile(saved);
     }
 
-    public async Task<ImageSource?> RenderAsync(byte[] edenRecord, CancellationToken cancellationToken = default)
+    public async Task<ImageSource?> RenderAsync(byte[] edenRecord, CancellationToken cancellationToken = default,
+        int resolution = Resolution)
     {
         if (_disposed || (edenRecord.Length != MinimumRecordSize && edenRecord.Length != MaximumRecordSize))
         {
@@ -78,7 +79,7 @@ public sealed class FflRenderer : IDisposable
             {
                 using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 requestTimeout.CancelAfter(TimeSpan.FromSeconds(10));
-                var image = await SendRequestAsync(port.Value, edenRecord, requestTimeout.Token).ConfigureAwait(false);
+                var image = await SendRequestAsync(port.Value, edenRecord, requestTimeout.Token, resolution).ConfigureAwait(false);
                 LastError = null;
                 return image;
             }
@@ -168,12 +169,12 @@ public sealed class FflRenderer : IDisposable
     }
 
     private static async Task<ImageSource?> SendRequestAsync(int port, byte[] record,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, int resolution)
     {
         using var client = new TcpClient();
         await client.ConnectAsync(IPAddress.Loopback, port, cancellationToken).ConfigureAwait(false);
         using var stream = client.GetStream();
-        var request = BuildRequest(record);
+        var request = BuildRequest(record, resolution);
         await stream.WriteAsync(request, cancellationToken).ConfigureAwait(false);
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
 
@@ -209,7 +210,7 @@ public sealed class FflRenderer : IDisposable
         }
     }
 
-    private static byte[] BuildRequest(byte[] record)
+    private static byte[] BuildRequest(byte[] record, int resolution)
     {
         if (record.Length != MinimumRecordSize && record.Length != MaximumRecordSize)
             throw new InvalidDataException("FFL renderer received an unsupported Mii record size.");
@@ -220,7 +221,8 @@ public sealed class FflRenderer : IDisposable
         writer.Write((ushort)record.Length);
         writer.Write((byte)1); // normal model
         writer.Write((byte)ResponseFormatTgaBgraFlipY);
-        writer.Write((ushort)Resolution);
+        resolution = Math.Clamp(resolution, 64, Resolution);
+        writer.Write((ushort)resolution);
         writer.Write((short)-256); // FFL texture resolution + mipmaps
         writer.Write((byte)0); // face + body
         writer.Write((sbyte)ResourceTypeHigh);

@@ -139,6 +139,42 @@ public sealed class MiiFormatTests
     }
 
     [Fact]
+    public void Wii_advanced_face_parts_roundtrip_through_the_real_record_fields()
+    {
+        var format = new MiiFormatWii();
+        var database = format.Insert(MiiFormatWii.CreateEmptyDatabase(),
+            format.CreateBasicRecord("Parts", [1, 2, 3, 4, 5, 6, 7, 8]));
+        var input = new MiiAppearance("Parts", true, 7, 21, 3, 4)
+        {
+            HasAdvancedParts = true, Height = 80, Build = 44, HairFlip = 1,
+            FaceType = 5, FaceColor = 5, FaceMakeup = 9,
+            EyebrowType = 17, EyebrowColor = 6, EyebrowScale = 8, EyebrowPosition = 12, EyebrowSpacing = 3,
+            EyeType = 31, EyeScale = 9, EyeRotate = 14, EyeSpacing = 5, EyePosition = 13,
+            NoseType = 8, NoseScale = 7, NosePosition = 11,
+            MouthType = 19, MouthColor = 2, MouthScale = 6, MouthPosition = 15,
+            GlassesType = 4, GlassesColor = 5, GlassesScale = 7, GlassesPosition = 10,
+            MustacheType = 2, BeardType = 1, BeardColor = 4, MustacheScale = 8, MustachePosition = 9,
+            MoleType = 1, MoleScale = 6, MoleX = 7, MoleY = 14
+        };
+
+        var result = format.UpdateAppearance(database, 0, input);
+        var actual = format.ReadAppearance(result, 0);
+
+        Assert.True(format.Validate(result).IsValid);
+        Assert.Equal(input.Height, actual.Height);
+        Assert.Equal(input.Build, actual.Build);
+        Assert.Equal(input.FaceType, actual.FaceType);
+        Assert.Equal(input.EyebrowType, actual.EyebrowType);
+        Assert.Equal(input.EyeType, actual.EyeType);
+        Assert.Equal(input.EyeColor, actual.EyeColor);
+        Assert.Equal(input.NoseType, actual.NoseType);
+        Assert.Equal(input.MouthType, actual.MouthType);
+        Assert.Equal(input.GlassesType, actual.GlassesType);
+        Assert.Equal(input.MoleX, actual.MoleX);
+        Assert.Equal(input.MoleY, actual.MoleY);
+    }
+
+    [Fact]
     public void Switch_empty_database_validation_is_byte_exact_and_non_mutating()
     {
         var format = new MiiFormatSwitch();
@@ -246,6 +282,43 @@ public sealed class MiiFormatTests
                 .Concat(Enumerable.Range(MiiFormatSwitch.ChecksumOffset, 2)).ToHashSet());
         Assert.Throws<ArgumentOutOfRangeException>(() => format.UpdateAppearance(database, 0,
             new MiiAppearance("Miker", false, 0, 132, 0, 0)));
+    }
+
+    [Fact]
+    public void Switch_advanced_face_parts_roundtrip_through_core_data()
+    {
+        var format = new MiiFormatSwitch();
+        var database = format.Insert(MiiFormatSwitch.CreateEmptyDatabase(),
+            format.CreateBasicRecord("Parts", Enumerable.Range(1, 16).Select(i => (byte)i).ToArray()));
+        var input = new MiiAppearance("Parts", true, 9, 120, 87, 66)
+        {
+            HasAdvancedParts = true, Height = 80, Build = 44, HairFlip = 1,
+            FaceType = 11, FaceColor = 8, FaceWrinkle = 4, FaceMakeup = 7,
+            EyebrowType = 17, EyebrowColor = 88, EyebrowScale = 8, EyebrowAspect = 4,
+            EyebrowRotate = 9, EyebrowSpacing = 7, EyebrowPosition = 12,
+            EyeType = 31, EyeScale = 5, EyeAspect = 4, EyeRotate = 6, EyeSpacing = 9, EyePosition = 13,
+            NoseType = 8, NoseScale = 7, NosePosition = 11,
+            MouthType = 19, MouthColor = 2, MouthScale = 6, MouthAspect = 5, MouthPosition = 15,
+            GlassesType = 4, GlassesColor = 55, GlassesScale = 7, GlassesPosition = 10,
+            MustacheType = 2, BeardType = 5, BeardColor = 44, MustacheScale = 8, MustachePosition = 9,
+            MoleType = 1, MoleScale = 6, MoleX = 7, MoleY = 14
+        };
+
+        var result = format.UpdateAppearance(database, 0, input);
+        var actual = format.ReadAppearance(result, 0);
+
+        Assert.True(format.Validate(result).IsValid);
+        Assert.Equal(input.IsFemale, actual.IsFemale);
+        Assert.Equal(input.HairColor, actual.HairColor);
+        Assert.Equal(input.FaceType, actual.FaceType);
+        Assert.Equal(input.EyebrowType, actual.EyebrowType);
+        Assert.Equal(input.EyeType, actual.EyeType);
+        Assert.Equal(input.EyeColor, actual.EyeColor);
+        Assert.Equal(input.NoseType, actual.NoseType);
+        Assert.Equal(input.MouthType, actual.MouthType);
+        Assert.Equal(input.GlassesType, actual.GlassesType);
+        Assert.Equal(input.MoleX, actual.MoleX);
+        Assert.Equal(input.MoleY, actual.MoleY);
     }
 
     [Theory]

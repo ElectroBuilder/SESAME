@@ -99,14 +99,57 @@ public sealed class MiiFormatWii : IMiiFormat
         var record = RecordAt(database, slot);
         var header = U16(record, 0);
         var hair = U16(record, 0x22);
+        var face = U16(record, 0x20);
+        var brow = U32(record, 0x24);
         var eye = U32(record, 0x28);
-        return new MiiAppearance(
+        var appearance = new MiiAppearance(
             MiiText.ReadFixed(record.Slice(2, 20), bigEndian: true),
             Bits(header, 14, 1) != 0,
             (int)Bits(header, 1, 4),
             (int)Bits(hair, 9, 7),
             (int)Bits(hair, 6, 3),
-            (int)Bits(eye, 16, 3));
+            (int)Bits(eye, 16, 3))
+        {
+            Height = record[22],
+            Build = record[23],
+            HairFlip = (int)Bits(hair, 5, 1),
+            FaceType = (int)Bits(face, 13, 3),
+            FaceColor = (int)Bits(face, 10, 3),
+            FaceMakeup = (int)Bits(face, 6, 4),
+            EyebrowType = (int)Bits(brow, 27, 5),
+            EyebrowColor = (int)Bits(brow, 13, 3),
+            EyebrowScale = (int)Bits(brow, 9, 4),
+            EyebrowPosition = (int)Bits(brow, 4, 5),
+            EyebrowSpacing = (int)Bits(brow, 0, 4),
+            EyeType = (int)Bits(eye, 26, 6),
+            EyeScale = (int)Bits(eye, 9, 4),
+            EyeColor = (int)Bits(eye, 13, 3),
+            EyeRotate = (int)Bits(eye, 21, 5),
+            EyeSpacing = (int)Bits(eye, 5, 4),
+            EyePosition = (int)Bits(eye, 0, 5),
+            NoseType = (int)Bits(U16(record, 0x2C), 12, 4),
+            NoseScale = (int)Bits(U16(record, 0x2C), 8, 4),
+            NosePosition = (int)Bits(U16(record, 0x2C), 3, 5),
+            MouthType = (int)Bits(U16(record, 0x2E), 11, 5),
+            MouthColor = (int)Bits(U16(record, 0x2E), 9, 2),
+            MouthScale = (int)Bits(U16(record, 0x2E), 5, 4),
+            MouthPosition = (int)Bits(U16(record, 0x2E), 0, 5),
+            GlassesType = (int)Bits(U16(record, 0x30), 12, 4),
+            GlassesColor = (int)Bits(U16(record, 0x30), 9, 3),
+            GlassesScale = (int)Bits(U16(record, 0x30), 5, 4),
+            GlassesPosition = (int)Bits(U16(record, 0x30), 0, 5),
+            MustacheType = (int)Bits(U16(record, 0x32), 14, 2),
+            BeardType = (int)Bits(U16(record, 0x32), 12, 2),
+            BeardColor = (int)Bits(U16(record, 0x32), 9, 3),
+            MustacheScale = (int)Bits(U16(record, 0x32), 5, 4),
+            MustachePosition = (int)Bits(U16(record, 0x32), 0, 5),
+            MoleType = (int)Bits(U16(record, 0x34), 15, 1),
+            MoleScale = (int)Bits(U16(record, 0x34), 11, 4),
+            MoleY = (int)Bits(U16(record, 0x34), 6, 5),
+            MoleX = (int)Bits(U16(record, 0x34), 1, 5),
+            HasAdvancedParts = true
+        };
+        return appearance;
     }
 
     public byte[] UpdateAppearance(byte[] database, int slot, MiiAppearance appearance)
@@ -117,6 +160,44 @@ public sealed class MiiFormatWii : IMiiFormat
         ValidateRange(appearance.HairStyle, 0, 71, "Hair style");
         ValidateRange(appearance.HairColor, 0, 7, "Hair colour");
         ValidateRange(appearance.EyeColor, 0, 5, "Eye colour");
+        if (appearance.HasAdvancedParts)
+        {
+            ValidateRange(appearance.Height, 0, 127, "Height");
+            ValidateRange(appearance.Build, 0, 127, "Build");
+            ValidateRange(appearance.FaceType, 0, 7, "Face shape");
+            ValidateRange(appearance.FaceColor, 0, 5, "Face colour");
+            ValidateRange(appearance.FaceMakeup, 0, 11, "Face makeup");
+            ValidateRange(appearance.EyebrowType, 0, 23, "Eyebrow type");
+            ValidateRange(appearance.EyebrowColor, 0, 7, "Eyebrow colour");
+            ValidateRange(appearance.EyebrowScale, 0, 15, "Eyebrow scale");
+            ValidateRange(appearance.EyebrowPosition, 0, 31, "Eyebrow position");
+            ValidateRange(appearance.EyebrowSpacing, 0, 15, "Eyebrow spacing");
+            ValidateRange(appearance.EyeType, 0, 63, "Eye type");
+            ValidateRange(appearance.EyeScale, 0, 15, "Eye scale");
+            ValidateRange(appearance.EyeRotate, 0, 31, "Eye rotation");
+            ValidateRange(appearance.EyeSpacing, 0, 15, "Eye spacing");
+            ValidateRange(appearance.EyePosition, 0, 31, "Eye position");
+            ValidateRange(appearance.NoseType, 0, 15, "Nose type");
+            ValidateRange(appearance.NoseScale, 0, 15, "Nose scale");
+            ValidateRange(appearance.NosePosition, 0, 31, "Nose position");
+            ValidateRange(appearance.MouthType, 0, 31, "Mouth type");
+            ValidateRange(appearance.MouthColor, 0, 3, "Mouth colour");
+            ValidateRange(appearance.MouthScale, 0, 15, "Mouth scale");
+            ValidateRange(appearance.MouthPosition, 0, 31, "Mouth position");
+            ValidateRange(appearance.GlassesType, 0, 15, "Glasses type");
+            ValidateRange(appearance.GlassesColor, 0, 7, "Glasses colour");
+            ValidateRange(appearance.GlassesScale, 0, 15, "Glasses scale");
+            ValidateRange(appearance.GlassesPosition, 0, 31, "Glasses position");
+            ValidateRange(appearance.MustacheType, 0, 3, "Mustache type");
+            ValidateRange(appearance.BeardType, 0, 3, "Beard type");
+            ValidateRange(appearance.BeardColor, 0, 7, "Beard colour");
+            ValidateRange(appearance.MustacheScale, 0, 15, "Mustache scale");
+            ValidateRange(appearance.MustachePosition, 0, 31, "Mustache position");
+            ValidateRange(appearance.MoleType, 0, 1, "Mole type");
+            ValidateRange(appearance.MoleScale, 0, 15, "Mole scale");
+            ValidateRange(appearance.MoleX, 0, 31, "Mole X");
+            ValidateRange(appearance.MoleY, 0, 31, "Mole Y");
+        }
 
         var result = (byte[])database.Clone();
         var editable = result.AsSpan(RecordsOffset + slot * RecordSize, RecordSize);
@@ -127,8 +208,58 @@ public sealed class MiiFormatWii : IMiiFormat
         var hair = SetBits(U16(editable, 0x22), 9, 7, (uint)appearance.HairStyle);
         hair = SetBits(hair, 6, 3, (uint)appearance.HairColor);
         WriteU16(editable, 0x22, (ushort)hair);
-        var eye = SetBits(U32(editable, 0x28), 16, 3, (uint)appearance.EyeColor);
+        var eye = SetBits(U32(editable, 0x28), 13, 3, (uint)appearance.EyeColor);
         WriteU32(editable, 0x28, eye);
+        if (!appearance.HasAdvancedParts)
+        {
+            WriteDatabaseChecksum(result);
+            return result;
+        }
+        editable[22] = (byte)appearance.Height;
+        editable[23] = (byte)appearance.Build;
+        var face = SetBits(U16(editable, 0x20), 13, 3, (uint)appearance.FaceType);
+        face = SetBits(face, 10, 3, (uint)appearance.FaceColor);
+        face = SetBits(face, 6, 4, (uint)appearance.FaceMakeup);
+        WriteU16(editable, 0x20, (ushort)face);
+        var hairAdvanced = SetBits(U16(editable, 0x22), 5, 1, (uint)appearance.HairFlip);
+        WriteU16(editable, 0x22, (ushort)hairAdvanced);
+        var brow = SetBits(U32(editable, 0x24), 27, 5, (uint)appearance.EyebrowType);
+        brow = SetBits(brow, 13, 3, (uint)appearance.EyebrowColor);
+        brow = SetBits(brow, 9, 4, (uint)appearance.EyebrowScale);
+        brow = SetBits(brow, 4, 5, (uint)appearance.EyebrowPosition);
+        brow = SetBits(brow, 0, 4, (uint)appearance.EyebrowSpacing);
+        WriteU32(editable, 0x24, brow);
+        eye = SetBits(U32(editable, 0x28), 26, 6, (uint)appearance.EyeType);
+        eye = SetBits(eye, 21, 5, (uint)appearance.EyeRotate);
+        eye = SetBits(eye, 9, 4, (uint)appearance.EyeScale);
+        eye = SetBits(eye, 5, 4, (uint)appearance.EyeSpacing);
+        eye = SetBits(eye, 0, 5, (uint)appearance.EyePosition);
+        WriteU32(editable, 0x28, eye);
+        var nose = SetBits(U16(editable, 0x2C), 12, 4, (uint)appearance.NoseType);
+        nose = SetBits(nose, 8, 4, (uint)appearance.NoseScale);
+        nose = SetBits(nose, 3, 5, (uint)appearance.NosePosition);
+        WriteU16(editable, 0x2C, (ushort)nose);
+        var mouth = SetBits(U16(editable, 0x2E), 11, 5, (uint)appearance.MouthType);
+        mouth = SetBits(mouth, 9, 2, (uint)appearance.MouthColor);
+        mouth = SetBits(mouth, 5, 4, (uint)appearance.MouthScale);
+        mouth = SetBits(mouth, 0, 5, (uint)appearance.MouthPosition);
+        WriteU16(editable, 0x2E, (ushort)mouth);
+        var glasses = SetBits(U16(editable, 0x30), 12, 4, (uint)appearance.GlassesType);
+        glasses = SetBits(glasses, 9, 3, (uint)appearance.GlassesColor);
+        glasses = SetBits(glasses, 5, 4, (uint)appearance.GlassesScale);
+        glasses = SetBits(glasses, 0, 5, (uint)appearance.GlassesPosition);
+        WriteU16(editable, 0x30, (ushort)glasses);
+        var beard = SetBits(U16(editable, 0x32), 14, 2, (uint)appearance.MustacheType);
+        beard = SetBits(beard, 12, 2, (uint)appearance.BeardType);
+        beard = SetBits(beard, 9, 3, (uint)appearance.BeardColor);
+        beard = SetBits(beard, 5, 4, (uint)appearance.MustacheScale);
+        beard = SetBits(beard, 0, 5, (uint)appearance.MustachePosition);
+        WriteU16(editable, 0x32, (ushort)beard);
+        var mole = SetBits(U16(editable, 0x34), 15, 1, (uint)appearance.MoleType);
+        mole = SetBits(mole, 11, 4, (uint)appearance.MoleScale);
+        mole = SetBits(mole, 6, 5, (uint)appearance.MoleY);
+        mole = SetBits(mole, 1, 5, (uint)appearance.MoleX);
+        WriteU16(editable, 0x34, (ushort)mole);
         WriteDatabaseChecksum(result);
         var edited = Validate(result);
         if (!edited.IsValid) throw new InvalidDataException("Edited Wii Mii failed validation: " + edited.Error);
@@ -137,7 +268,28 @@ public sealed class MiiFormatWii : IMiiFormat
 
     public byte[] UpdateName(byte[] database, int slot, string name)
     {
-        return UpdateAppearance(database, slot, ReadAppearance(database, slot) with { Name = name });
+        var current = ReadAppearance(database, slot);
+        return UpdateAppearance(database, slot, new MiiAppearance(name, current.IsFemale, current.FavoriteColor,
+            current.HairStyle, current.HairColor, current.EyeColor)
+        {
+            HasAdvancedParts = current.HasAdvancedParts,
+            Height = current.Height, Build = current.Build, HairFlip = current.HairFlip,
+            FaceType = current.FaceType, FaceColor = current.FaceColor, FaceMakeup = current.FaceMakeup,
+            FaceWrinkle = current.FaceWrinkle, EyeType = current.EyeType, EyeScale = current.EyeScale,
+            EyeAspect = current.EyeAspect, EyeRotate = current.EyeRotate, EyeSpacing = current.EyeSpacing,
+            EyePosition = current.EyePosition, EyebrowType = current.EyebrowType,
+            EyebrowColor = current.EyebrowColor, EyebrowScale = current.EyebrowScale,
+            EyebrowAspect = current.EyebrowAspect, EyebrowRotate = current.EyebrowRotate,
+            EyebrowSpacing = current.EyebrowSpacing, EyebrowPosition = current.EyebrowPosition,
+            NoseType = current.NoseType, NoseScale = current.NoseScale, NosePosition = current.NosePosition,
+            MouthType = current.MouthType, MouthColor = current.MouthColor, MouthScale = current.MouthScale,
+            MouthAspect = current.MouthAspect, MouthPosition = current.MouthPosition,
+            BeardType = current.BeardType, BeardColor = current.BeardColor, MustacheType = current.MustacheType,
+            MustacheScale = current.MustacheScale, MustachePosition = current.MustachePosition,
+            GlassesType = current.GlassesType, GlassesColor = current.GlassesColor,
+            GlassesScale = current.GlassesScale, GlassesPosition = current.GlassesPosition,
+            MoleType = current.MoleType, MoleScale = current.MoleScale, MoleX = current.MoleX, MoleY = current.MoleY
+        });
     }
 
     public byte[] CreateBasicRecord(string name, byte[]? identity = null)
