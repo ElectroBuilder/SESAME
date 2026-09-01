@@ -83,7 +83,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - run: dotnet restore SESAME.sln
-      - run: dotnet publish src/Sesame.Windows/Sesame.Windows.csproj -c Release -o artifacts/windows
+      - run: dotnet publish src/Sesame.Windows/Sesame.Windows.csproj -c Release -r win-x64 --self-contained true -o artifacts/windows
       - uses: actions/download-artifact@v4
         with:
           name: sesame-mii-renderer
@@ -126,13 +126,19 @@ jobs:
       - name: Pack versioned assets
         run: |
           VERSION=$(python3 -c "import re; print(re.search(r'<Version>([^<]+)', open('Directory.Build.props', encoding='utf-8').read()).group(1))")
+          WINDOWS_ASSET="SESAME-${VERSION}-windows-x64.zip"
+          LINUX_ASSET="SESAME-${VERSION}-linux-x64.tar.gz"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "WINDOWS_ASSET=$WINDOWS_ASSET" >> "$GITHUB_ENV"
+          echo "LINUX_ASSET=$LINUX_ASSET" >> "$GITHUB_ENV"
           python3 .github/scripts/changelog_section.py "$VERSION" > release-notes.md
-          python3 -c "import shutil; shutil.make_archive('sesame-windows', 'zip', 'pack/windows')"
-          tar -czf sesame-linux-x64.tar.gz -C pack/linux-x64 .
-          test -s sesame-windows.zip
-          test -s sesame-linux-x64.tar.gz
-          tar -tzf sesame-linux-x64.tar.gz | grep -E '(^|/)SESAME$'
+          python3 -c "import os, shutil; shutil.make_archive(os.environ['WINDOWS_ASSET'][:-4], 'zip', 'pack/windows')"
+          tar -czf "$LINUX_ASSET" -C pack/linux-x64 .
+          # Retain the fixed installer endpoint while exposing a clear versioned asset.
+          cp "$LINUX_ASSET" sesame-linux-x64.tar.gz
+          test -s "$WINDOWS_ASSET"
+          test -s "$LINUX_ASSET"
+          tar -tzf "$LINUX_ASSET" | grep -E '(^|/)SESAME$'
       - name: GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -141,8 +147,8 @@ jobs:
           body_path: release-notes.md
           make_latest: true
           files: |
-            sesame-windows.zip
-            sesame-linux-x64.tar.gz
+            ${{ env.WINDOWS_ASSET }}
+            ${{ env.LINUX_ASSET }}
       - name: Refresh linux tag (installer fallback)
         uses: softprops/action-gh-release@v2
         with:

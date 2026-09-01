@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.9 — 2026-09-01
+
+- Miis: ship the persistent Mii maker fixes with the verified draft → backup → atomic save flow for Dolphin and Eden.
+- Releases: Windows and Linux downloads are self-contained and carry the version in their filenames.
+
 ## 0.10.8 — 2026-09-01
 
 - Fix editor selections being overwritten by transient WPF selection events; the active Mii draft now remains authoritative while switching Miis, gender and parts.
