@@ -24,6 +24,11 @@ public static class AppUpdate
     public const string Repo = "ElectroBuilder/SESAME";
     private static readonly HttpClient Http = Create();
 
+    // Windows-only resources such as the native FFL helper can register a
+    // last-chance cleanup callback without making the shared updater depend on
+    // the Windows UI project.
+    public static Action? BeforeRestart { get; set; }
+
     public static string AssetFileName =>
         OperatingSystem.IsWindows() ? "sesame-windows.zip" : "sesame-linux-x64.tar.gz";
 
@@ -79,6 +84,7 @@ public static class AppUpdate
         if (!PayloadReady(payload))
             throw new InvalidOperationException("The update archive did not contain SESAME.");
         progress?.Report("Restarting…");
+        BeforeRestart?.Invoke();
         LaunchSwap(payload, dest);
     }
 
@@ -146,6 +152,7 @@ public static class AppUpdate
             File.WriteAllText(cmd, $"""
                 @echo off
                 ping 127.0.0.1 -n 3 >nul
+                taskkill /F /IM ffl_testing_2.exe /T >nul 2>&1
                 robocopy "{unpack}" "{dest}" /E /IS /IT /NFL /NDL /NJH /NJS /nc /ns /np >nul
                 start "" "{exe}" {args}
                 """);

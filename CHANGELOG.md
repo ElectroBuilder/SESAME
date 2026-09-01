@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.6 — 2026-09-01
+
+- Stop all native FFL renderer helpers during normal SESAME shutdown and before self-update replacement.
+- Make the updater terminate a stale `ffl_testing_2.exe` process before copying the new package.
+
 ## 0.10.5 — 2026-09-01
 
 - Persist every Mii editor change directly in the offline draft so switching Miis or controls no longer restores defaults.

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -27,10 +28,15 @@ public sealed class FflRenderer : IDisposable
     private const int ResponseFormatTgaBgraFlipY = 2;
     private const int Resolution = 256;
     private readonly SemaphoreSlim _renderLock = new(1, 1);
+    private static readonly ConcurrentDictionary<int, WeakReference<FflRenderer>> ActiveRenderers = new();
+    private static int _nextInstanceId;
+    private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
     private Process? _process;
     private int _port;
     private string? _processResource;
     private bool _disposed;
+
+    public FflRenderer() => ActiveRenderers[_instanceId] = new WeakReference<FflRenderer>(this);
 
     public string? LastError { get; private set; }
 
@@ -109,8 +115,25 @@ public sealed class FflRenderer : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        ActiveRenderers.TryRemove(_instanceId, out _);
         StopProcess();
-        _renderLock.Dispose();
+        // Do not dispose the semaphore here. A render request can be unwinding
+        // on a worker thread while WPF is closing; it still needs to release
+        // the lock safely after its socket/process has been stopped.
+    }
+
+    /// <summary>
+    /// Stops every renderer owned by the current SESAME process. This is also
+    /// used by the self-updater because Environment.Exit does not reliably run
+    /// the normal WPF Application.Exit path first.
+    /// </summary>
+    public static void ShutdownAll()
+    {
+        foreach (var pair in ActiveRenderers.ToArray())
+        {
+            if (pair.Value.TryGetTarget(out var renderer)) renderer.Dispose();
+            else ActiveRenderers.TryRemove(pair.Key, out _);
+        }
     }
 
     private async Task<int?> EnsureProcessAsync(string helper, string resource, CancellationToken cancellationToken)

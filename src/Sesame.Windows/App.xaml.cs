@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Sesame.Services;
 using Sesame.Services.GameOptimizer;
+using Sesame.Services.Mii;
 
 namespace Sesame;
 
@@ -14,6 +15,8 @@ public partial class App : Application
         DispatcherUnhandledException += OnUiException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainException;
         TaskScheduler.UnobservedTaskException += OnTaskException;
+        AppUpdate.BeforeRestart = FflRenderer.ShutdownAll;
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => FflRenderer.ShutdownAll();
         HostEnvironment.ApplyArgs(e.Args);
 
         try
