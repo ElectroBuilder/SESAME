@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.7 — 2026-09-01
+
+- Keep the selected Mii slot and editor appearance stable while changing gender, colours or face-part galleries.
+- Move name, gender, randomize and draft actions below the live preview and leave `+ Mii` as the only create action.
+- Zoom real FFL eye-colour, eye-style and nose thumbnails so differences are visible in the catalogue.
+- Correct Eden eyebrow-position decoding so editing no longer reloads an incorrect hidden value.
+
 ## 0.10.6 — 2026-09-01
 
 - Stop all native FFL renderer helpers during normal SESAME shutdown and before self-update replacement.

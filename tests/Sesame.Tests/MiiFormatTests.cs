@@ -165,6 +165,7 @@ public sealed class MiiFormatTests
         Assert.Equal(input.Build, actual.Build);
         Assert.Equal(input.FaceType, actual.FaceType);
         Assert.Equal(input.EyebrowType, actual.EyebrowType);
+        Assert.Equal(input.EyebrowPosition, actual.EyebrowPosition);
         Assert.Equal(input.EyeType, actual.EyeType);
         Assert.Equal(input.EyeColor, actual.EyeColor);
         Assert.Equal(input.NoseType, actual.NoseType);

@@ -120,7 +120,7 @@ public sealed class MiiFormatSwitch : IMiiFormat
             EyeSpacing = (record[0x17] >> 4) & 0x0F,
             EyebrowType = record[12] & 0x1F,
             EyebrowColor = record[5] & 0x7F,
-            EyebrowPosition = record[15] & 0x1F,
+            EyebrowPosition = (record[25] >> 4) & 0x0F,
             EyebrowAspect = (record[15] >> 5) & 0x07,
             EyebrowScale = record[24] & 0x0F,
             EyebrowRotate = (record[24] >> 4) & 0x0F,

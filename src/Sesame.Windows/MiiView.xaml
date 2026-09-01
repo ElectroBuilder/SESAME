@@ -54,8 +54,8 @@
 
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="190"/>
-                        <ColumnDefinition Width="235"/>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="340"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
@@ -86,31 +86,30 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Margin="0,0,14,0">
-                        <local:MiiAvatarControl x:Name="AvatarPreview" Height="275" MinWidth="220"/>
+                        <local:MiiAvatarControl x:Name="AvatarPreview" Height="275" MinWidth="320"/>
                         <TextBlock x:Name="FflPreviewText" Text="Rendering real Mii preview…"
                                    HorizontalAlignment="Center" Foreground="{DynamicResource Muted}"
                                    Margin="0,5,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="Name" Foreground="{DynamicResource Muted}" Margin="0,12,0,0"/>
+                        <TextBox x:Name="NameBox" MaxLength="10" TextChanged="EditorTextChanged"/>
+                        <TextBlock Text="Gender" Foreground="{DynamicResource Muted}" Margin="0,8,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,7">
+                            <RadioButton x:Name="MaleRadio" Content="Male" GroupName="MiiGender" IsChecked="True"
+                                         Margin="0,0,12,0" Checked="GenderChanged"/>
+                            <RadioButton x:Name="FemaleRadio" Content="Female" GroupName="MiiGender"
+                                         Checked="GenderChanged"/>
+                        </StackPanel>
+                        <WrapPanel Margin="0,4,0,0">
+                            <Button Content="Randomize" Click="Randomize_Click" ToolTip="Choose a complete random valid Mii."/>
+                            <Button x:Name="ApplyBtn" Content="Apply changes" IsEnabled="False" Click="Apply_Click"/>
+                            <Button x:Name="SaveBtn" Content="Save to emulator" IsEnabled="False" Click="Save_Click"/>
+                            <Button x:Name="DiscardBtn" Content="Discard changes" IsEnabled="False" Click="Discard_Click"/>
+                        </WrapPanel>
+                        <Button x:Name="CreateBtn" Visibility="Collapsed" IsEnabled="False" Click="Create_Click"/>
                     </StackPanel>
 
                     <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
-                            <Grid Margin="0,0,0,6">
-                                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Name" Foreground="{DynamicResource Muted}"/>
-                                    <TextBox x:Name="NameBox" MaxLength="10" TextChanged="EditorTextChanged"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="Randomize" Click="Randomize_Click"
-                                        Margin="10,15,0,0" ToolTip="Choose a complete random valid Mii."/>
-                            </Grid>
-                            <TextBlock Text="Gender" Foreground="{DynamicResource Muted}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,2,0,7">
-                                <RadioButton x:Name="MaleRadio" Content="Male" GroupName="MiiGender" IsChecked="True"
-                                             Margin="0,0,12,0" Checked="GenderChanged"/>
-                                <RadioButton x:Name="FemaleRadio" Content="Female" GroupName="MiiGender"
-                                             Checked="GenderChanged"/>
-                            </StackPanel>
-
                             <TabControl Height="435">
                                 <TabItem Header="Hair &amp; colours">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -186,12 +185,6 @@
                                 </TabItem>
                             </TabControl>
 
-                            <WrapPanel Margin="0,9,0,0">
-                                <Button x:Name="CreateBtn" Content="Create Mii" IsEnabled="False" Click="Create_Click"/>
-                                <Button x:Name="ApplyBtn" Content="Apply changes" IsEnabled="False" Click="Apply_Click"/>
-                                <Button x:Name="SaveBtn" Content="Save to emulator" IsEnabled="False" Click="Save_Click"/>
-                                <Button x:Name="DiscardBtn" Content="Discard changes" IsEnabled="False" Click="Discard_Click"/>
-                            </WrapPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

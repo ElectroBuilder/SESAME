@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Input;
 using Microsoft.Win32;
 using Sesame.Services;
@@ -83,6 +84,8 @@ public partial class MiiView : UserControl
     private bool _updatingPaths;
     private bool _suppressEditorEvents;
     private MiiAppearance? _loadedAppearance;
+    private MiiAppearance? _editorAppearance;
+    private int? _selectedSlot;
     private readonly Random _random = new();
     private readonly ObservableCollection<MiiCard> _miiCards = [];
     private readonly Dictionary<MiiTargetKind, string> _selectedPaths = [];
@@ -123,6 +126,9 @@ public partial class MiiView : UserControl
         _choiceRenderCts?.Cancel();
         _state = null;
         _liveState = null;
+        _loadedAppearance = null;
+        _editorAppearance = null;
+        _selectedSlot = null;
         AvatarPreview.RenderedImage = null;
         FflPreviewText.Text = "Connect to a Steam Deck to render a Mii.";
         MiiList.ItemsSource = null;
@@ -209,15 +215,20 @@ public partial class MiiView : UserControl
     private void MiiList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressEditorEvents) return;
-        if (_service is not null && _state is not null && SelectedMii is { } selected)
+        if (_service is not null && _state is not null && MiiList.SelectedItem is MiiCard card)
         {
+            var selected = _state.Slots.FirstOrDefault(x => x.Slot == card.SlotIndex) ?? card.Slot;
+            _selectedSlot = selected.Slot;
             try { LoadAppearance(_service.GetAppearance(_state, selected.Slot)); }
             catch (Exception ex) { StatusChanged?.Invoke("Could not load Mii appearance: " + ex.Message); }
         }
         ApplyCapabilities();
     }
 
-    private MiiSlot? SelectedMii => MiiList.SelectedItem is MiiCard card ? card.Slot : null;
+    private MiiSlot? SelectedMii =>
+        _selectedSlot is { } slot && _state?.Slots.FirstOrDefault(x => x.Slot == slot) is { } current
+            ? current
+            : MiiList.SelectedItem is MiiCard card ? card.Slot : null;
 
     private void EditorValueChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -516,7 +527,7 @@ public partial class MiiView : UserControl
 
     private MiiAppearance EditorAppearance()
     {
-        var old = _loadedAppearance;
+        var old = _editorAppearance ?? _loadedAppearance;
         return new MiiAppearance(
             NameBox.Text,
             FemaleRadio.IsChecked == true,
@@ -554,6 +565,7 @@ public partial class MiiView : UserControl
     private void LoadAppearance(MiiAppearance appearance)
     {
         _loadedAppearance = appearance;
+        _editorAppearance = appearance.Clone();
         _suppressEditorEvents = true;
         try
         {
@@ -609,7 +621,8 @@ public partial class MiiView : UserControl
             (Gallery: HairGallery, Part: "HairStyle"),
             (Gallery: HairColorGallery, Part: "HairColor"),
             (Gallery: EyeColorGallery, Part: "EyeColor"),
-            (Gallery: EyeGallery, Part: "EyeType")
+            (Gallery: EyeGallery, Part: "EyeType"),
+            (Gallery: NoseGallery, Part: "NoseType")
         };
         try
         {
@@ -620,10 +633,12 @@ public partial class MiiView : UserControl
                     cancellationToken.ThrowIfCancellationRequested();
                     var candidate = WithChoice(baseAppearance, part, choice.Id);
                     var record = await BuildPreviewRecordAsync(kind, candidate, cancellationToken);
-                    var image = await _fflRenderer.RenderAsync(record, cancellationToken, resolution: 72);
+                    var image = await _fflRenderer.RenderAsync(record, cancellationToken, resolution: 96);
                     if (image is not null && generation == _choiceRenderGeneration &&
                         !cancellationToken.IsCancellationRequested)
-                        choice.Thumbnail = image;
+                        choice.Thumbnail = part is "EyeType" or "EyeColor" or "NoseType"
+                            ? CropFace(image)
+                            : image;
                 }
             }
         }
@@ -658,8 +673,22 @@ public partial class MiiView : UserControl
             case "HairColor": result.HairColor = value; break;
             case "EyeColor": result.EyeColor = value; break;
             case "EyeType": result.EyeType = value; break;
+            case "NoseType": result.NoseType = value; break;
         }
         return result;
+    }
+
+    private static ImageSource CropFace(ImageSource source)
+    {
+        if (source is not BitmapSource bitmap) return source;
+        var width = Math.Max(1, Math.Min(bitmap.PixelWidth, bitmap.PixelWidth * 2 / 3));
+        var height = Math.Max(1, Math.Min(bitmap.PixelHeight, bitmap.PixelHeight * 2 / 3));
+        var x = Math.Max(0, (bitmap.PixelWidth - width) / 2);
+        var y = Math.Max(0, bitmap.PixelHeight / 10);
+        if (y + height > bitmap.PixelHeight) y = bitmap.PixelHeight - height;
+        var crop = new CroppedBitmap(bitmap, new Int32Rect(x, y, width, height));
+        crop.Freeze();
+        return crop;
     }
 
     private void UpdatePreview()
@@ -683,6 +712,7 @@ public partial class MiiView : UserControl
         if (_suppressEditorEvents || _service is null || _state is not { CanExport: true } state ||
             SelectedMii is not { } selected)
         {
+            _editorAppearance = appearance.Clone();
             _loadedAppearance = appearance;
             return;
         }
@@ -693,10 +723,12 @@ public partial class MiiView : UserControl
             if (_miiCards.FirstOrDefault(x => x.SlotIndex == selected.Slot) is { } card &&
                 _state.Slots.FirstOrDefault(x => x.Slot == selected.Slot) is { } updatedSlot)
                 card.UpdateSlot(updatedSlot);
+            _editorAppearance = appearance.Clone();
             _loadedAppearance = appearance;
         }
         catch (Exception ex)
         {
+            FflPreviewText.Text = "Wijziging niet opgeslagen · " + ex.Message;
             StatusChanged?.Invoke("Mii wijziging kon niet in de draft worden gezet: " + ex.Message);
         }
     }
