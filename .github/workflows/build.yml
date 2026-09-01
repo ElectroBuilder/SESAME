@@ -128,14 +128,18 @@ jobs:
           VERSION=$(python3 -c "import re; print(re.search(r'<Version>([^<]+)', open('Directory.Build.props', encoding='utf-8').read()).group(1))")
           WINDOWS_ASSET="SESAME-${VERSION}-windows-x64.zip"
           LINUX_ASSET="SESAME-${VERSION}-linux-x64.tar.gz"
+          WINDOWS_LEGACY_ASSET="sesame-windows.zip"
+          LINUX_LEGACY_ASSET="sesame-linux-x64.tar.gz"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "WINDOWS_ASSET=$WINDOWS_ASSET" >> "$GITHUB_ENV"
           echo "LINUX_ASSET=$LINUX_ASSET" >> "$GITHUB_ENV"
           python3 .github/scripts/changelog_section.py "$VERSION" > release-notes.md
           python3 -c "import shutil; shutil.make_archive('${WINDOWS_ASSET%.zip}', 'zip', 'pack/windows')"
           tar -czf "$LINUX_ASSET" -C pack/linux-x64 .
-          # Retain the fixed installer endpoint while exposing a clear versioned asset.
-          cp "$LINUX_ASSET" sesame-linux-x64.tar.gz
+          # Keep legacy names so already-installed SESAME versions can find the
+          # new release; the versioned names remain the canonical downloads.
+          cp "$WINDOWS_ASSET" "$WINDOWS_LEGACY_ASSET"
+          cp "$LINUX_ASSET" "$LINUX_LEGACY_ASSET"
           test -s "$WINDOWS_ASSET"
           test -s "$LINUX_ASSET"
           tar -tzf "$LINUX_ASSET" | grep -E '(^|/)SESAME$'
@@ -149,6 +153,8 @@ jobs:
           files: |
             ${{ env.WINDOWS_ASSET }}
             ${{ env.LINUX_ASSET }}
+            sesame-windows.zip
+            sesame-linux-x64.tar.gz
       - name: Refresh linux tag (installer fallback)
         uses: softprops/action-gh-release@v2
         with:
