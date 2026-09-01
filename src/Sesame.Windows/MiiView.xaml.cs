@@ -12,12 +12,40 @@ using Sesame.Services.Mii;
 
 namespace Sesame;
 
-public sealed record MiiChoice(int Id, string Name, Brush Swatch, string Glyph);
+public sealed class MiiChoice : INotifyPropertyChanged
+{
+    public MiiChoice(int id, string name, Brush swatch, string glyph)
+    {
+        Id = id;
+        Name = name;
+        Swatch = swatch;
+        Glyph = glyph;
+    }
+
+    public int Id { get; }
+    public string Name { get; }
+    public Brush Swatch { get; }
+    public string Glyph { get; }
+
+    private ImageSource? _thumbnail;
+    public ImageSource? Thumbnail
+    {
+        get => _thumbnail;
+        set
+        {
+            if (ReferenceEquals(_thumbnail, value)) return;
+            _thumbnail = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Thumbnail)));
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
 
 public sealed class MiiCard : INotifyPropertyChanged
 {
     public MiiCard(MiiSlot slot) => Slot = slot;
-    public MiiSlot Slot { get; }
+    public MiiSlot Slot { get; private set; }
     public int SlotIndex => Slot.Slot;
     public string Name => Slot.Name;
     public string Id => Slot.Id;
@@ -28,6 +56,14 @@ public sealed class MiiCard : INotifyPropertyChanged
         set { _image = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Image))); }
     }
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void UpdateSlot(MiiSlot slot)
+    {
+        Slot = slot;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SlotIndex)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Name)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Id)));
+    }
 }
 
 public partial class MiiView : UserControl
@@ -40,8 +76,10 @@ public partial class MiiView : UserControl
     private readonly FflRenderer _fflRenderer = new();
     private CancellationTokenSource? _previewCts;
     private CancellationTokenSource? _cardRenderCts;
+    private CancellationTokenSource? _choiceRenderCts;
     private int _previewGeneration;
     private int _cardRenderGeneration;
+    private int _choiceRenderGeneration;
     private bool _updatingPaths;
     private bool _suppressEditorEvents;
     private MiiAppearance? _loadedAppearance;
@@ -56,7 +94,11 @@ public partial class MiiView : UserControl
         TargetBox.SelectedIndex = 0;
         ConfigureAppearanceControls(MiiTargetKind.Wii);
         ShowUnavailable("Connect to a Steam Deck to inspect Miis.");
-        Loaded += (_, _) => UpdatePreview();
+        Loaded += (_, _) =>
+        {
+            UpdatePreview();
+            StartChoiceThumbnails();
+        };
         var app = Application.Current;
         if (app is not null) app.Exit += (_, _) => _fflRenderer.Dispose();
     }
@@ -78,6 +120,7 @@ public partial class MiiView : UserControl
     {
         _previewCts?.Cancel();
         _cardRenderCts?.Cancel();
+        _choiceRenderCts?.Cancel();
         _state = null;
         _liveState = null;
         AvatarPreview.RenderedImage = null;
@@ -219,6 +262,10 @@ public partial class MiiView : UserControl
             SetRandom(HairColorGallery);
             SetRandom(EyeColorGallery);
             SetRandom(FaceColorGallery);
+            SetRandom(EyebrowColorGallery);
+            SetRandom(MouthColorGallery);
+            SetRandom(BeardColorGallery);
+            SetRandom(GlassesColorGallery);
             SetRandom(FavoriteColorGallery);
             SetRandom(FaceGallery);
             SetRandom(EyeGallery);
@@ -230,6 +277,7 @@ public partial class MiiView : UserControl
         }
         finally { _suppressEditorEvents = false; }
         UpdatePreview();
+        StartChoiceThumbnails();
     }
 
     private void SetRandom(ListBox gallery)
@@ -532,12 +580,86 @@ public partial class MiiView : UserControl
         }
         finally { _suppressEditorEvents = false; }
         UpdatePreview();
+        StartChoiceThumbnails();
     }
 
     private static void SelectChoice(Selector box, int id)
     {
         if (box.Items.Count == 0) return;
         box.SelectedItem = box.Items.OfType<MiiChoice>().FirstOrDefault(x => x.Id == id) ?? box.Items[0];
+    }
+
+    private void StartChoiceThumbnails()
+    {
+        if (!IsLoaded || HairGallery is null) return;
+        _choiceRenderCts?.Cancel();
+        _choiceRenderCts?.Dispose();
+        var cts = _choiceRenderCts = new CancellationTokenSource();
+        var generation = ++_choiceRenderGeneration;
+        _ = RenderChoiceThumbnailsAsync(SelectedKind, EditorAppearance(), generation, cts.Token);
+    }
+
+    private async Task RenderChoiceThumbnailsAsync(MiiTargetKind kind, MiiAppearance baseAppearance,
+        int generation, CancellationToken cancellationToken)
+    {
+        // These are the high-value galleries: each tile is real FFL output,
+        // so hair and eyes are recognisable instead of abstract labels.
+        var galleries = new[]
+        {
+            (Gallery: HairGallery, Part: "HairStyle"),
+            (Gallery: HairColorGallery, Part: "HairColor"),
+            (Gallery: EyeColorGallery, Part: "EyeColor"),
+            (Gallery: EyeGallery, Part: "EyeType")
+        };
+        try
+        {
+            foreach (var (gallery, part) in galleries)
+            {
+                foreach (var choice in gallery.Items.OfType<MiiChoice>())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var candidate = WithChoice(baseAppearance, part, choice.Id);
+                    var record = await BuildPreviewRecordAsync(kind, candidate, cancellationToken);
+                    var image = await _fflRenderer.RenderAsync(record, cancellationToken, resolution: 72);
+                    if (image is not null && generation == _choiceRenderGeneration &&
+                        !cancellationToken.IsCancellationRequested)
+                        choice.Thumbnail = image;
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { StatusChanged?.Invoke("Mii-keuzethumbnails niet beschikbaar: " + ex.Message); }
+    }
+
+    private async Task<byte[]> BuildPreviewRecordAsync(MiiTargetKind kind, MiiAppearance appearance,
+        CancellationToken cancellationToken)
+    {
+        var service = _service;
+        var state = _state;
+        var selected = SelectedMii;
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (service is not null && state is { CanExport: true } && selected is not null)
+            {
+                var previewState = service.UpdateAppearanceDraft(state, selected.Slot, appearance);
+                return service.ExportRecord(previewState, selected.Slot);
+            }
+            return CreatePreviewRecord(kind, appearance);
+        }, cancellationToken);
+    }
+
+    private static MiiAppearance WithChoice(MiiAppearance source, string part, int value)
+    {
+        var result = source.Clone();
+        switch (part)
+        {
+            case "HairStyle": result.HairStyle = value; break;
+            case "HairColor": result.HairColor = value; break;
+            case "EyeColor": result.EyeColor = value; break;
+            case "EyeType": result.EyeType = value; break;
+        }
+        return result;
     }
 
     private void UpdatePreview()
@@ -549,10 +671,34 @@ public partial class MiiView : UserControl
             HairGallery is null || HairColorGallery is null || EyeColorGallery is null || FavoriteColorGallery is null)
             return;
         var appearance = EditorAppearance();
+        CommitEditorDraft(appearance);
         FflPreviewText.Text = AvatarPreview.RenderedImage is null
             ? "Rendering real Mii preview…"
             : "Updating real Mii preview…";
         RequestRealPreview(appearance);
+    }
+
+    private void CommitEditorDraft(MiiAppearance appearance)
+    {
+        if (_suppressEditorEvents || _service is null || _state is not { CanExport: true } state ||
+            SelectedMii is not { } selected)
+        {
+            _loadedAppearance = appearance;
+            return;
+        }
+
+        try
+        {
+            _state = _service.UpdateAppearanceDraft(state, selected.Slot, appearance);
+            if (_miiCards.FirstOrDefault(x => x.SlotIndex == selected.Slot) is { } card &&
+                _state.Slots.FirstOrDefault(x => x.Slot == selected.Slot) is { } updatedSlot)
+                card.UpdateSlot(updatedSlot);
+            _loadedAppearance = appearance;
+        }
+        catch (Exception ex)
+        {
+            StatusChanged?.Invoke("Mii wijziging kon niet in de draft worden gezet: " + ex.Message);
+        }
     }
 
     private void RequestRealPreview(MiiAppearance appearance)

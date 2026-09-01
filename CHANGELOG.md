@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.5 — 2026-09-01
+
+- Persist every Mii editor change directly in the offline draft so switching Miis or controls no longer restores defaults.
+- Replace abstract choice glyphs with real FFL-rendered hair-style, hair-colour, eye-colour and eye thumbnails.
+- Make Randomize update the same draft used by preview and save, and remove the capability/status banner from the editor layout.
+
 ## 0.10.4 — 2026-09-01
 
 - Replace the text-only Mii slot table with selectable cards that render each Mii using FFL thumbnails.

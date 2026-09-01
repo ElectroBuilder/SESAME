@@ -8,8 +8,8 @@
                     Background="{Binding Swatch}" CornerRadius="8"
                     BorderBrush="{DynamicResource Border}" BorderThickness="1">
                 <StackPanel>
-                    <TextBlock Text="{Binding Glyph}" FontSize="24" Foreground="White"
-                               HorizontalAlignment="Center" FontWeight="Bold"/>
+                    <Image Source="{Binding Thumbnail}" Width="88" Height="48" Stretch="Uniform"
+                           HorizontalAlignment="Center"/>
                     <TextBlock Text="{Binding Name}" FontSize="10" TextTrimming="CharacterEllipsis"
                                Foreground="White" HorizontalAlignment="Center"/>
                 </StackPanel>
@@ -19,7 +19,6 @@
 
     <Grid x:Name="Root" Background="{DynamicResource Bg}" Margin="14">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
@@ -34,19 +33,18 @@
             <Button x:Name="RefreshBtn" Content="Refresh" Click="Refresh_Click"/>
         </StackPanel>
 
-        <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource Border}"
-                BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,10,0,10">
-            <StackPanel>
-                <TextBlock x:Name="CapabilityText" FontWeight="SemiBold"/>
-                <TextBlock x:Name="IntegrityText" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                <TextBlock x:Name="PathText" Margin="0,4,0,0" Foreground="{DynamicResource Muted}"
-                           TextWrapping="Wrap"/>
-                <ComboBox x:Name="DatabasePathBox" Margin="0,7,0,0" DisplayMemberPath="Path"
-                          SelectionChanged="DatabasePathBox_SelectionChanged" Visibility="Collapsed"/>
-            </StackPanel>
-        </Border>
+        <!-- Kept collapsed because the code uses these controls for diagnostics
+             and verified path selection, but the editor no longer exposes the
+             capability/status banner in the normal layout. -->
+        <StackPanel Visibility="Collapsed">
+            <TextBlock x:Name="CapabilityText"/>
+            <TextBlock x:Name="IntegrityText"/>
+            <TextBlock x:Name="PathText"/>
+            <ComboBox x:Name="DatabasePathBox" DisplayMemberPath="Path"
+                      SelectionChanged="DatabasePathBox_SelectionChanged"/>
+        </StackPanel>
 
-        <Border Grid.Row="2" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource Border}"
+        <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource Border}"
                 BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="Mii maker" FontWeight="SemiBold"/>
@@ -200,7 +198,7 @@
             </DockPanel>
         </Border>
 
-        <Expander Grid.Row="3" Header="Backup, restore, import and export" Margin="0,0,0,0">
+        <Expander Grid.Row="2" Header="Backup, restore, import and export" Margin="0,0,0,0">
             <DockPanel Margin="0,8,0,0">
                 <WrapPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <Button x:Name="BackupBtn" Content="Backup now" Click="Backup_Click"/>

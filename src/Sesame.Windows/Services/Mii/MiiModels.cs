@@ -31,58 +31,60 @@ public sealed class MiiAppearance : IEquatable<MiiAppearance>
         EyeColor = eyeColor;
     }
 
-    public string Name { get; init; }
-    public bool IsFemale { get; init; }
-    public int FavoriteColor { get; init; }
-    public int HairStyle { get; init; }
-    public int HairColor { get; init; }
-    public int EyeColor { get; init; }
+    public string Name { get; set; }
+    public bool IsFemale { get; set; }
+    public int FavoriteColor { get; set; }
+    public int HairStyle { get; set; }
+    public int HairColor { get; set; }
+    public int EyeColor { get; set; }
 
 // Additional FFL parts. The six constructor fields above remain stable for
 // existing callers; these properties cover the complete portable Mii editor
 // surface and are encoded per emulator by the format adapters.
-    public bool HasAdvancedParts { get; init; }
-    public int Height { get; init; }
-    public int Build { get; init; }
-    public int HairFlip { get; init; }
-    public int FaceType { get; init; }
-    public int FaceColor { get; init; }
-    public int FaceMakeup { get; init; }
-    public int FaceWrinkle { get; init; }
-    public int EyeType { get; init; }
-    public int EyeScale { get; init; }
-    public int EyeAspect { get; init; }
-    public int EyeRotate { get; init; }
-    public int EyeSpacing { get; init; }
-    public int EyePosition { get; init; }
-    public int EyebrowType { get; init; }
-    public int EyebrowColor { get; init; }
-    public int EyebrowScale { get; init; }
-    public int EyebrowAspect { get; init; }
-    public int EyebrowRotate { get; init; }
-    public int EyebrowSpacing { get; init; }
-    public int EyebrowPosition { get; init; }
-    public int NoseType { get; init; }
-    public int NoseScale { get; init; }
-    public int NosePosition { get; init; }
-    public int MouthType { get; init; }
-    public int MouthColor { get; init; }
-    public int MouthScale { get; init; }
-    public int MouthAspect { get; init; }
-    public int MouthPosition { get; init; }
-    public int BeardType { get; init; }
-    public int BeardColor { get; init; }
-    public int MustacheType { get; init; }
-    public int MustacheScale { get; init; }
-    public int MustachePosition { get; init; }
-    public int GlassesType { get; init; }
-    public int GlassesColor { get; init; }
-    public int GlassesScale { get; init; }
-    public int GlassesPosition { get; init; }
-    public int MoleType { get; init; }
-    public int MoleScale { get; init; }
-    public int MoleX { get; init; }
-    public int MoleY { get; init; }
+    public bool HasAdvancedParts { get; set; }
+    public int Height { get; set; }
+    public int Build { get; set; }
+    public int HairFlip { get; set; }
+    public int FaceType { get; set; }
+    public int FaceColor { get; set; }
+    public int FaceMakeup { get; set; }
+    public int FaceWrinkle { get; set; }
+    public int EyeType { get; set; }
+    public int EyeScale { get; set; }
+    public int EyeAspect { get; set; }
+    public int EyeRotate { get; set; }
+    public int EyeSpacing { get; set; }
+    public int EyePosition { get; set; }
+    public int EyebrowType { get; set; }
+    public int EyebrowColor { get; set; }
+    public int EyebrowScale { get; set; }
+    public int EyebrowAspect { get; set; }
+    public int EyebrowRotate { get; set; }
+    public int EyebrowSpacing { get; set; }
+    public int EyebrowPosition { get; set; }
+    public int NoseType { get; set; }
+    public int NoseScale { get; set; }
+    public int NosePosition { get; set; }
+    public int MouthType { get; set; }
+    public int MouthColor { get; set; }
+    public int MouthScale { get; set; }
+    public int MouthAspect { get; set; }
+    public int MouthPosition { get; set; }
+    public int BeardType { get; set; }
+    public int BeardColor { get; set; }
+    public int MustacheType { get; set; }
+    public int MustacheScale { get; set; }
+    public int MustachePosition { get; set; }
+    public int GlassesType { get; set; }
+    public int GlassesColor { get; set; }
+    public int GlassesScale { get; set; }
+    public int GlassesPosition { get; set; }
+    public int MoleType { get; set; }
+    public int MoleScale { get; set; }
+    public int MoleX { get; set; }
+    public int MoleY { get; set; }
+
+    public MiiAppearance Clone() => (MiiAppearance)MemberwiseClone();
 
     // Keep the original six-field value semantics for compatibility. The
     // advanced fields are editor state, not identity of the legacy value.
