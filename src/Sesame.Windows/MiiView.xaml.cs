@@ -142,7 +142,6 @@ public partial class MiiView : UserControl
         _editorAppearance = null;
         _selectedSlot = null;
         AvatarPreview.RenderedImage = null;
-        FflPreviewText.Text = "Connect to a Steam Deck to render a Mii.";
         MiiList.ItemsSource = null;
         BackupBox.ItemsSource = null;
         DatabasePathBox.ItemsSource = null;
@@ -412,7 +411,6 @@ public partial class MiiView : UserControl
                 {
                     NameBox.Clear();
                     AvatarPreview.RenderedImage = null;
-                    FflPreviewText.Text = "No Miis in this draft.";
                 }
             }
             finally { _suppressEditorEvents = false; }
@@ -838,9 +836,6 @@ public partial class MiiView : UserControl
             return;
         var appearance = EditorAppearance();
         CommitEditorDraft(appearance);
-        FflPreviewText.Text = AvatarPreview.RenderedImage is null
-            ? "Rendering real Mii preview…"
-            : "Updating real Mii preview…";
         RequestRealPreview(appearance);
     }
 
@@ -851,9 +846,6 @@ public partial class MiiView : UserControl
             return;
         var appearance = EditorAppearance();
         _editorAppearance = appearance.Clone();
-        FflPreviewText.Text = AvatarPreview.RenderedImage is null
-            ? "Rendering real Mii preview…"
-            : "Updating real Mii preview…";
         RequestRealPreview(appearance);
     }
 
@@ -881,7 +873,6 @@ public partial class MiiView : UserControl
         }
         catch (Exception ex)
         {
-            FflPreviewText.Text = "Wijziging niet opgeslagen · " + ex.Message;
             StatusChanged?.Invoke("Mii wijziging kon niet in de draft worden gezet: " + ex.Message);
         }
     }
@@ -927,7 +918,7 @@ public partial class MiiView : UserControl
         }
         catch (Exception ex)
         {
-            FflPreviewText.Text = "FFL preview unavailable · " + ex.Message;
+            StatusChanged?.Invoke("FFL preview unavailable: " + ex.Message);
             return;
         }
 
@@ -939,16 +930,14 @@ public partial class MiiView : UserControl
             {
                 if (!cancellationToken.IsCancellationRequested && generation == _previewGeneration &&
                     !string.IsNullOrWhiteSpace(_fflRenderer.LastError))
-                    FflPreviewText.Text = "FFL preview unavailable · " + _fflRenderer.LastError;
                 return;
             }
             AvatarPreview.RenderedImage = image;
-            FflPreviewText.Text = $"Live preview · FFL renderer ({kind})";
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            FflPreviewText.Text = "FFL preview unavailable · " + ex.Message;
+            StatusChanged?.Invoke("FFL preview unavailable: " + ex.Message);
         }
     }
 

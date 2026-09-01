@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.12 — 2026-09-01
+
+- Make every active gallery section stretch through the available editor height instead of stopping halfway down the panel.
+- Move target and refresh controls below the current Mii preview and remove the preview status text.
+- Replace gender radio controls with a two-button toggle and keep editor actions equal-sized, max two per row.
+
 ## 0.10.11 — 2026-09-01
 
 - Mii cards now re-render the edited character immediately instead of showing a stale avatar.
