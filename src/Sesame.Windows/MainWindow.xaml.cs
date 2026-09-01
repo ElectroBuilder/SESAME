@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private uint _termCols = 120;
     private uint _termRows = 32;
     private bool _termUi;
+    private MiiView? _miiPanel;
 
     public ObservableCollection<RemoteItem> Files { get; } = new();
     public ObservableCollection<GameEntry> Games { get; } = new();
@@ -80,24 +81,33 @@ public partial class MainWindow : Window
         StorePanel.DeleteRequested += hit => _ = DeletePackAsync(hit);
         StorePanel.ToggleRequested += (hit, enabled) => _ = TogglePackAsync(hit, enabled);
         StorePanel.TargetResolver = PreviewPackPath;
-        MiiPanel.Attach(_client);
-        MiiPanel.StatusChanged += SetStatus;
-        MiiPanel.CanStartOperation = () => !_busy && !_drainingStoreQueue;
-        MiiPanel.BusyChanged += busy =>
-        {
-            HeaderControls.IsEnabled = !busy;
-            WorkspaceGrid.IsEnabled = !busy;
-            TermPanel.IsEnabled = !busy;
-        };
         _client.ShellOutput += text => Dispatcher.BeginInvoke(() => AppendTerminal(text));
         Closing += (_, e) =>
         {
-            if (!MiiPanel.IsWorking) return;
+            if (_miiPanel?.IsWorking != true) return;
             e.Cancel = true;
             MessageBox.Show(this, "Wait for the Mii operation to finish before closing SESAME.", "Mii operation");
         };
         Closed += (_, _) => _client.Dispose();
         Loaded += (_, _) => _ = StartupConnectAsync();
+    }
+
+    private MiiView EnsureMiiPanel()
+    {
+        if (_miiPanel is not null) return _miiPanel;
+
+        _miiPanel = new MiiView();
+        _miiPanel.Attach(_client);
+        _miiPanel.StatusChanged += SetStatus;
+        _miiPanel.CanStartOperation = () => !_busy && !_drainingStoreQueue;
+        _miiPanel.BusyChanged += busy =>
+        {
+            HeaderControls.IsEnabled = !busy;
+            WorkspaceGrid.IsEnabled = !busy;
+            TermPanel.IsEnabled = !busy;
+        };
+        MiiPanelHost.Content = _miiPanel;
+        return _miiPanel;
     }
 
     private async Task StartupConnectAsync()
@@ -364,7 +374,7 @@ public partial class MainWindow : Window
         {
             OptimizerPanel.OnConnected();
             AppsPanel.OnConnected();
-            MiiPanel.OnConnected();
+            _miiPanel?.OnConnected();
             RefreshDashboard();
         }, DispatcherPriority.Background);
 
@@ -509,14 +519,14 @@ public partial class MainWindow : Window
 
     private void Disconnect_Click(object sender, RoutedEventArgs e)
     {
-        if (MiiPanel.IsWorking)
+        if (_miiPanel?.IsWorking == true)
         {
             MessageBox.Show(this, "Wait for the Mii operation to finish before disconnecting.", "Mii operation");
             return;
         }
         OptimizerPanel.CancelBackgroundScan();
         AppsPanel.Clear();
-        MiiPanel.OnDisconnected();
+        _miiPanel?.OnDisconnected();
         _client.Disconnect();
         Files.Clear();
         Games.Clear();
@@ -598,7 +608,7 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (MiiPanel.IsWorking)
+        if (_miiPanel?.IsWorking == true)
         {
             e.Handled = true;
             return;
@@ -826,6 +836,11 @@ public partial class MainWindow : Window
 
     private void MainTabs_Changed(object sender, SelectionChangedEventArgs e)
     {
+        if (MainTabs.SelectedIndex == TabMiis)
+        {
+            var panel = EnsureMiiPanel();
+            if (_client.IsConnected) panel.OnConnected();
+        }
         if (MainTabs.SelectedIndex == TabDash)
             RefreshDashboard();
     }
@@ -2010,7 +2025,7 @@ public partial class MainWindow : Window
 
     private async void Window_Drop(object sender, DragEventArgs e)
     {
-        if (MiiPanel.IsWorking)
+        if (_miiPanel?.IsWorking == true)
         {
             e.Handled = true;
             return;

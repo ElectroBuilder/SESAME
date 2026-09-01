@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.3 — 2026-09-01
+
+- Startup hardening: load the Mii editor only when its tab is opened, so a Mii-editor XAML issue can no longer prevent SESAME from starting.
+- Retain the WPF template conflict fix in the Mii editor.
+
 ## 0.9.2 — 2026-08-31
 
 - Startup fix: remove the invalid WPF combination of `DisplayMemberPath` and custom `ItemTemplate` in the visual Mii editor.

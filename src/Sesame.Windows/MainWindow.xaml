@@ -252,7 +252,7 @@
                         <local:StoreView x:Name="StorePanel"/>
                     </TabItem>
                     <TabItem Header="Miis">
-                        <local:MiiView x:Name="MiiPanel"/>
+                        <ContentControl x:Name="MiiPanelHost"/>
                     </TabItem>
                 </TabControl>
             </Grid>
