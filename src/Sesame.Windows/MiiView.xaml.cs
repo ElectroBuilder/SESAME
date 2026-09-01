@@ -120,7 +120,14 @@ public partial class MiiView : UserControl
         _service = new MiiService(client);
     }
 
-    public void OnConnected() => _ = RefreshAsync();
+    public void OnConnected()
+    {
+        // Switching tabs calls OnConnected again. Do not reload the live file
+        // while the editor contains a draft: that would discard the user's
+        // changes and make the whole editor appear to blink/reset.
+        if (_state?.IsDraft == true) return;
+        _ = RefreshAsync();
+    }
 
     public void OnDisconnected()
     {
@@ -146,9 +153,14 @@ public partial class MiiView : UserControl
         TargetBox.SelectedItem is ComboBoxItem { Tag: string value } &&
         Enum.TryParse<MiiTargetKind>(value, out var kind) ? kind : MiiTargetKind.Wii;
 
-    private async Task RefreshAsync()
+    private async Task RefreshAsync(bool force = false)
     {
         if (IsWorking || _service is null || _client is not { IsConnected: true }) return;
+        if (!force && _state?.IsDraft == true)
+        {
+            StatusChanged?.Invoke("Save or discard the current Mii draft before refreshing.");
+            return;
+        }
         var kind = SelectedKind;
         var profile = _client.ActiveProfile;
         if (profile is null) return;
@@ -163,11 +175,11 @@ public partial class MiiView : UserControl
             var snapshot = resolution.Target;
             var loaded = await Task.Run(() => _service.Load(snapshot));
             var backups = await Task.Run(() => _service.Inventory(loaded.Target));
+            var preferredSlot = _state?.Target.Kind == kind ? _selectedSlot : null;
             _state = _liveState = loaded;
             if (resolution.Target.PathApproved && resolution.Exists)
                 _selectedPaths[kind] = resolution.Target.TargetPath;
-            BindMiiCards(loaded);
-            MiiList.SelectedIndex = _miiCards.Count > 0 ? 0 : -1;
+            SelectLoadedSlot(loaded, preferredSlot);
             _ = RenderMiiCardsAsync(loaded);
             BackupBox.ItemsSource = backups;
             BackupBox.SelectedIndex = backups.Count > 0 ? 0 : -1;
@@ -476,7 +488,7 @@ public partial class MiiView : UserControl
                 ? "Restore committed and reconciled after a transport failure."
                 : "Restore committed and verified.");
         });
-        if (_client is { IsConnected: true }) await RefreshAsync();
+        if (_client is { IsConnected: true }) await RefreshAsync(force: true);
     }
 
     private void Import_Click(object sender, RoutedEventArgs e)
@@ -514,7 +526,7 @@ public partial class MiiView : UserControl
                 ? "Mii saved and reconciled after a transport failure."
                 : "Mii saved to the emulator and verified.");
         });
-        if (_client is { IsConnected: true }) await RefreshAsync();
+        if (_client is { IsConnected: true }) await RefreshAsync(force: true);
     }
 
     private void Discard_Click(object sender, RoutedEventArgs e)
@@ -654,7 +666,9 @@ public partial class MiiView : UserControl
             SelectChoice(GlassesColorGallery, appearance.GlassesColor);
         }
         finally { _suppressEditorEvents = false; }
-        UpdatePreview();
+        // Loading an existing Mii is not an edit. Render it without creating a
+        // draft in the service; drafts are created only by actual editor input.
+        RenderCurrentPreview();
         StartChoiceThumbnails();
     }
 
@@ -782,6 +796,19 @@ public partial class MiiView : UserControl
         RequestRealPreview(appearance);
     }
 
+    private void RenderCurrentPreview()
+    {
+        if (!IsLoaded || AvatarPreview is null || NameBox is null || MaleRadio is null || FemaleRadio is null ||
+            HairGallery is null || HairColorGallery is null || EyeColorGallery is null || FavoriteColorGallery is null)
+            return;
+        var appearance = EditorAppearance();
+        _editorAppearance = appearance.Clone();
+        FflPreviewText.Text = AvatarPreview.RenderedImage is null
+            ? "Rendering real Mii preview…"
+            : "Updating real Mii preview…";
+        RequestRealPreview(appearance);
+    }
+
     private void CommitEditorDraft(MiiAppearance appearance)
     {
         if (_suppressEditorEvents || _service is null || _state is not { CanExport: true } state ||
@@ -865,7 +892,6 @@ public partial class MiiView : UserControl
                 return;
             }
             AvatarPreview.RenderedImage = image;
-            AvatarPreview.PlayRevealAnimation();
             FflPreviewText.Text = $"Live preview · FFL renderer ({kind})";
         }
         catch (OperationCanceledException) { }
@@ -1013,6 +1039,27 @@ public partial class MiiView : UserControl
         ApplyCapabilities();
     }
 
+    private void SelectLoadedSlot(MiiTargetState state, int? preferredSlot)
+    {
+        var slot = preferredSlot is { } preferred && state.Slots.Any(x => x.Slot == preferred)
+            ? preferred
+            : state.Slots.FirstOrDefault()?.Slot;
+        _suppressEditorEvents = true;
+        try
+        {
+            BindMiiCards(state);
+            _selectedSlot = slot;
+            MiiList.SelectedIndex = slot is { } value
+                ? _miiCards.IndexOf(_miiCards.First(card => card.SlotIndex == value))
+                : -1;
+        }
+        finally { _suppressEditorEvents = false; }
+        if (slot is { } selectedSlot && _service is not null)
+            LoadAppearance(_service.GetAppearance(state, selectedSlot));
+        else
+            ApplyCapabilities();
+    }
+
     private async Task RunExclusiveAsync(MiiOperationSnapshot snapshot, Func<Task> operation)
     {
         if (CanStartOperation?.Invoke() == false)
@@ -1061,7 +1108,6 @@ public partial class MiiView : UserControl
         DiscardBtn.IsEnabled = _state?.IsDraft == true;
         SaveBtn.IsEnabled = _state is { IsDraft: true, Capability: not MiiCapability.Unavailable };
         RestoreBtn.IsEnabled = BackupBox.SelectedItem is MiiBackup;
-        if (SelectedMii is null) NameBox.Clear();
     }
 
     private void ShowUnavailable(string text)

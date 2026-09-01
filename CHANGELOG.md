@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.10 — 2026-09-01
+
+- Updater: recognize the versioned Windows/Linux release assets and select the newest compatible release instead of falling back to an older legacy asset.
+- Miis: keep the selected card and editor draft stable across tab refreshes and render loaded Miis without turning them into accidental drafts.
+- Miis: stop replaying the reveal animation on every preview render, removing the visible blink during edits.
+
 ## 0.10.9 — 2026-09-01
 
 - Miis: ship the persistent Mii maker fixes with the verified draft → backup → atomic save flow for Dolphin and Eden.

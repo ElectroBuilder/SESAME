@@ -29,8 +29,15 @@ public static class AppUpdate
     // the Windows UI project.
     public static Action? BeforeRestart { get; set; }
 
+    // Kept for callers that display the expected download name. Releases may
+    // use either this legacy name or the versioned name emitted by CI.
     public static string AssetFileName =>
         OperatingSystem.IsWindows() ? "sesame-windows.zip" : "sesame-linux-x64.tar.gz";
+
+    private static string VersionedAssetFileName(string version) =>
+        OperatingSystem.IsWindows()
+            ? $"SESAME-{version}-windows-x64.zip"
+            : $"SESAME-{version}-linux-x64.tar.gz";
 
     public static async Task<AppRelease?> CheckAsync(CancellationToken ct = default)
     {
@@ -39,28 +46,31 @@ public static class AppUpdate
         using var resp = await Http.SendAsync(req, ct);
         if (!resp.IsSuccessStatusCode) return null;
         using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+        var releases = new List<(Version Remote, string Version, string Tag, string Notes, string Name, string Url)>();
         foreach (var root in doc.RootElement.EnumerateArray())
         {
             if (root.TryGetProperty("draft", out var draft) && draft.GetBoolean()) continue;
             var tag = root.GetProperty("tag_name").GetString() ?? "";
             var version = tag.TrimStart('v', 'V');
             if (!Version.TryParse(version, out var remote)) continue;
-            var asset = FindAsset(root, AssetFileName);
+            var asset = FindAsset(root, VersionedAssetFileName(version), AssetFileName);
             if (asset is null) continue;
             var notes = root.TryGetProperty("body", out var body) ? body.GetString() ?? "" : "";
-            var newer = Version.TryParse(AppVersion.Current, out var local) && remote > local;
-            return new AppRelease
-            {
-                Version = version,
-                Tag = tag,
-                Notes = notes.Trim(),
-                AssetName = asset.Value.name,
-                DownloadUrl = asset.Value.url,
-                IsNewer = newer
-            };
+            releases.Add((remote, version, tag, notes.Trim(), asset.Value.name, asset.Value.url));
         }
 
-        return null;
+        var latest = releases.OrderByDescending(x => x.Remote).FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(latest.Version)) return null;
+        var newer = Version.TryParse(AppVersion.Current, out var local) && latest.Remote > local;
+        return new AppRelease
+        {
+            Version = latest.Version,
+            Tag = latest.Tag,
+            Notes = latest.Notes,
+            AssetName = latest.Name,
+            DownloadUrl = latest.Url,
+            IsNewer = newer
+        };
     }
 
     public static async Task ApplyAsync(AppRelease release, IProgress<string>? progress, CancellationToken ct = default)
@@ -88,18 +98,21 @@ public static class AppUpdate
         LaunchSwap(payload, dest);
     }
 
-    private static (string name, string url)? FindAsset(JsonElement root, string fileName)
+    private static (string name, string url)? FindAsset(JsonElement root, params string[] fileNames)
     {
         if (!root.TryGetProperty("assets", out var assets)) return null;
-        foreach (var item in assets.EnumerateArray())
+        var candidates = fileNames.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        // Prefer the versioned asset, but accept the legacy name for older releases.
+        foreach (var wanted in candidates)
         {
-            var name = item.GetProperty("name").GetString() ?? "";
-            if (!name.Equals(fileName, StringComparison.OrdinalIgnoreCase)) continue;
-            var url = item.GetProperty("browser_download_url").GetString() ?? "";
-            if (url.Length == 0) continue;
-            return (name, url);
+            foreach (var item in assets.EnumerateArray())
+            {
+                var name = item.GetProperty("name").GetString() ?? "";
+                if (!name.Equals(wanted, StringComparison.OrdinalIgnoreCase)) continue;
+                var url = item.GetProperty("browser_download_url").GetString() ?? "";
+                if (url.Length > 0) return (name, url);
+            }
         }
-
         return null;
     }
 
