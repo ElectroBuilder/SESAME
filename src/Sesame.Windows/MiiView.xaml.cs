@@ -266,6 +266,10 @@ public partial class MiiView : UserControl
     private void ScheduleEditorChange()
     {
         if (_suppressEditorEvents || !IsLoaded) return;
+        // A catalogue render is deliberately cancellable. Previewing the
+        // user's current choice always gets priority over rendering hundreds
+        // of thumbnails, keeping the editor responsive.
+        _choiceRenderCts?.Cancel();
         var generation = ++_editorChangeGeneration;
         _pendingEditorChange?.Abort();
         _pendingEditorChange = Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>

@@ -5,6 +5,7 @@
 - Fix editor selections being overwritten by transient WPF selection events; the active Mii draft now remains authoritative while switching Miis, gender and parts.
 - Split every hair, colour, face-part and detail group into its own full gallery tab with larger light tiles and real FFL-rendered previews.
 - Remove dark swatch backgrounds and stop exposing Eden eyebrow options that the validated format cannot store.
+- Cancel background catalogue rendering while editing so the live preview stays responsive.
 
 ## 0.10.7 — 2026-09-01
 
