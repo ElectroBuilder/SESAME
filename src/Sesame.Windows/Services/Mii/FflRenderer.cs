@@ -246,6 +246,7 @@ public sealed class FflRenderer : IDisposable
 
         var names = new[] { "FFLResHigh.dat", "AFLResHigh_2_3.dat" };
         var basePath = AppContext.BaseDirectory;
+        candidates.Add(Path.Combine(basePath, "Renderer", "FFLResHigh.dat"));
         foreach (var name in names) candidates.Add(Path.Combine(basePath, name));
         foreach (var ancestor in Ancestors(basePath, 8))
         {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1 — 2026-09-01
+
+- Include the supplied, verified `AFLResHigh_2_3.dat` resource in the Windows package as `Renderer\FFLResHigh.dat`, so the Eden FFL preview no longer silently falls back to the drawn placeholder after installation.
+
 ## 0.10.0 — 2026-09-01
 
 - Eden Mii preview now uses the real FFL renderer and the exact 68-byte Eden record, so hair, face, eyes, body and other stored Switch Mii fields are rendered by FFL instead of the placeholder drawing.

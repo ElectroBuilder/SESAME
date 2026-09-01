@@ -31,6 +31,10 @@
     <None Update="Assets\Logos\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Content Include="Assets\FFLResHigh.dat" Link="Renderer\FFLResHigh.dat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Sesame.Core\Sesame.Core.csproj" />
